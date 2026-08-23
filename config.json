@@ -1,0 +1,16 @@
+{
+  "service_fee_percent": 12.0,
+  "validity_days": 5,
+  "currency_symbol": "Q",
+  "currency_code": "GTQ",
+  "business": {
+    "name": "Emerson Electrónica & Integración",
+    "owner": "Emerson",
+    "phone": "+502 5555-5555",
+    "email": "cotizaciones@emerson-electronica.gt",
+    "address": "Ciudad de Guatemala, Guatemala",
+    "logo_url": "",
+    "payment_terms": "50% de anticipo para compra de componentes y 50% contra entrega. Depósito o transferencia bancaria (Banrural, BI, BAC)."
+  },
+  "quote_prefix": "COT"
+}

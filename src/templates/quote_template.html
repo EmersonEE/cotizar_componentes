@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cotización {{ quote.quote_id }} - {{ business.name }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    @page {
+      size: letter portrait;
+      margin: 12mm 15mm 15mm 15mm;
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #888888;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background-color: #f8fafc;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .document-container {
+      max-width: 850px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Header */
+    .header-table {
+      width: 100%;
+      margin-bottom: 25px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 20px;
+    }
+
+    .header-table td {
+      vertical-align: top;
+    }
+
+    .business-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .business-subtitle {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0284c7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .business-meta {
+      font-size: 11.5px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .quote-badge-container {
+      text-align: right;
+    }
+
+    .quote-main-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0284c7;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .quote-number {
+      font-size: 15px;
+      font-weight: 700;
+      color: #334155;
+      background: #f1f5f9;
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .quote-dates {
+      font-size: 11.5px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .quote-dates strong {
+      color: #334155;
+    }
+
+    /* Info Cards */
+    .info-grid {
+      width: 100%;
+      margin-bottom: 25px;
+    }
+
+    .info-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+
+    .info-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0284c7;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+    }
+
+    .info-card-content {
+      font-size: 12.5px;
+      color: #334155;
+      line-height: 1.45;
+    }
+
+    .info-card-content .client-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+
+    /* Table */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+
+    .items-table th {
+      background-color: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 12px;
+      text-align: left;
+    }
+
+    .items-table th.text-center { text-align: center; }
+    .items-table th.text-right { text-align: right; }
+
+    .items-table th:first-child {
+      border-top-left-radius: 6px;
+    }
+    .items-table th:last-child {
+      border-top-right-radius: 6px;
+    }
+
+    .items-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 12.5px;
+      vertical-align: middle;
+    }
+
+    .items-table tr:nth-child(even) td {
+      background-color: #fafbfc;
+    }
+
+    .item-name {
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 3px;
+    }
+
+    .store-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #e0f2fe;
+      color: #0369a1;
+      text-decoration: none;
+    }
+
+    .store-badge.la-electronica {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .store-badge.diy {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .store-badge.rych {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .font-mono { font-family: 'SF Mono', Consolas, Monaco, monospace; }
+
+    /* Summary section */
+    .summary-container {
+      width: 100%;
+      margin-bottom: 30px;
+    }
+
+    .summary-table {
+      width: 320px;
+      margin-left: auto;
+      border-collapse: collapse;
+    }
+
+    .summary-table td {
+      padding: 6px 12px;
+      font-size: 12.5px;
+    }
+
+    .summary-table tr.total-row td {
+      border-top: 2px solid #0f172a;
+      border-bottom: 2px solid #0f172a;
+      padding: 10px 12px;
+      background-color: #f0fdf4;
+    }
+
+    .total-label {
+      font-size: 14px;
+      font-weight: 800;
+      color: #166534;
+      text-transform: uppercase;
+    }
+
+    .total-amount {
+      font-size: 18px;
+      font-weight: 800;
+      color: #166534;
+    }
+
+    /* Terms and footer */
+    .terms-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 25px;
+    }
+
+    .terms-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .terms-list {
+      font-size: 11.5px;
+      color: #64748b;
+      padding-left: 18px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+    }
+
+    .action-buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+    }
+
+    .btn:hover {
+      background: #0369a1;
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .document-container {
+        padding: 0;
+        box-shadow: none;
+        max-width: 100%;
+      }
+      .action-buttons {
+        display: none !important;
+      }
+      .items-table tr {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="document-container">
+    <!-- Header -->
+    <table class="header-table">
+      <tr>
+        <td style="width: 55%;">
+          <div class="business-title">{{ business.name }}</div>
+          <div class="business-subtitle">Integración & Venta de Componentes Electrónicos</div>
+          <div class="business-meta">
+            {% if business.owner %}<strong>Atención:</strong> {{ business.owner }}<br>{% endif %}
+            {% if business.phone %}<strong>Teléfono/WhatsApp:</strong> {{ business.phone }}<br>{% endif %}
+            {% if business.email %}<strong>Email:</strong> {{ business.email }}<br>{% endif %}
+            {% if business.address %}<strong>Ubicación:</strong> {{ business.address }}{% endif %}
+          </div>
+        </td>
+        <td style="width: 45%;" class="quote-badge-container">
+          <div class="quote-main-title">COTIZACIÓN</div>
+          <div class="quote-number">{{ quote.quote_id }}</div>
+          <div class="quote-dates">
+            <strong>Fecha de Emisión:</strong> {{ quote.date }}<br>
+            <strong>Válida hasta:</strong> {{ quote.valid_until }}<br>
+            <strong>Moneda:</strong> Quetzales (GTQ)
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Info Cards -->
+    <table class="info-grid">
+      <tr>
+        <td style="width: 50%; padding-right: 10px;">
+          <div class="info-card">
+            <div class="info-card-title">Cliente</div>
+            <div class="info-card-content">
+              <div class="client-name">{{ quote.customer.name }}</div>
+              {% if quote.customer.phone %}<div><strong>Teléfono:</strong> {{ quote.customer.phone }}</div>{% endif %}
+            </div>
+          </div>
+        </td>
+        <td style="width: 50%; padding-left: 10px;">
+          <div class="info-card">
+            <div class="info-card-title">Condiciones de Servicio</div>
+            <div class="info-card-content">
+              <div><strong>Gestión de compra:</strong> Incluye localización, verificación física y consolidación.</div>
+              <div><strong>Disponibilidad:</strong> Precios sujetos a inventario en tienda local.</div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width: 5%;" class="text-center">#</th>
+          <th style="width: 45%;">Componente / Descripción</th>
+          <th style="width: 20%;">Tienda Origen</th>
+          <th style="width: 10%;" class="text-center">Cant.</th>
+          <th style="width: 10%;" class="text-right">Precio U.</th>
+          <th style="width: 10%;" class="text-right">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in quote.items %}
+        <tr>
+          <td class="text-center font-mono" style="color: #64748b;">{{ loop.index }}</td>
+          <td>
+            <div class="item-name">{{ item.product.name }}</div>
+          </td>
+          <td>
+            <span class="store-badge {% if 'Electrónica RyCH' in item.product.store_name %}rych{% elif 'DIY' in item.product.store_name %}diy{% else %}la-electronica{% endif %}">
+              {{ item.product.store_name }}
+            </span>
+          </td>
+          <td class="text-center font-mono"><strong>{{ item.quantity }}</strong></td>
+          <td class="text-right font-mono">{{ quote.currency_symbol }} {{ "%.2f"|format(item.unit_price) }}</td>
+          <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(item.subtotal) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Financial Summary -->
+    <div class="summary-container">
+      <table class="summary-table">
+        <tr>
+          <td style="color: #64748b;">Subtotal de Componentes:</td>
+          <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.subtotal) }}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">Servicio de Gestión y Compra ({{ quote.service_fee_percent }}%):</td>
+          <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.service_fee_amount) }}</td>
+        </tr>
+        <tr class="total-row">
+          <td class="total-label">TOTAL COTIZADO:</td>
+          <td class="text-right total-amount font-mono">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.total) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Terms and Conditions -->
+    <div class="terms-box">
+      <div class="terms-title">Términos y Condiciones</div>
+      <ul class="terms-list">
+        <li><strong>Vigencia:</strong> Esta cotización es válida por <strong>5 días</strong> a partir de su emisión (vence el {{ quote.valid_until }}).</li>
+        <li>Precios expresados en Quetzales (GTQ).</li>
+      </ul>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Gracias por su preferencia • {{ business.name }} • Contacto: {{ business.phone }}
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
+    </div>
+
+  </div>
+
+</body>
+</html>
