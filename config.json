@@ -1,27 +1,27 @@
 {
-  "service_fee_percent": 12.0,
+  "service_fee_percent": 10.0,
   "validity_days": 5,
   "currency_symbol": "Q",
   "currency_code": "GTQ",
+  "quote_prefix": "COT",
   "business": {
     "name": "Emerson Electrónica & Integración",
     "owner": "Emerson",
-    "phone": "+502 5555-5555",
-    "email": "cotizaciones@emerson-electronica.gt",
+    "phone": "4996-4191",
+    "email": "perezemerson85@gmail.com",
     "address": "Ciudad de Guatemala, Guatemala",
     "logo_url": "",
     "payment_terms": ""
   },
-  "quote_prefix": "COT",
   "shipping_rules": {
     "La Electrónica": {
-      "free_threshold": 150.0,
-      "default_cost": 35.0,
+      "free_threshold": 200.0,
+      "default_cost": 15.0,
       "is_pickup_only": false
     },
     "Electrónica DIY": {
       "free_threshold": 250.0,
-      "default_cost": 35.0,
+      "default_cost": 20.0,
       "is_pickup_only": false
     },
     "Electrónica RyCH": {
