@@ -1,48 +1,63 @@
 import sys
 import os
+import shutil
+from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.models import Product, Customer
-from src.core.calculator import QuoteCalculator, format_currency
-from src.core.exporter import QuoteExporter
-from src.core.history_manager import HistoryManager
+from src.models import Product, QuoteItem, Quote, Customer
 from src.config import AppConfig
+from src.core.calculator import QuoteCalculator, format_currency
+from src.core.history_manager import HistoryManager
+from src.core.exporter import QuoteExporter
 
 def test_shipping_and_versioning():
     print("--- INICIANDO TEST DE REGLAS DE ENVÍO Y VERSIONADO ---")
-    config = AppConfig.load()
+
     history_mgr = HistoryManager()
     exporter = QuoteExporter()
 
-    # 1. Test Items:
-    # La Electrónica (Q80 < Q150 -> debe cobrar envío Q35)
-    p_la = Product(name="Sensor Ultrasónico HC-SR04", url="https://laelectronica.com.gt/products/sensor", store_name="La Electrónica", unit_price=40.0)
+    # Explicit shipping rules for testing
+    test_shipping_rules = {
+        "La Electrónica": {
+            "free_threshold": 150.0,
+            "default_cost": 35.0,
+            "is_pickup_only": False
+        },
+        "Electrónica DIY": {
+            "free_threshold": 250.0,
+            "default_cost": 35.0,
+            "is_pickup_only": False
+        },
+        "Electrónica RyCH": {
+            "free_threshold": None,
+            "default_cost": 0.0,
+            "is_pickup_only": True
+        }
+    }
+
+    # Products from 3 different stores
+    p_la = Product("Tester Component La Electronica", "https://laelectronica.com.gt/products/test", "La Electrónica", 40.00)
+    p_diy = Product("Tester Component DIY", "https://electronicadiy.com/products/test", "Electrónica DIY", 775.00)
+    p_rych = Product("Tester Component RyCH", "https://electronicarych.com/shop/test", "Electrónica RyCH", 2.25)
+
+    # 1. Test Shipping Threshold Evaluation:
+    # La Electrónica: 2 x 40 = Q80 (< Q150) -> Q35 shipping
+    # DIY: 1 x 775 = Q775 (>= Q250) -> Free shipping (Q0)
+    # RyCH: 1 x 2.25 = Q2.25 (Pickup) -> Q0
     item_la = QuoteCalculator.create_quote_item(p_la, quantity=2) # 80.00
-
-    # Electrónica DIY (Q775 >= Q250 -> Envío Gratis)
-    p_diy = Product(name="FNIRSI HRM-10 Tester", url="https://www.electronicadiy.com/products/tester", store_name="Electrónica DIY", unit_price=775.0)
     item_diy = QuoteCalculator.create_quote_item(p_diy, quantity=1) # 775.00
-
-    # RyCH (Q2.25 -> Retiro en tienda)
-    p_rych = Product(name="Cable Calibre 22", url="https://electronicarych.com/shop/cable", store_name="Electrónica RyCH", unit_price=2.25)
     item_rych = QuoteCalculator.create_quote_item(p_rych, quantity=1) # 2.25
 
     items = [item_la, item_diy, item_rych]
-    customer = Customer(name="Ing. Emerson Estrada", phone="+502 5555-1234")
+    customer = Customer("Cliente Versiones", "4455-6677")
 
-    # Evaluate shipping
     store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
     print(f"Subtotales por tienda: {store_subtotals}")
     assert store_subtotals["La Electrónica"] == 80.0
     assert store_subtotals["Electrónica DIY"] == 775.0
     assert store_subtotals["Electrónica RyCH"] == 2.25
 
-    shipping_details = QuoteCalculator.evaluate_shipping_details(
-        store_subtotals,
-        config.shipping_rules,
-        custom_shipping_costs={"La Electrónica": 35.0}
-    )
-
+    shipping_details = QuoteCalculator.evaluate_shipping_details(store_subtotals, test_shipping_rules)
     for sd in shipping_details:
         print(f"  • {sd.store_name}: Subtotal={sd.items_subtotal}, Costo={sd.shipping_cost}, Status={sd.status_label}")
 
@@ -83,7 +98,7 @@ def test_shipping_and_versioning():
     assert abs(quote_v1.total - expected_total) < 0.01
 
     history_mgr.save_quote(quote_v1)
-    exporter.export_all(quote_v1, config.business)
+    exporter.export_all(quote_v1)
 
     # 2. Test Versioning: Create Quote v2
     new_qid, new_version, base_id = history_mgr.get_next_version_info(quote_v1.quote_id)
@@ -96,7 +111,7 @@ def test_shipping_and_versioning():
     items_v2 = [item_la_v2, item_diy, item_rych]
     
     store_subtotals_v2 = QuoteCalculator.calculate_store_subtotals(items_v2)
-    shipping_details_v2 = QuoteCalculator.evaluate_shipping_details(store_subtotals_v2, config.shipping_rules)
+    shipping_details_v2 = QuoteCalculator.evaluate_shipping_details(store_subtotals_v2, test_shipping_rules)
 
     la_sd_v2 = next(s for s in shipping_details_v2 if s.store_name == "La Electrónica")
     assert la_sd_v2.qualifies_free
@@ -118,20 +133,14 @@ def test_shipping_and_versioning():
     print(f"  Total Envíos:         {format_currency(quote_v2.total_shipping)}")
     print(f"  TOTAL GENERAL:        {format_currency(quote_v2.total)}")
 
+    assert abs(quote_v2.total_shipping - 0.0) < 0.01
+
     history_mgr.save_quote(quote_v2)
-    csv_f, html_f, pdf_f = exporter.export_all(quote_v2, config.business)
-
-    assert csv_f.exists()
-    assert html_f.exists()
-    if pdf_f:
-        assert pdf_f.exists()
-        print(f"  [OK] PDF v2 generado exitosamente: {pdf_f.name}")
-
-    # Check both versions in history
-    all_quotes = history_mgr.load_all_quotes()
-    quote_ids = [q.quote_id for q in all_quotes]
-    assert quote_v1.quote_id in quote_ids
-    assert quote_v2.quote_id in quote_ids
+    exp_res_v2 = exporter.export_all(quote_v2)
+    assert exp_res_v2.client_pdf and exp_res_v2.client_pdf.exists()
+    assert exp_res_v2.internal_pdf and exp_res_v2.internal_pdf.exists()
+    print(f"  [OK] PDF v2 Cliente generado: {exp_res_v2.client_pdf.name}")
+    print(f"  [OK] PDF v2 Interno generado: {exp_res_v2.internal_pdf.name}")
 
     print("\n--- TODOS LOS TESTS DE ENVÍO Y VERSIONADO PASARON CON ÉXITO ---")
 

@@ -15,7 +15,7 @@ from src.config import AppConfig
 from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
-from src.core.exporter import QuoteExporter
+from src.core.exporter import QuoteExporter, ExportResult
 
 # 1. Configuración de página
 st.set_page_config(
@@ -35,7 +35,7 @@ def get_services():
 
 config, history_mgr, exporter = get_services()
 
-# 3. Inicialización del Estado de Sesión (usamos 'quote_items' para no colisionar con dict.items)
+# 3. Inicialización del Estado de Sesión
 def init_session_state():
     if "active_quote_id" not in st.session_state:
         st.session_state.active_quote_id = history_mgr.get_next_quote_id(config.quote_prefix)
@@ -370,7 +370,7 @@ with tab_cotizador:
 
                 history_mgr.save_quote(quote_to_save)
                 exporter.export_all(quote_to_save, config.business)
-                st.success(f"✔ ¡Cotización `{quote_to_save.quote_id}` guardada con éxito en el historial!")
+                st.success(f"✔ ¡Cotización `{quote_to_save.quote_id}` guardada con éxito (Cliente + Interno)!")
                 st.session_state.editing_mode = False
                 st.session_state.active_quote_id = quote_to_save.quote_id
                 st.session_state.version = quote_to_save.version
@@ -385,25 +385,58 @@ with tab_cotizador:
     # COLUMNA DERECHA: VISTA PREVIA EN VIVO
     # --------------------------------------------------
     with col_right:
-        st.markdown("#### 👁️ Vista Previa en Vivo (Documento del Cliente)")
-        
-        # Renderizado instantáneo de HTML
+        p_c1, p_c2 = st.columns([1.2, 1.2])
+        with p_c1:
+            st.markdown("#### 👁️ Vista Previa en Vivo")
+        with p_c2:
+            tipo_vista = st.radio("Modo:", ["Cliente (Limpio)", "Interno (con Links)"], horizontal=True, label_visibility="collapsed")
+
+        is_internal_view = (tipo_vista == "Interno (con Links)")
         current_quote = get_current_quote()
-        template = exporter.jinja_env.get_template("quote_template.html")
-        html_preview = template.render(quote=current_quote, business=config.business)
 
-        # Contenedor embebido con diseño real
-        components.html(html_preview, height=800, scrolling=True)
+        # Renderizado instantáneo de HTML
+        html_preview = exporter.render_html_string(current_quote, config.business, is_internal=is_internal_view)
+        components.html(html_preview, height=720, scrolling=True)
 
-        # Botones de Descarga Directa
-        d_c1, d_c2, d_c3 = st.columns([1, 1, 1])
-        
-        # Generación bajo demanda para descarga
-        csv_file = exporter.export_csv(current_quote)
-        with open(csv_file, "r", encoding="utf-8-sig") as f:
-            csv_data = f.read()
+        # Botones de Descarga Directa Organizados
+        st.markdown("##### 📥 Descargas Oficiales")
+        d_row1_c1, d_row1_c2 = st.columns([1, 1])
+        d_row2_c1, d_row2_c2 = st.columns([1, 1])
 
-        with d_c1:
+        with d_row1_c1:
+            try:
+                from weasyprint import HTML
+                html_client = exporter.render_html_string(current_quote, config.business, is_internal=False)
+                pdf_client_bytes = HTML(string=html_client).write_pdf()
+                st.download_button(
+                    label="📑 Descargar PDF (Cliente)",
+                    data=pdf_client_bytes,
+                    file_name=f"{current_quote.quote_id}_Cliente.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"PDF Cliente: {e}")
+
+        with d_row1_c2:
+            try:
+                html_intern = exporter.render_html_string(current_quote, config.business, is_internal=True)
+                pdf_intern_bytes = HTML(string=html_intern).write_pdf()
+                st.download_button(
+                    label="🔗 Descargar PDF (Interno con Links)",
+                    data=pdf_intern_bytes,
+                    file_name=f"{current_quote.quote_id}_Interna.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"PDF Interno: {e}")
+
+        with d_row2_c1:
+            csv_file = exporter.export_csv(current_quote)
+            with open(csv_file, "r", encoding="utf-8-sig") as f:
+                csv_data = f.read()
             st.download_button(
                 label="📊 Descargar CSV",
                 data=csv_data,
@@ -412,23 +445,7 @@ with tab_cotizador:
                 use_container_width=True
             )
 
-        with d_c2:
-            # Generar PDF con WeasyPrint
-            try:
-                from weasyprint import HTML
-                pdf_bytes = HTML(string=html_preview).write_pdf()
-                st.download_button(
-                    label="📑 Descargar PDF",
-                    data=pdf_bytes,
-                    file_name=f"{current_quote.quote_id}.pdf",
-                    mime="application/pdf",
-                    type="primary",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.error(f"PDF no disponible: {e}")
-
-        with d_c3:
+        with d_row2_c2:
             wa_url = generate_whatsapp_link(current_quote)
             st.link_button("💬 Enviar WhatsApp", url=wa_url, use_container_width=True)
 
@@ -458,7 +475,7 @@ with tab_historial:
                     
                     # Mini tabla
                     for it in q.items:
-                        st.caption(f"• {it.quantity}x {it.product.name} ({it.product.store_name}) = Q {it.subtotal:,.2f}")
+                        st.caption(f"• {it.quantity}x [{it.product.name}]({it.product.url}) ({it.product.store_name}) = Q {it.subtotal:,.2f}")
                     
                     st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen (12%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
 

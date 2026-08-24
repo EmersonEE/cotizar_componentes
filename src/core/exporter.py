@@ -1,13 +1,28 @@
 import csv
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from dataclasses import dataclass
+from typing import Optional, Iterator
 from jinja2 import Environment, FileSystemLoader
 from src.models import Quote, BusinessInfo
 from src.config import AppConfig
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output"
+
+@dataclass
+class ExportResult:
+    csv: Path
+    client_html: Path
+    client_pdf: Optional[Path]
+    internal_html: Path
+    internal_pdf: Optional[Path]
+
+    def __iter__(self) -> Iterator:
+        """Enables backward-compatible unpacking: csv, html, pdf = exporter.export_all(...)"""
+        yield self.csv
+        yield self.client_html
+        yield self.client_pdf
 
 class QuoteExporter:
     def __init__(self, output_dir: Path = OUTPUT_DIR, templates_dir: Path = TEMPLATES_DIR):
@@ -63,40 +78,79 @@ class QuoteExporter:
 
         return file_path
 
-    def export_html(self, quote: Quote, business: Optional[BusinessInfo] = None) -> Path:
-        """Renders the HTML quote using Jinja2."""
+    def render_html_string(self, quote: Quote, business: Optional[BusinessInfo] = None, is_internal: bool = False) -> str:
+        """Renders the HTML template into a string."""
         if business is None:
             config = AppConfig.load()
             business = config.business
 
         template = self.jinja_env.get_template("quote_template.html")
-        rendered_html = template.render(
+        return template.render(
             quote=quote,
-            business=business
+            business=business,
+            is_internal=is_internal
         )
 
-        file_path = self.html_dir / f"{quote.quote_id}.html"
+    def export_html(self, quote: Quote, business: Optional[BusinessInfo] = None, is_internal: bool = False) -> Path:
+        """Renders and saves the HTML quote to disk."""
+        rendered_html = self.render_html_string(quote, business, is_internal=is_internal)
+        suffix = "_Interna" if is_internal else "_Cliente"
+        file_path = self.html_dir / f"{quote.quote_id}{suffix}.html"
+        
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(rendered_html)
 
+        # Also maintain a default {quote_id}.html alias for client version
+        if not is_internal:
+            default_path = self.html_dir / f"{quote.quote_id}.html"
+            with open(default_path, "w", encoding="utf-8") as f:
+                f.write(rendered_html)
+
         return file_path
 
-    def export_pdf(self, quote: Quote, business: Optional[BusinessInfo] = None) -> Optional[Path]:
-        """Generates PDF using WeasyPrint from the generated HTML."""
-        html_path = self.export_html(quote, business)
-        pdf_path = self.pdf_dir / f"{quote.quote_id}.pdf"
+    def export_pdf(self, quote: Quote, business: Optional[BusinessInfo] = None, is_internal: bool = False) -> Optional[Path]:
+        """Generates PDF using WeasyPrint from HTML."""
+        html_path = self.export_html(quote, business, is_internal=is_internal)
+        suffix = "_Interna" if is_internal else "_Cliente"
+        pdf_path = self.pdf_dir / f"{quote.quote_id}{suffix}.pdf"
 
         try:
             from weasyprint import HTML
             HTML(filename=str(html_path)).write_pdf(str(pdf_path))
+            
+            # Also maintain a default {quote_id}.pdf alias for client version
+            if not is_internal:
+                default_pdf = self.pdf_dir / f"{quote.quote_id}.pdf"
+                try:
+                    import shutil
+                    shutil.copy2(pdf_path, default_pdf)
+                except Exception:
+                    pass
+
             return pdf_path
         except Exception as e:
             print(f"[Aviso] No se pudo generar PDF automáticamente con WeasyPrint: {e}")
             return None
 
-    def export_all(self, quote: Quote, business: Optional[BusinessInfo] = None) -> Tuple[Path, Path, Optional[Path]]:
-        """Generates CSV, HTML and PDF for a quote."""
+    def export_all(self, quote: Quote, business: Optional[BusinessInfo] = None) -> ExportResult:
+        """
+        Generates both Client and Internal versions simultaneously:
+        - CSV file for internal tracking
+        - Client HTML & PDF (clean without external links)
+        - Internal HTML & PDF (with clickable shop hyperlinks)
+        """
         csv_file = self.export_csv(quote)
-        html_file = self.export_html(quote, business)
-        pdf_file = self.export_pdf(quote, business)
-        return csv_file, html_file, pdf_file
+        
+        client_html = self.export_html(quote, business, is_internal=False)
+        client_pdf = self.export_pdf(quote, business, is_internal=False)
+        
+        internal_html = self.export_html(quote, business, is_internal=True)
+        internal_pdf = self.export_pdf(quote, business, is_internal=True)
+
+        return ExportResult(
+            csv=csv_file,
+            client_html=client_html,
+            client_pdf=client_pdf,
+            internal_html=internal_html,
+            internal_pdf=internal_pdf
+        )

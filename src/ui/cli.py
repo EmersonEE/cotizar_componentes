@@ -16,7 +16,7 @@ from src.config import AppConfig
 from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError, ScraperError
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
-from src.core.exporter import QuoteExporter
+from src.core.exporter import QuoteExporter, ExportResult
 
 console = Console()
 
@@ -180,6 +180,42 @@ class CotizadorCLI:
 
         return None
 
+    def _mostrar_panel_documentos(self, exp_res: ExportResult, quote_id: str):
+        """Displays a clean summary panel with all generated files (Cliente and Interna)."""
+        console.print(Panel(
+            f"[bold green]✔ Cotización guardada con éxito![/bold green]\n\n"
+            f"📄 [bold]ID Cotización:[/bold] {quote_id}\n\n"
+            f"[bold cyan]Archivos para el Cliente:[/bold cyan]\n"
+            f"  📑 [bold]PDF Cliente:[/bold]  {exp_res.client_pdf if exp_res.client_pdf else 'No generado'}\n"
+            f"  🌐 [bold]HTML Cliente:[/bold] {exp_res.client_html}\n\n"
+            f"[bold yellow]Archivos de Control Interno (con Enlaces de Compra):[/bold yellow]\n"
+            f"  🔗 [bold]PDF Interno:[/bold]  {exp_res.internal_pdf if exp_res.internal_pdf else 'No generado'}\n"
+            f"  🌐 [bold]HTML Interno:[/bold] {exp_res.internal_html}\n"
+            f"  📊 [bold]CSV Registro:[/bold] {exp_res.csv}",
+            title="[bold cyan]Documentos Generados (Versión Dual)[/bold cyan]",
+            border_style="green"
+        ))
+
+        # Opciones para abrir PDFs
+        if exp_res.client_pdf or exp_res.internal_pdf:
+            console.print("\n[bold]¿Deseas abrir algún documento PDF ahora?[/bold]")
+            console.print("  [1] 📑 Abrir PDF para Cliente (Limpio)")
+            console.print("  [2] 🔗 Abrir PDF Interno (Con enlaces de compra directos)")
+            console.print("  [3] ↩️  No abrir")
+            abrir_opc = Prompt.ask("Selecciona opción", choices=["1", "2", "3"], default="1")
+            
+            target_pdf = None
+            if abrir_opc == "1" and exp_res.client_pdf:
+                target_pdf = exp_res.client_pdf
+            elif abrir_opc == "2" and exp_res.internal_pdf:
+                target_pdf = exp_res.internal_pdf
+
+            if target_pdf:
+                try:
+                    subprocess.Popen(["xdg-open", str(target_pdf)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN ===[/bold cyan]")
         
@@ -270,26 +306,12 @@ class CotizadorCLI:
         self._mostrar_cotizacion_completa(quote)
 
         # 7. Confirmar y exportar
-        if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (HTML, PDF, CSV)?", default=True):
+        if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (Cliente + Interno)?", default=True):
             self.history_mgr.save_quote(quote)
-            with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
-                csv_path, html_path, pdf_path = self.exporter.export_all(quote, self.config.business)
+            with console.status("[bold green]Generando archivos PDF (Cliente e Interno con Enlaces), HTML y CSV...[/bold green]", spinner="dots"):
+                exp_res = self.exporter.export_all(quote, self.config.business)
 
-            console.print(Panel(
-                f"[bold green]✔ Cotización guardada con éxito![/bold green]\n\n"
-                f"📄 [bold]ID Cotización:[/bold] {quote.quote_id}\n"
-                f"📊 [bold]CSV (Control interno):[/bold] {csv_path}\n"
-                f"🌐 [bold]HTML (Cliente):[/bold]        {html_path}\n"
-                f"📑 [bold]PDF (Cliente):[/bold]         {pdf_path if pdf_path else 'No generado (usa HTML)'}",
-                title="[bold cyan]Documentos Generados[/bold cyan]",
-                border_style="green"
-            ))
-
-            if pdf_path and Confirm.ask("¿Deseas abrir el archivo PDF ahora?", default=True):
-                try:
-                    subprocess.Popen(["xdg-open", str(pdf_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
+            self._mostrar_panel_documentos(exp_res, quote.quote_id)
 
     def editar_cotizacion(self):
         console.print("\n[bold cyan]=== EDITAR COTIZACIÓN GUARDADA ===[/bold cyan]")
@@ -441,26 +463,10 @@ class CotizadorCLI:
 
                 self.history_mgr.save_quote(versioned_quote)
 
-                with console.status("[bold green]Generando archivos de la nueva versión...[/bold green]"):
-                    csv_p, html_p, pdf_p = self.exporter.export_all(versioned_quote, self.config.business)
+                with console.status("[bold green]Generando archivos de la nueva versión (Cliente e Interno)...[/bold green]"):
+                    exp_res = self.exporter.export_all(versioned_quote, self.config.business)
 
-                console.print(Panel(
-                    f"[bold green]✔ ¡Nueva versión guardada exitosamente![/bold green]\n\n"
-                    f"📄 [bold]ID Original:[/bold]     {original_quote.quote_id}\n"
-                    f"✨ [bold]Nuevo ID Versión:[/bold] {versioned_quote.quote_id} (Versión {versioned_quote.version})\n"
-                    f"📊 [bold]CSV:[/bold]             {csv_p}\n"
-                    f"🌐 [bold]HTML:[/bold]            {html_p}\n"
-                    f"📑 [bold]PDF:[/bold]             {pdf_p if pdf_p else 'No generado'}",
-                    title="[bold cyan]Versión Creada[/bold cyan]",
-                    border_style="green"
-                ))
-
-                if pdf_p and Confirm.ask("¿Deseas abrir el nuevo PDF ahora?", default=True):
-                    try:
-                        subprocess.Popen(["xdg-open", str(pdf_p)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    except Exception:
-                        pass
-
+                self._mostrar_panel_documentos(exp_res, versioned_quote.quote_id)
                 break
 
             elif opc == "7":
@@ -563,10 +569,10 @@ class CotizadorCLI:
             quote = self.history_mgr.get_quote(qid)
             if quote:
                 self._mostrar_cotizacion_completa(quote)
-                if Confirm.ask("¿Deseas re-generar los archivos (PDF/HTML/CSV)?", default=False):
-                    with console.status("[bold green]Exportando...[/bold green]"):
-                        csv_p, html_p, pdf_p = self.exporter.export_all(quote, self.config.business)
-                    console.print(f"[green]✔ Archivos re-generados en {self.exporter.output_dir}[/green]")
+                if Confirm.ask("¿Deseas re-generar los archivos (Cliente + Interno)?", default=False):
+                    with console.status("[bold green]Exportando archivos...[/bold green]"):
+                        exp_res = self.exporter.export_all(quote, self.config.business)
+                    self._mostrar_panel_documentos(exp_res, quote.quote_id)
             else:
                 console.print("[red]Cotización no encontrada.[/red]")
 
@@ -618,10 +624,10 @@ class CotizadorCLI:
         console.print(f"\n[bold]Total anterior:[/bold] {format_currency(quote.total, quote.currency_symbol)}")
         console.print(f"[bold green]Nuevo Total:[/bold green]   {format_currency(updated_quote.total, updated_quote.currency_symbol)}")
 
-        if Confirm.ask("\n¿Deseas regenerar los documentos PDF/HTML con los precios actualizados?", default=True):
+        if Confirm.ask("\n¿Deseas regenerar los documentos (Cliente + Interno) con los precios actualizados?", default=True):
             with console.status("[bold green]Generando archivos actualizados...[/bold green]"):
-                self.exporter.export_all(updated_quote, self.config.business)
-            console.print("[bold green]✔ Cotización actualizada y exportada con éxito.[/bold green]")
+                exp_res = self.exporter.export_all(updated_quote, self.config.business)
+            self._mostrar_panel_documentos(exp_res, updated_quote.quote_id)
 
     def configuracion_menu(self):
         console.print("\n[bold cyan]=== CONFIGURACIÓN DE PARÁMETROS ===[/bold cyan]")
