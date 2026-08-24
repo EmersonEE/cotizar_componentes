@@ -1,7 +1,8 @@
 import sys
+import copy
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Dict, Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -10,7 +11,7 @@ from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 from rich.text import Text
 from rich import box
 
-from src.models import Product, QuoteItem, Quote, Customer
+from src.models import Product, QuoteItem, Quote, Customer, StoreShippingDetail
 from src.config import AppConfig
 from src.scrapers import scrape_product, StoreNotSupportedError, ScraperError
 from src.core.calculator import QuoteCalculator, format_currency
@@ -29,7 +30,7 @@ class CotizadorCLI:
         banner_text = Text()
         banner_text.append("⚡ COTIZADOR DE COMPONENTES ELECTRÓNICOS ⚡\n", style="bold cyan")
         banner_text.append("Guatemala • La Electrónica | Electrónica DIY | Electrónica RyCH\n", style="dim white")
-        banner_text.append(f"Margen configurado: {self.config.service_fee_percent}% • Moneda: {self.config.currency_code} ({self.config.currency_symbol})", style="bold yellow")
+        banner_text.append(f"Margen: {self.config.service_fee_percent}% • Moneda: {self.config.currency_code} ({self.config.currency_symbol})", style="bold yellow")
         
         console.print(Panel(banner_text, box=box.ROUNDED, expand=False, border_style="cyan"))
 
@@ -39,31 +40,65 @@ class CotizadorCLI:
             self.show_banner()
             console.print("\n[bold green]MENÚ PRINCIPAL[/bold green]")
             console.print("  [bold cyan]1.[/bold cyan] Crear Nueva Cotización")
-            console.print("  [bold cyan]2.[/bold cyan] Ver Historial de Cotizaciones")
-            console.print("  [bold cyan]3.[/bold cyan] Re-verificar Precios de una Cotización Guardada")
-            console.print("  [bold cyan]4.[/bold cyan] Configuración de Margen y Negocio")
-            console.print("  [bold cyan]5.[/bold cyan] Salir")
+            console.print("  [bold cyan]2.[/bold cyan] ✏️  Editar Cotización Guardada (Nueva Versión)")
+            console.print("  [bold cyan]3.[/bold cyan] Ver Historial de Cotizaciones")
+            console.print("  [bold cyan]4.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
+            console.print("  [bold cyan]5.[/bold cyan] Configuración (Margen, Envíos, Negocio)")
+            console.print("  [bold cyan]6.[/bold cyan] Salir")
 
-            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5"], default="1")
+            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6"], default="1")
 
             if choice == "1":
                 self.crear_nueva_cotizacion()
             elif choice == "2":
-                self.ver_historial()
+                self.editar_cotizacion()
             elif choice == "3":
-                self.reverificar_cotizacion()
+                self.ver_historial()
             elif choice == "4":
-                self.configuracion_menu()
+                self.reverificar_cotizacion()
             elif choice == "5":
+                self.configuracion_menu()
+            elif choice == "6":
                 console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
                 sys.exit(0)
 
             Prompt.ask("\n[dim]Presiona Enter para continuar...[/dim]")
 
+    def _solicitar_envios_interactivo(self, items: List[QuoteItem], existing_custom_costs: Optional[Dict[str, float]] = None) -> List[StoreShippingDetail]:
+        """Evaluates stores in the quote and interactively asks for shipping costs if needed."""
+        store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
+        shipping_rules = self.config.shipping_rules
+        custom_costs = existing_custom_costs.copy() if existing_custom_costs else {}
+
+        console.print("\n[bold cyan]=== EVALUACIÓN DE COSTOS DE ENVÍO POR TIENDA ===[/bold cyan]")
+
+        for store_name, subtotal in store_subtotals.items():
+            rule = shipping_rules.get(store_name, {})
+            is_pickup = rule.get("is_pickup_only", False)
+            threshold = rule.get("free_threshold")
+            default_cost = float(rule.get("default_cost", 35.0))
+
+            if is_pickup or threshold is None:
+                console.print(f"🏪 [bold]{store_name}:[/bold] Subtotal {format_currency(subtotal, self.config.currency_symbol)} → [green]✔ No aplica costo de envío (Retiro en tienda)[/green]")
+                custom_costs[store_name] = 0.0
+            elif subtotal >= threshold:
+                console.print(f"🏪 [bold]{store_name}:[/bold] Subtotal {format_currency(subtotal, self.config.currency_symbol)} → [bold green]✔ ¡Envío Gratis alcanzado! (Mínimo Q{threshold:,.0f})[/bold green]")
+                custom_costs[store_name] = 0.0
+            else:
+                current_suggested = custom_costs.get(store_name, default_cost)
+                console.print(f"🏪 [bold]{store_name}:[/bold] Subtotal {format_currency(subtotal, self.config.currency_symbol)} ([yellow]No alcanza el mínimo de Q{threshold:,.0f} para envío gratis[/yellow])")
+                cost = FloatPrompt.ask(
+                    f"   Ingresa el costo de envío para {store_name}",
+                    default=float(current_suggested)
+                )
+                custom_costs[store_name] = round(cost, 2)
+
+        return QuoteCalculator.evaluate_shipping_details(store_subtotals, shipping_rules, custom_costs)
+
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN ===[/bold cyan]")
         
-        # 1. Datos del cliente
+        # 1. Datos del cliente (únicamente Nombre y Teléfono)
         client_name = Prompt.ask("Nombre del cliente", default="Cliente General")
         client_phone = Prompt.ask("Teléfono / WhatsApp (opcional)", default="")
 
@@ -142,22 +177,26 @@ class CotizadorCLI:
         else:
             fee_percent = FloatPrompt.ask("Ingresa el porcentaje de margen deseado (%)", default=margin)
 
-        # 4. Construir cotización
+        # 4. Evaluación y confirmación interactiva de costos de envío
+        shipping_details = self._solicitar_envios_interactivo(items)
+
+        # 5. Construir cotización
         quote_id = self.history_mgr.get_next_quote_id(self.config.quote_prefix)
         quote = QuoteCalculator.build_quote(
             quote_id=quote_id,
             items=items,
             customer=customer,
+            shipping_details=shipping_details,
             service_fee_percent=fee_percent,
             validity_days=self.config.validity_days,
             currency_symbol=self.config.currency_symbol,
             currency_code=self.config.currency_code
         )
 
-        # 5. Mostrar resumen final
+        # 6. Mostrar resumen final
         self._mostrar_cotizacion_completa(quote)
 
-        # 6. Confirmar y exportar
+        # 7. Confirmar y exportar
         if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (HTML, PDF, CSV)?", default=True):
             self.history_mgr.save_quote(quote)
             with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
@@ -178,11 +217,204 @@ class CotizadorCLI:
                     subprocess.Popen(["xdg-open", str(pdf_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 except Exception:
                     pass
-            elif html_path and Confirm.ask("¿Deseas abrir el archivo HTML en el navegador?", default=False):
-                try:
-                    subprocess.Popen(["xdg-open", str(html_path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
+
+    def editar_cotizacion(self):
+        console.print("\n[bold cyan]=== EDITAR COTIZACIÓN GUARDADA ===[/bold cyan]")
+        quotes = self.history_mgr.load_all_quotes()
+        if not quotes:
+            console.print("[yellow]No hay cotizaciones guardadas aún para editar.[/yellow]")
+            return
+
+        # Mostrar últimas cotizaciones disponibles
+        table = Table(title="Cotizaciones Recientes", box=box.ROUNDED)
+        table.add_column("ID", style="bold cyan")
+        table.add_column("Fecha", style="dim")
+        table.add_column("Cliente", style="white")
+        table.add_column("Ítems", justify="center")
+        table.add_column("Total", justify="right", style="bold green")
+
+        for q in quotes[-10:]:
+            table.add_row(q.quote_id, q.date, q.customer.name, str(len(q.items)), format_currency(q.total, q.currency_symbol))
+        console.print(table)
+
+        qid = Prompt.ask("\nIngresa el ID de la cotización que deseas editar").strip()
+        original_quote = self.history_mgr.get_quote(qid)
+        if not original_quote:
+            console.print(f"[bold red]No se encontró ninguna cotización con ID '{qid}'.[/bold red]")
+            return
+
+        # Clonar datos de trabajo
+        working_items: List[QuoteItem] = copy.deepcopy(original_quote.items)
+        working_customer: Customer = copy.deepcopy(original_quote.customer)
+        custom_shipping_costs: Dict[str, float] = {
+            sd.store_name: sd.shipping_cost for sd in original_quote.shipping_details
+        }
+        fee_percent = original_quote.service_fee_percent
+
+        # Submenú interactivo de edición
+        while True:
+            console.clear()
+            self.show_banner()
+            console.print(f"\n[bold yellow]MODO EDICIÓN:[/bold yellow] [bold cyan]{original_quote.quote_id}[/bold cyan] (Cliente: {working_customer.name})")
+            
+            # Recalcular temporalmente para mostrar vista previa
+            store_subtotals = QuoteCalculator.calculate_store_subtotals(working_items) if working_items else {}
+            current_shipping = QuoteCalculator.evaluate_shipping_details(store_subtotals, self.config.shipping_rules, custom_shipping_costs)
+            temp_quote = QuoteCalculator.build_quote(
+                quote_id=original_quote.quote_id,
+                items=working_items if working_items else [QuoteItem(Product("Vacío", "", "N/A", 0), 1, 0, 0)],
+                customer=working_customer,
+                shipping_details=current_shipping,
+                service_fee_percent=fee_percent,
+                validity_days=self.config.validity_days,
+                version=original_quote.version,
+                base_quote_id=original_quote.base_quote_id
+            )
+            self._mostrar_cotizacion_completa(temp_quote)
+
+            console.print("\n[bold green]ACCIONES DISPONIBLES:[/bold green]")
+            console.print("  [bold cyan]1.[/bold cyan] ➕ Agregar nuevo componente por URL")
+            console.print("  [bold cyan]2.[/bold cyan] ✏️  Modificar cantidad de un componente")
+            console.print("  [bold cyan]3.[/bold cyan] 🔄 Re-extraer precio actual de un componente (o todos)")
+            console.print("  [bold cyan]4.[/bold cyan] ❌ Eliminar un componente")
+            console.print("  [bold cyan]5.[/bold cyan] 🚚 Modificar costos de envío por tienda")
+            console.print("  [bold cyan]6.[/bold cyan] 💾 [bold green]Guardar como nueva versión (v2, v3...) y generar PDF/HTML/CSV[/bold green]")
+            console.print("  [bold cyan]7.[/bold cyan] ↩️  Cancelar y salir sin guardar")
+
+            opc = Prompt.ask("\nSelecciona una acción", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
+
+            if opc == "1":
+                # Agregar nuevo componente
+                url = Prompt.ask("\nPega la URL del producto").strip()
+                if url:
+                    with console.status("[bold green]Extrayendo datos de la tienda...[/bold green]", spinner="dots"):
+                        try:
+                            prod = scrape_product(url)
+                            console.print(f"[green]✔ Extraído:[/green] {prod.name} ({prod.store_name}) - Q {prod.unit_price:.2f}")
+                            qty = IntPrompt.ask("Cantidad", default=1)
+                            working_items.append(QuoteCalculator.create_quote_item(prod, qty))
+                            console.print("[bold green]✔ Componente agregado.[/bold green]")
+                        except Exception as e:
+                            console.print(f"[red]Error al extraer: {e}[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif opc == "2":
+                # Modificar cantidad
+                if not working_items:
+                    console.print("[yellow]No hay componentes.[/yellow]")
+                    continue
+                idx = IntPrompt.ask(f"Ingresa el # de ítem a modificar (1 a {len(working_items)})")
+                if 1 <= idx <= len(working_items):
+                    item = working_items[idx - 1]
+                    new_qty = IntPrompt.ask(f"Nueva cantidad para '{item.product.name}'", default=item.quantity)
+                    if new_qty > 0:
+                        working_items[idx - 1] = QuoteCalculator.create_quote_item(item.product, new_qty)
+                        console.print("[green]✔ Cantidad actualizada.[/green]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif opc == "3":
+                # Re-extraer precio
+                if not working_items:
+                    console.print("[yellow]No hay componentes.[/yellow]")
+                    continue
+                console.print("\n1. Actualizar TODOS los componentes")
+                console.print("2. Actualizar un componente específico")
+                sub_opc = Prompt.ask("Selecciona opción", choices=["1", "2"], default="1")
+
+                with console.status("[bold yellow]Consultando tiendas en vivo...[/bold yellow]"):
+                    if sub_opc == "1":
+                        for i, it in enumerate(working_items):
+                            try:
+                                p = scrape_product(it.product.url)
+                                working_items[i] = QuoteCalculator.create_quote_item(p, it.quantity)
+                            except Exception as e:
+                                console.print(f"[red]Error actualizando ítem {i+1}: {e}[/red]")
+                        console.print("[green]✔ Todos los componentes han sido actualizados con precios en vivo.[/green]")
+                    else:
+                        item_num = IntPrompt.ask(f"Ingresa el # de ítem (1 a {len(working_items)})")
+                        if 1 <= item_num <= len(working_items):
+                            it = working_items[item_num - 1]
+                            try:
+                                p = scrape_product(it.product.url)
+                                working_items[item_num - 1] = QuoteCalculator.create_quote_item(p, it.quantity)
+                                console.print(f"[green]✔ Ítem actualizado a Q {p.unit_price:.2f}[/green]")
+                            except Exception as e:
+                                console.print(f"[red]Error: {e}[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif opc == "4":
+                # Eliminar componente
+                if not working_items:
+                    console.print("[yellow]No hay componentes.[/yellow]")
+                    continue
+                del_idx = IntPrompt.ask(f"Ingresa el # de ítem a eliminar (1 a {len(working_items)})")
+                if 1 <= del_idx <= len(working_items):
+                    removed = working_items.pop(del_idx - 1)
+                    console.print(f"[red]✔ Eliminado:[/red] {removed.product.name}")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif opc == "5":
+                # Modificar costos de envío
+                custom_shipping = self._solicitar_envios_interactivo(working_items, custom_shipping_costs)
+                custom_shipping_costs = {sd.store_name: sd.shipping_cost for sd in custom_shipping}
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif opc == "6":
+                # Guardar como nueva versión
+                if not working_items:
+                    console.print("[red]No se puede guardar una cotización vacía.[/red]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    continue
+
+                # Determinar nuevo ID y versión
+                new_qid, new_version, base_id = self.history_mgr.get_next_version_info(original_quote.quote_id)
+
+                # Re-evaluar envíos finales
+                final_shipping = self._solicitar_envios_interactivo(working_items, custom_shipping_costs)
+
+                # Construir nueva versión de la cotización
+                versioned_quote = QuoteCalculator.build_quote(
+                    quote_id=new_qid,
+                    items=working_items,
+                    customer=working_customer,
+                    shipping_details=final_shipping,
+                    service_fee_percent=fee_percent,
+                    validity_days=self.config.validity_days,
+                    version=new_version,
+                    base_quote_id=base_id,
+                    currency_symbol=self.config.currency_symbol,
+                    currency_code=self.config.currency_code
+                )
+
+                # Guardar en historial
+                self.history_mgr.save_quote(versioned_quote)
+
+                # Generar archivos
+                with console.status("[bold green]Generando archivos de la nueva versión...[/bold green]"):
+                    csv_p, html_p, pdf_p = self.exporter.export_all(versioned_quote, self.config.business)
+
+                console.print(Panel(
+                    f"[bold green]✔ ¡Nueva versión guardada exitosamente![/bold green]\n\n"
+                    f"📄 [bold]ID Original:[/bold]     {original_quote.quote_id}\n"
+                    f"✨ [bold]Nuevo ID Versión:[/bold] {versioned_quote.quote_id} (Versión {versioned_quote.version})\n"
+                    f"📊 [bold]CSV:[/bold]             {csv_p}\n"
+                    f"🌐 [bold]HTML:[/bold]            {html_p}\n"
+                    f"📑 [bold]PDF:[/bold]             {pdf_p if pdf_p else 'No generado'}",
+                    title="[bold cyan]Versión Creada[/bold cyan]",
+                    border_style="green"
+                ))
+
+                if pdf_p and Confirm.ask("¿Deseas abrir el nuevo PDF ahora?", default=True):
+                    try:
+                        subprocess.Popen(["xdg-open", str(pdf_p)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    except Exception:
+                        pass
+
+                break
+
+            elif opc == "7":
+                if Confirm.ask("¿Estás seguro de cancelar la edición? Se descartarán los cambios no guardados.", default=True):
+                    break
 
     def _mostrar_resumen_items(self, items: List[QuoteItem]):
         table = Table(title="Componentes en esta cotización", box=box.ROUNDED)
@@ -206,10 +438,10 @@ class CotizadorCLI:
             subtotal_sum += item.subtotal
 
         console.print(table)
-        console.print(f"[bold]Subtotal acumulado:[/bold] [green]{format_currency(subtotal_sum, self.config.currency_symbol)}[/green]")
+        console.print(f"[bold]Subtotal componentes:[/bold] [green]{format_currency(subtotal_sum, self.config.currency_symbol)}[/green]")
 
     def _mostrar_cotizacion_completa(self, quote: Quote):
-        table = Table(title=f"COTIZACIÓN: {quote.quote_id}", box=box.HEAVY_EDGE)
+        table = Table(title=f"COTIZACIÓN: {quote.quote_id} (v{quote.version})", box=box.HEAVY_EDGE)
         table.add_column("#", justify="center", style="cyan", no_wrap=True)
         table.add_column("Componente", style="white")
         table.add_column("Tienda", style="dim")
@@ -231,8 +463,18 @@ class CotizadorCLI:
         console.print(table)
 
         summary_table = Table(box=box.SIMPLE, show_header=False)
-        summary_table.add_row("Subtotal Componentes:", format_currency(quote.subtotal, quote.currency_symbol))
+        summary_table.add_row("Subtotal Componentes:", format_currency(quote.items_subtotal, quote.currency_symbol))
         summary_table.add_row(f"Cargo por Gestión/Servicio ({quote.service_fee_percent}%):", format_currency(quote.service_fee_amount, quote.currency_symbol))
+        
+        if quote.shipping_details:
+            summary_table.add_row("[bold cyan]Desglose Envíos:[/bold cyan]", "")
+            for sd in quote.shipping_details:
+                if sd.qualifies_free or sd.is_pickup_only:
+                    cost_str = f"[green]{sd.status_label}[/green]"
+                else:
+                    cost_str = f"[bold]{format_currency(sd.shipping_cost, quote.currency_symbol)}[/bold]"
+                summary_table.add_row(f"  ↳ Envío {sd.store_name}:", cost_str)
+
         summary_table.add_row("[bold green]TOTAL A PAGAR:[/bold green]", f"[bold green]{format_currency(quote.total, quote.currency_symbol)}[/bold green]")
         
         console.print(Panel(summary_table, title="[bold]Desglose Financiero[/bold]", border_style="cyan", expand=False))
@@ -247,6 +489,7 @@ class CotizadorCLI:
 
         table = Table(box=box.ROUNDED)
         table.add_column("ID Cotización", style="bold cyan")
+        table.add_column("Ver.", justify="center", style="dim")
         table.add_column("Fecha", style="dim")
         table.add_column("Cliente", style="white")
         table.add_column("Ítems", justify="center")
@@ -255,6 +498,7 @@ class CotizadorCLI:
         for q in quotes:
             table.add_row(
                 q.quote_id,
+                f"v{q.version}",
                 q.date,
                 q.customer.name,
                 str(len(q.items)),
@@ -336,7 +580,13 @@ class CotizadorCLI:
         console.print(f"3. Nombre de negocio: [bold white]{self.config.business.name}[/bold white]")
         console.print(f"4. Teléfono/WhatsApp: [bold white]{self.config.business.phone}[/bold white]")
         console.print(f"5. Email: [bold white]{self.config.business.email}[/bold white]")
-        console.print(f"6. Términos de pago: [dim]{self.config.business.payment_terms}[/dim]")
+        
+        console.print("\n[bold cyan]Reglas de Envío por Tienda:[/bold cyan]")
+        for store, rules in self.config.shipping_rules.items():
+            if rules.get("is_pickup_only"):
+                console.print(f"  • {store}: [green]Retiro en tienda (Sin costo)[/green]")
+            else:
+                console.print(f"  • {store}: [yellow]Gratis desde Q{rules.get('free_threshold', 0):,.0f}[/yellow] (Costo por defecto: Q{rules.get('default_cost', 35.0):,.2f})")
 
         if Confirm.ask("\n¿Deseas editar algún valor de la configuración?", default=False):
             self.config.service_fee_percent = FloatPrompt.ask("Nuevo margen predeterminado (%)", default=self.config.service_fee_percent)
@@ -344,7 +594,13 @@ class CotizadorCLI:
             self.config.business.name = Prompt.ask("Nombre de tu negocio", default=self.config.business.name)
             self.config.business.phone = Prompt.ask("Teléfono / WhatsApp", default=self.config.business.phone)
             self.config.business.email = Prompt.ask("Email de contacto", default=self.config.business.email)
-            self.config.business.payment_terms = Prompt.ask("Términos de pago", default=self.config.business.payment_terms)
+
+            if Confirm.ask("¿Deseas editar los umbrales de envío gratis?", default=False):
+                for store in ["La Electrónica", "Electrónica DIY"]:
+                    thresh = FloatPrompt.ask(f"Monto mínimo para envío gratis en {store} (Q)", default=self.config.shipping_rules[store]["free_threshold"])
+                    cost = FloatPrompt.ask(f"Costo de envío sugerido en {store} cuando no alcanza mínimo (Q)", default=self.config.shipping_rules[store]["default_cost"])
+                    self.config.shipping_rules[store]["free_threshold"] = thresh
+                    self.config.shipping_rules[store]["default_cost"] = cost
 
             self.config.save()
             console.print("[bold green]✔ Configuración guardada exitosamente.[/bold green]")

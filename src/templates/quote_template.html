@@ -96,7 +96,19 @@
       display: inline-block;
       padding: 4px 12px;
       border-radius: 6px;
+      margin-bottom: 4px;
+    }
+
+    .version-tag {
+      display: inline-block;
+      font-size: 10.5px;
+      font-weight: 700;
+      background: #e0f2fe;
+      color: #0284c7;
+      padding: 2px 8px;
+      border-radius: 4px;
       margin-bottom: 8px;
+      text-transform: uppercase;
     }
 
     .quote-dates {
@@ -228,7 +240,7 @@
     }
 
     .summary-table {
-      width: 320px;
+      width: 380px;
       margin-left: auto;
       border-collapse: collapse;
     }
@@ -236,6 +248,15 @@
     .summary-table td {
       padding: 6px 12px;
       font-size: 12.5px;
+    }
+
+    .summary-table tr.shipping-header-row td {
+      padding-top: 10px;
+      font-weight: 600;
+      color: #334155;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
     .summary-table tr.total-row td {
@@ -351,7 +372,12 @@
         </td>
         <td style="width: 45%;" class="quote-badge-container">
           <div class="quote-main-title">COTIZACIÓN</div>
-          <div class="quote-number">{{ quote.quote_id }}</div>
+          <div>
+            <span class="quote-number">{{ quote.quote_id }}</span>
+            {% if quote.version > 1 %}
+            <br><span class="version-tag">Versión {{ quote.version }}</span>
+            {% endif %}
+          </div>
           <div class="quote-dates">
             <strong>Fecha de Emisión:</strong> {{ quote.date }}<br>
             <strong>Válida hasta:</strong> {{ quote.valid_until }}<br>
@@ -421,13 +447,32 @@
     <div class="summary-container">
       <table class="summary-table">
         <tr>
-          <td style="color: #64748b;">Subtotal de Componentes:</td>
-          <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.subtotal) }}</td>
+          <td style="color: #64748b;">Subtotal Componentes:</td>
+          <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.items_subtotal) }}</td>
         </tr>
         <tr>
           <td style="color: #64748b;">Servicio de Gestión y Compra ({{ quote.service_fee_percent }}%):</td>
           <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.service_fee_amount) }}</td>
         </tr>
+        
+        {% if quote.shipping_details %}
+        <tr class="shipping-header-row">
+          <td colspan="2" style="border-top: 1px dashed #cbd5e1; padding-top: 8px;">Envíos por Tienda:</td>
+        </tr>
+        {% for sd in quote.shipping_details %}
+        <tr>
+          <td style="color: #64748b; font-size: 12px; padding-left: 14px;">• {{ sd.store_name }}:</td>
+          <td class="text-right font-mono" style="font-size: 12px;">
+            {% if sd.qualifies_free or sd.is_pickup_only %}
+              <span style="color: #166534; font-weight: 600;">{{ sd.status_label }}</span>
+            {% else %}
+              <span style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(sd.shipping_cost) }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% endif %}
+
         <tr class="total-row">
           <td class="total-label">TOTAL COTIZADO:</td>
           <td class="text-right total-amount font-mono">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.total) }}</td>

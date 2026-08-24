@@ -1,1 +1,302 @@
-[]
+[
+  {
+    "quote_id": "COT-2026-0001",
+    "version": 1,
+    "base_quote_id": null,
+    "date": "23/08/2026",
+    "valid_until": "28/08/2026",
+    "customer": {
+      "name": "s",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "[PL-348G] PL-348G Plug Banana Tipo Pistola Apilable Verde Unidad",
+          "url": "https://electronicarych.com/shop/pl-348g-pl-348g-plug-banana-tipo-pistola-apilable-verde-unidad-14705#attr=",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 6.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.product/7911/image_1024/%5BPL-348G%5D%20PL-348G%20Plug%20Banana%20Tipo%20Pistola%20Apilable%20Verde%20Unidad?unique=80e6321",
+          "sku": null
+        },
+        "quantity": 1,
+        "unit_price": 6.0,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "[PL-343BL] PL-343BL Plug Banana Apilable Azul Aislada",
+          "url": "https://electronicarych.com/shop/pl-343bl-pl-343bl-plug-banana-apilable-azul-aislada-14710#attr=",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 11.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.product/7916/image_1024/%5BPL-343BL%5D%20PL-343BL%20Plug%20Banana%20Apilable%20Azul%20Aislada?unique=80e6321",
+          "sku": null
+        },
+        "quantity": 1,
+        "unit_price": 11.5,
+        "subtotal": 11.5
+      },
+      {
+        "product": {
+          "name": "Arduino UNO R4",
+          "url": "https://www.electronicadiy.com/es/products/arduino-uno-r4",
+          "store_name": "Electrónica DIY",
+          "unit_price": 240.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/r4_final_2.png?v=1785520070",
+          "sku": "A24"
+        },
+        "quantity": 2,
+        "unit_price": 240.0,
+        "subtotal": 480.0
+      },
+      {
+        "product": {
+          "name": "Tira de 12 borneras tipo H 30A",
+          "url": "https://www.electronicadiy.com/es/products/tira-de-12-borneras-tipo-h",
+          "store_name": "Electrónica DIY",
+          "unit_price": 18.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/bornera.jpg?v=1784318434",
+          "sku": "J75"
+        },
+        "quantity": 5,
+        "unit_price": 18.0,
+        "subtotal": 90.0
+      },
+      {
+        "product": {
+          "name": "Estación eléctrica portátil Pecron F3000LFP",
+          "url": "https://laelectronica.com.gt/products/estacion-electrica-portatil-pecron-f3000lfp",
+          "store_name": "La Electrónica",
+          "unit_price": 8499.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/F3000LFP-1.jpg?v=1787202787",
+          "sku": "F3000LFP"
+        },
+        "quantity": 1,
+        "unit_price": 8499.0,
+        "subtotal": 8499.0
+      },
+      {
+        "product": {
+          "name": "Multímetro ZOYI ZT-225 auto-rango ultra preciso",
+          "url": "https://laelectronica.com.gt/products/multimetro-zoyi-zt-225-auto-rango-ultra-preciso",
+          "store_name": "La Electrónica",
+          "unit_price": 799.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/ZT-225-1.jpg?v=1770083492",
+          "sku": "AZT-225"
+        },
+        "quantity": 1,
+        "unit_price": 799.0,
+        "subtotal": 799.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 17.5,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 570.0,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 9298.0,
+        "free_threshold": 150.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q150 alcanzado)",
+        "is_pickup_only": false
+      }
+    ],
+    "items_subtotal": 9885.5,
+    "subtotal": 9885.5,
+    "service_fee_percent": 12.0,
+    "service_fee_amount": 1186.26,
+    "total_shipping": 0.0,
+    "total": 11071.76,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "created_at": "2026-08-23T17:59:23.177621",
+    "updated_at": "2026-08-23T17:59:23.177621"
+  },
+  {
+    "quote_id": "COT-2026-0001_v2",
+    "version": 2,
+    "base_quote_id": "COT-2026-0001",
+    "date": "23/08/2026",
+    "valid_until": "28/08/2026",
+    "customer": {
+      "name": "s",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "[PL-348G] PL-348G Plug Banana Tipo Pistola Apilable Verde Unidad",
+          "url": "https://electronicarych.com/shop/pl-348g-pl-348g-plug-banana-tipo-pistola-apilable-verde-unidad-14705#attr=",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 6.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.product/7911/image_1024/%5BPL-348G%5D%20PL-348G%20Plug%20Banana%20Tipo%20Pistola%20Apilable%20Verde%20Unidad?unique=80e6321",
+          "sku": null
+        },
+        "quantity": 59,
+        "unit_price": 6.0,
+        "subtotal": 354.0
+      },
+      {
+        "product": {
+          "name": "[PL-343BL] PL-343BL Plug Banana Apilable Azul Aislada",
+          "url": "https://electronicarych.com/shop/pl-343bl-pl-343bl-plug-banana-apilable-azul-aislada-14710#attr=",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 11.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.product/7916/image_1024/%5BPL-343BL%5D%20PL-343BL%20Plug%20Banana%20Apilable%20Azul%20Aislada?unique=80e6321",
+          "sku": null
+        },
+        "quantity": 1,
+        "unit_price": 11.5,
+        "subtotal": 11.5
+      },
+      {
+        "product": {
+          "name": "Arduino UNO R4",
+          "url": "https://www.electronicadiy.com/es/products/arduino-uno-r4",
+          "store_name": "Electrónica DIY",
+          "unit_price": 240.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/r4_final_2.png?v=1785520070",
+          "sku": "A24"
+        },
+        "quantity": 2,
+        "unit_price": 240.0,
+        "subtotal": 480.0
+      },
+      {
+        "product": {
+          "name": "Tira de 12 borneras tipo H 30A",
+          "url": "https://www.electronicadiy.com/es/products/tira-de-12-borneras-tipo-h",
+          "store_name": "Electrónica DIY",
+          "unit_price": 18.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/bornera.jpg?v=1784318434",
+          "sku": "J75"
+        },
+        "quantity": 5,
+        "unit_price": 18.0,
+        "subtotal": 90.0
+      },
+      {
+        "product": {
+          "name": "Estación eléctrica portátil Pecron F3000LFP",
+          "url": "https://laelectronica.com.gt/products/estacion-electrica-portatil-pecron-f3000lfp",
+          "store_name": "La Electrónica",
+          "unit_price": 8499.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/F3000LFP-1.jpg?v=1787202787",
+          "sku": "F3000LFP"
+        },
+        "quantity": 1,
+        "unit_price": 8499.0,
+        "subtotal": 8499.0
+      },
+      {
+        "product": {
+          "name": "Multímetro ZOYI ZT-225 auto-rango ultra preciso",
+          "url": "https://laelectronica.com.gt/products/multimetro-zoyi-zt-225-auto-rango-ultra-preciso",
+          "store_name": "La Electrónica",
+          "unit_price": 799.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/ZT-225-1.jpg?v=1770083492",
+          "sku": "AZT-225"
+        },
+        "quantity": 1,
+        "unit_price": 799.0,
+        "subtotal": 799.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 365.5,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 570.0,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 9298.0,
+        "free_threshold": 150.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q150 alcanzado)",
+        "is_pickup_only": false
+      }
+    ],
+    "items_subtotal": 10233.5,
+    "subtotal": 10233.5,
+    "service_fee_percent": 12.0,
+    "service_fee_amount": 1228.02,
+    "total_shipping": 0.0,
+    "total": 11461.52,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "created_at": "2026-08-23T18:00:38.832891",
+    "updated_at": "2026-08-23T18:00:38.832891"
+  }
+]

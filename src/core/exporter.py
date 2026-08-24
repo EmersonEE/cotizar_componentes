@@ -32,7 +32,7 @@ class QuoteExporter:
         with open(file_path, "w", encoding="utf-8-sig", newline="") as f:
             writer = csv.writer(f)
             # Metadata header
-            writer.writerow(["COTIZACIÓN", quote.quote_id, "FECHA", quote.date, "VIGENCIA", quote.valid_until])
+            writer.writerow(["COTIZACIÓN", quote.quote_id, "VERSIÓN", quote.version, "FECHA", quote.date, "VIGENCIA", quote.valid_until])
             writer.writerow(["CLIENTE", quote.customer.name, "TEL", quote.customer.phone])
             writer.writerow([])
             # Items table
@@ -50,8 +50,15 @@ class QuoteExporter:
                 ])
             writer.writerow([])
             # Financial summary
-            writer.writerow(["", "", "", "", "SUBTOTAL COMPONENTES:", f"{quote.subtotal:.2f}"])
+            writer.writerow(["", "", "", "", "SUBTOTAL COMPONENTES:", f"{quote.items_subtotal:.2f}"])
             writer.writerow(["", "", "", "", f"SERVICIO COMPRA ({quote.service_fee_percent}%):", f"{quote.service_fee_amount:.2f}"])
+            
+            # Shipping breakdown
+            if quote.shipping_details:
+                for sd in quote.shipping_details:
+                    cost_val = sd.status_label if (sd.qualifies_free or sd.is_pickup_only) else f"{sd.shipping_cost:.2f}"
+                    writer.writerow(["", "", "", "", f"ENVÍO {sd.store_name}:", cost_val])
+            
             writer.writerow(["", "", "", "", "TOTAL GENERAL:", f"{quote.total:.2f}"])
 
         return file_path
@@ -84,7 +91,6 @@ class QuoteExporter:
             HTML(filename=str(html_path)).write_pdf(str(pdf_path))
             return pdf_path
         except Exception as e:
-            # If Weasyprint encounters an issue, return None and keep HTML available
             print(f"[Aviso] No se pudo generar PDF automáticamente con WeasyPrint: {e}")
             return None
 

@@ -10,7 +10,24 @@
     "email": "cotizaciones@emerson-electronica.gt",
     "address": "Ciudad de Guatemala, Guatemala",
     "logo_url": "",
-    "payment_terms": "50% de anticipo para compra de componentes y 50% contra entrega. Depósito o transferencia bancaria (Banrural, BI, BAC)."
+    "payment_terms": ""
   },
-  "quote_prefix": "COT"
+  "quote_prefix": "COT",
+  "shipping_rules": {
+    "La Electrónica": {
+      "free_threshold": 150.0,
+      "default_cost": 35.0,
+      "is_pickup_only": false
+    },
+    "Electrónica DIY": {
+      "free_threshold": 250.0,
+      "default_cost": 35.0,
+      "is_pickup_only": false
+    },
+    "Electrónica RyCH": {
+      "free_threshold": null,
+      "default_cost": 0.0,
+      "is_pickup_only": true
+    }
+  }
 }

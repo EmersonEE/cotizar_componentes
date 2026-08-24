@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+output/quotes_csv/*.csv
+output/quotes_html/*.html
+output/quotes_pdf/*.pdf
+!output/**/.gitkeep

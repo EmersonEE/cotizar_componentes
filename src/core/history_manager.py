@@ -1,11 +1,13 @@
 import json
+import re
 import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict, Any
-from src.models import Quote, QuoteItem
+from src.models import Quote, QuoteItem, StoreShippingDetail
 from src.scrapers import scrape_product
 from src.core.calculator import QuoteCalculator
+from src.config import AppConfig
 
 DEFAULT_HISTORY_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "history.json"
 
@@ -30,7 +32,6 @@ class HistoryManager:
 
     def save_quote(self, quote: Quote):
         quotes = self.load_all_quotes()
-        # If quote exists, replace it; else append
         existing_idx = next((i for i, q in enumerate(quotes) if q.quote_id == quote.quote_id), None)
         if existing_idx is not None:
             quotes[existing_idx] = quote
@@ -54,9 +55,11 @@ class HistoryManager:
         
         highest_seq = 0
         for q in quotes:
-            if q.quote_id.startswith(pattern_prefix):
+            # Check base IDs without version suffix
+            base = q.base_quote_id or q.quote_id.split('_v')[0]
+            if base.startswith(pattern_prefix):
                 try:
-                    num_str = q.quote_id.replace(pattern_prefix, "")
+                    num_str = base.replace(pattern_prefix, "")
                     seq = int(num_str)
                     if seq > highest_seq:
                         highest_seq = seq
@@ -66,15 +69,50 @@ class HistoryManager:
         next_seq = highest_seq + 1
         return f"{pattern_prefix}{next_seq:04d}"
 
+    def get_next_version_info(self, quote_id: str) -> Tuple[str, int, str]:
+        """
+        Given any quote_id (e.g. 'COT-2026-0001' or 'COT-2026-0001_v2'),
+        determines the base quote ID, current highest version in history,
+        and returns (new_version_id, new_version_number, base_quote_id).
+        """
+        quotes = self.load_all_quotes()
+        target_quote = self.get_quote(quote_id)
+        
+        if target_quote and target_quote.base_quote_id:
+            base_id = target_quote.base_quote_id
+        else:
+            base_id = quote_id.split('_v')[0]
+
+        # Find all versions for this base_id
+        highest_v = 1
+        for q in quotes:
+            q_base = q.base_quote_id or q.quote_id.split('_v')[0]
+            if q_base.upper() == base_id.upper():
+                if q.version > highest_v:
+                    highest_v = q.version
+                # Also check version suffix in ID if version property was 1
+                if '_v' in q.quote_id:
+                    try:
+                        v_num = int(q.quote_id.split('_v')[-1])
+                        if v_num > highest_v:
+                            highest_v = v_num
+                    except ValueError:
+                        pass
+
+        next_v = highest_v + 1
+        new_version_id = f"{base_id}_v{next_v}"
+        return new_version_id, next_v, base_id
+
     def reverify_quote_prices(self, quote_id: str) -> Tuple[Quote, List[Dict[str, Any]]]:
         """
         Re-scrapes all product URLs in the quote, updates unit prices,
-        recalculates subtotals and returns the updated Quote and a list of changes.
+        recalculates subtotals and shipping, and returns the updated Quote.
         """
         quote = self.get_quote(quote_id)
         if not quote:
             raise ValueError(f"No se encontró la cotización con ID: {quote_id}")
 
+        config = AppConfig.load()
         changes = []
         updated_items: List[QuoteItem] = []
 
@@ -101,7 +139,6 @@ class HistoryManager:
                     "status": "Actualizado" if price_diff != 0 else "Sin cambio"
                 })
             except Exception as e:
-                # Keep old item if scraper failed for this URL
                 updated_items.append(item)
                 changes.append({
                     "product_name": item.product.name,
@@ -115,18 +152,19 @@ class HistoryManager:
                     "status": f"Error: {str(e)}"
                 })
 
-        # Recalculate quote
+        # Recalculate quote with updated prices & re-evaluated shipping
         updated_quote = QuoteCalculator.build_quote(
             quote_id=quote.quote_id,
             items=updated_items,
             customer=quote.customer,
+            shipping_rules=config.shipping_rules,
             service_fee_percent=quote.service_fee_percent,
-            validity_days=5,
+            validity_days=config.validity_days,
+            version=quote.version,
+            base_quote_id=quote.base_quote_id,
             currency_symbol=quote.currency_symbol,
             currency_code=quote.currency_code
         )
         
-        # Save updated quote
         self.save_quote(updated_quote)
-
         return updated_quote, changes
