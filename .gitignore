@@ -4,6 +4,8 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.agents/
+.claude/
 output/quotes_csv/*.csv
 output/quotes_html/*.html
 output/quotes_pdf/*.pdf
