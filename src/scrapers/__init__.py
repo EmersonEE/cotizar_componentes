@@ -5,6 +5,13 @@ from src.scrapers.base import BaseScraper, ScraperError, StoreNotSupportedError,
 from src.scrapers.la_electronica import LaElectronicaScraper
 from src.scrapers.electronica_diy import ElectronicaDIYScraper
 from src.scrapers.electronica_rych import ElectronicaRyCHScraper
+from src.scrapers.search import (
+    SearchResultItem,
+    metasearch,
+    search_electronica_rych,
+    search_la_electronica,
+    search_electronica_diy,
+)
 
 AVAILABLE_SCRAPERS: List[BaseScraper] = [
     LaElectronicaScraper(),
@@ -44,4 +51,9 @@ __all__ = [
     "get_scraper_for_url",
     "scrape_product",
     "SUPPORTED_DOMAINS",
+    "SearchResultItem",
+    "metasearch",
+    "search_electronica_rych",
+    "search_la_electronica",
+    "search_electronica_diy",
 ]

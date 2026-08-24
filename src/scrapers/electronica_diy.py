@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from src.models import Product
 from src.scrapers.base import BaseScraper, ScraperError, ProductNotFoundError
@@ -14,8 +14,9 @@ class ElectronicaDIYScraper(BaseScraper):
 
     def scrape(self, url: str) -> Product:
         parsed = urlparse(url)
-        # Normalize path: /es/products/... or /products/...
         clean_path = parsed.path.rstrip('/')
+        query_params = parse_qs(parsed.query)
+        target_variant_id = query_params.get("variant", [None])[0]
         
         # Primary strategy: Shopify JSON endpoint
         json_url = f"{parsed.scheme}://{parsed.netloc}{clean_path}.json"
@@ -25,10 +26,29 @@ class ElectronicaDIYScraper(BaseScraper):
             if data:
                 title = data.get("title", "").strip()
                 variants = data.get("variants", [])
-                if variants:
-                    price_val = float(variants[0].get("price", 0.0))
-                    is_available = bool(variants[0].get("available", True))
-                    sku = variants[0].get("sku")
+                
+                selected_variant = None
+                if target_variant_id and variants:
+                    for v in variants:
+                        if str(v.get("id")) == str(target_variant_id):
+                            selected_variant = v
+                            break
+
+                if not selected_variant and variants:
+                    selected_variant = variants[0]
+
+                if selected_variant:
+                    price_val = float(selected_variant.get("price", 0.0))
+                    is_available = selected_variant.get("available")
+                    if is_available is None:
+                        is_available = True
+                    else:
+                        is_available = bool(is_available)
+                    sku = selected_variant.get("sku")
+                    
+                    v_title = selected_variant.get("title", "").strip()
+                    if v_title and v_title.lower() != "default title" and v_title not in title:
+                        title = f"{title} ({v_title})"
                 else:
                     price_val = 0.0
                     is_available = True

@@ -13,7 +13,7 @@ from rich import box
 
 from src.models import Product, QuoteItem, Quote, Customer, StoreShippingDetail
 from src.config import AppConfig
-from src.scrapers import scrape_product, StoreNotSupportedError, ScraperError
+from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError, ScraperError
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
@@ -39,12 +39,12 @@ class CotizadorCLI:
             console.clear()
             self.show_banner()
             console.print("\n[bold green]MENÚ PRINCIPAL[/bold green]")
-            console.print("  [bold cyan]1.[/bold cyan] Crear Nueva Cotización")
+            console.print("  [bold cyan]1.[/bold cyan] ➕ Crear Nueva Cotización")
             console.print("  [bold cyan]2.[/bold cyan] ✏️  Editar Cotización Guardada (Nueva Versión)")
-            console.print("  [bold cyan]3.[/bold cyan] Ver Historial de Cotizaciones")
+            console.print("  [bold cyan]3.[/bold cyan] 📋 Ver Historial de Cotizaciones")
             console.print("  [bold cyan]4.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
-            console.print("  [bold cyan]5.[/bold cyan] Configuración (Margen, Envíos, Negocio)")
-            console.print("  [bold cyan]6.[/bold cyan] Salir")
+            console.print("  [bold cyan]5.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
+            console.print("  [bold cyan]6.[/bold cyan] 🚪 Salir")
 
             choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6"], default="1")
 
@@ -95,10 +95,95 @@ class CotizadorCLI:
 
         return QuoteCalculator.evaluate_shipping_details(store_subtotals, shipping_rules, custom_costs)
 
+    def _obtener_producto_interactivo(self) -> Optional[Product]:
+        """Allows user to search by name in the 3 stores or paste a direct URL."""
+        console.print("\n[bold yellow]¿Cómo deseas agregar el componente?[/bold yellow]")
+        console.print("  [bold cyan]1.[/bold cyan] 🔍 Buscar por nombre / valor en las 3 tiendas (Metabuscador)")
+        console.print("  [bold cyan]2.[/bold cyan] 🔗 Pegar URL directa")
+        console.print("  [bold cyan]3.[/bold cyan] ↩️  Cancelar")
+
+        modo = Prompt.ask("Selecciona método", choices=["1", "2", "3"], default="1")
+
+        if modo == "1":
+            while True:
+                query = Prompt.ask("\n🔍 Ingresa término de búsqueda (ej. 'ESP32', 'resistencia 220', 'sensor ultrasónico')").strip()
+                if not query:
+                    return None
+
+                with console.status(f"[bold green]Buscando '{query}' en RyCH, La Electrónica y DIY en paralelo...[/bold green]", spinner="dots"):
+                    results = metasearch(query, max_per_store=5)
+
+                if not results:
+                    console.print(f"[yellow]No se encontraron resultados para '{query}'.[/yellow]")
+                    if not Confirm.ask("¿Deseas buscar con otro término?", default=True):
+                        return None
+                    continue
+
+                table = Table(title=f"Resultados para '{query}' en las 3 tiendas", box=box.ROUNDED)
+                table.add_column("#", justify="center", style="bold cyan", no_wrap=True)
+                table.add_column("Tienda", style="dim")
+                table.add_column("Componente / Descripción", style="white")
+                table.add_column("Precio", justify="right", style="bold green")
+                table.add_column("Stock", justify="center")
+
+                for i, r in enumerate(results, 1):
+                    stock_style = "green" if r.in_stock else "red"
+                    table.add_row(
+                        str(i),
+                        r.store_name,
+                        r.title[:48] + ("..." if len(r.title) > 48 else ""),
+                        format_currency(r.unit_price, self.config.currency_symbol) if r.unit_price > 0 else "Consultar",
+                        f"[{stock_style}]{r.stock_status}[/{stock_style}]"
+                    )
+
+                console.print(table)
+
+                sel = IntPrompt.ask(f"\nSelecciona el # del componente a agregar (1 a {len(results)}, o 0 para buscar otro término)", default=1)
+                if sel == 0:
+                    if not Confirm.ask("¿Deseas intentar otra búsqueda?", default=True):
+                        return None
+                    continue
+
+                if 1 <= sel <= len(results):
+                    chosen = results[sel - 1]
+                    with console.status(f"[bold green]Cargando detalles de {chosen.title}...[/bold green]"):
+                        try:
+                            prod = scrape_product(chosen.url)
+                            return prod
+                        except Exception:
+                            return Product(
+                                name=chosen.title,
+                                url=chosen.url,
+                                store_name=chosen.store_name,
+                                unit_price=chosen.unit_price,
+                                in_stock=chosen.in_stock,
+                                stock_status=chosen.stock_status,
+                                image_url=chosen.image_url
+                            )
+                else:
+                    console.print("[red]Selección fuera de rango.[/red]")
+
+        elif modo == "2":
+            url = Prompt.ask("\nPega la URL del producto").strip()
+            if not url:
+                return None
+            with console.status("[bold green]Extrayendo datos de la tienda...[/bold green]", spinner="dots"):
+                try:
+                    product = scrape_product(url)
+                    return product
+                except StoreNotSupportedError as e:
+                    console.print(f"[bold red]❌ Error de Tienda:[/bold red] {e}")
+                    return None
+                except Exception as e:
+                    console.print(f"[bold red]❌ Error al extraer producto:[/bold red] {e}")
+                    return None
+
+        return None
+
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN ===[/bold cyan]")
         
-        # 1. Datos del cliente (únicamente Nombre y Teléfono)
+        # 1. Datos del cliente (Nombre y Teléfono)
         client_name = Prompt.ask("Nombre del cliente", default="Cliente General")
         client_phone = Prompt.ask("Teléfono / WhatsApp (opcional)", default="")
 
@@ -109,30 +194,18 @@ class CotizadorCLI:
 
         items: List[QuoteItem] = []
 
-        # 2. Agregar componentes en bucle
+        # 2. Agregar componentes
         while True:
-            console.print("\n[bold yellow]-- Agregar Componente --[/bold yellow]")
-            url = Prompt.ask("Pega la URL del producto").strip()
-
-            if not url:
-                console.print("[red]La URL no puede estar vacía.[/red]")
-                continue
-
-            with console.status("[bold green]Extrayendo datos de la tienda...[/bold green]", spinner="dots"):
-                try:
-                    product = scrape_product(url)
-                except StoreNotSupportedError as e:
-                    console.print(f"[bold red]❌ Error de Tienda:[/bold red] {e}")
-                    if Confirm.ask("¿Deseas intentar con otra URL?", default=True):
-                        continue
-                    else:
+            product = self._obtener_producto_interactivo()
+            if not product:
+                if not items:
+                    console.print("[yellow]No se agregó ningún componente. Cancelando cotización.[/yellow]")
+                    return
+                else:
+                    if Confirm.ask("\n¿Deseas finalizar la cotización con los componentes actuales?", default=True):
                         break
-                except Exception as e:
-                    console.print(f"[bold red]❌ Error al extraer producto:[/bold red] {e}")
-                    if Confirm.ask("¿Deseas intentar con otra URL?", default=True):
-                        continue
                     else:
-                        break
+                        continue
 
             # Mostrar producto extraído
             p_table = Table(box=box.SIMPLE, show_header=False)
@@ -143,7 +216,7 @@ class CotizadorCLI:
             stock_style = "green" if product.in_stock else "red"
             p_table.add_row("Disponibilidad:", f"[{stock_style}]{product.stock_status}[/{stock_style}]")
 
-            console.print(Panel(p_table, title="[bold]Componente Detectado[/bold]", border_style="green"))
+            console.print(Panel(p_table, title="[bold]Componente Seleccionado[/bold]", border_style="green"))
 
             if not product.in_stock:
                 console.print("[bold yellow]⚠️ Advertencia: Este producto aparece sin stock o agotado en la tienda.[/bold yellow]")
@@ -225,7 +298,6 @@ class CotizadorCLI:
             console.print("[yellow]No hay cotizaciones guardadas aún para editar.[/yellow]")
             return
 
-        # Mostrar últimas cotizaciones disponibles
         table = Table(title="Cotizaciones Recientes", box=box.ROUNDED)
         table.add_column("ID", style="bold cyan")
         table.add_column("Fecha", style="dim")
@@ -243,7 +315,6 @@ class CotizadorCLI:
             console.print(f"[bold red]No se encontró ninguna cotización con ID '{qid}'.[/bold red]")
             return
 
-        # Clonar datos de trabajo
         working_items: List[QuoteItem] = copy.deepcopy(original_quote.items)
         working_customer: Customer = copy.deepcopy(original_quote.customer)
         custom_shipping_costs: Dict[str, float] = {
@@ -251,13 +322,11 @@ class CotizadorCLI:
         }
         fee_percent = original_quote.service_fee_percent
 
-        # Submenú interactivo de edición
         while True:
             console.clear()
             self.show_banner()
             console.print(f"\n[bold yellow]MODO EDICIÓN:[/bold yellow] [bold cyan]{original_quote.quote_id}[/bold cyan] (Cliente: {working_customer.name})")
             
-            # Recalcular temporalmente para mostrar vista previa
             store_subtotals = QuoteCalculator.calculate_store_subtotals(working_items) if working_items else {}
             current_shipping = QuoteCalculator.evaluate_shipping_details(store_subtotals, self.config.shipping_rules, custom_shipping_costs)
             temp_quote = QuoteCalculator.build_quote(
@@ -273,7 +342,7 @@ class CotizadorCLI:
             self._mostrar_cotizacion_completa(temp_quote)
 
             console.print("\n[bold green]ACCIONES DISPONIBLES:[/bold green]")
-            console.print("  [bold cyan]1.[/bold cyan] ➕ Agregar nuevo componente por URL")
+            console.print("  [bold cyan]1.[/bold cyan] ➕ Agregar nuevo componente (Metabuscador o URL)")
             console.print("  [bold cyan]2.[/bold cyan] ✏️  Modificar cantidad de un componente")
             console.print("  [bold cyan]3.[/bold cyan] 🔄 Re-extraer precio actual de un componente (o todos)")
             console.print("  [bold cyan]4.[/bold cyan] ❌ Eliminar un componente")
@@ -284,22 +353,14 @@ class CotizadorCLI:
             opc = Prompt.ask("\nSelecciona una acción", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
 
             if opc == "1":
-                # Agregar nuevo componente
-                url = Prompt.ask("\nPega la URL del producto").strip()
-                if url:
-                    with console.status("[bold green]Extrayendo datos de la tienda...[/bold green]", spinner="dots"):
-                        try:
-                            prod = scrape_product(url)
-                            console.print(f"[green]✔ Extraído:[/green] {prod.name} ({prod.store_name}) - Q {prod.unit_price:.2f}")
-                            qty = IntPrompt.ask("Cantidad", default=1)
-                            working_items.append(QuoteCalculator.create_quote_item(prod, qty))
-                            console.print("[bold green]✔ Componente agregado.[/bold green]")
-                        except Exception as e:
-                            console.print(f"[red]Error al extraer: {e}[/red]")
+                new_prod = self._obtener_producto_interactivo()
+                if new_prod:
+                    qty = IntPrompt.ask(f"Cantidad deseada para '{new_prod.name}'", default=1)
+                    working_items.append(QuoteCalculator.create_quote_item(new_prod, qty))
+                    console.print("[bold green]✔ Componente agregado exitosamente.[/bold green]")
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif opc == "2":
-                # Modificar cantidad
                 if not working_items:
                     console.print("[yellow]No hay componentes.[/yellow]")
                     continue
@@ -313,7 +374,6 @@ class CotizadorCLI:
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif opc == "3":
-                # Re-extraer precio
                 if not working_items:
                     console.print("[yellow]No hay componentes.[/yellow]")
                     continue
@@ -343,7 +403,6 @@ class CotizadorCLI:
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif opc == "4":
-                # Eliminar componente
                 if not working_items:
                     console.print("[yellow]No hay componentes.[/yellow]")
                     continue
@@ -354,25 +413,19 @@ class CotizadorCLI:
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif opc == "5":
-                # Modificar costos de envío
                 custom_shipping = self._solicitar_envios_interactivo(working_items, custom_shipping_costs)
                 custom_shipping_costs = {sd.store_name: sd.shipping_cost for sd in custom_shipping}
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif opc == "6":
-                # Guardar como nueva versión
                 if not working_items:
                     console.print("[red]No se puede guardar una cotización vacía.[/red]")
                     Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
                     continue
 
-                # Determinar nuevo ID y versión
                 new_qid, new_version, base_id = self.history_mgr.get_next_version_info(original_quote.quote_id)
-
-                # Re-evaluar envíos finales
                 final_shipping = self._solicitar_envios_interactivo(working_items, custom_shipping_costs)
 
-                # Construir nueva versión de la cotización
                 versioned_quote = QuoteCalculator.build_quote(
                     quote_id=new_qid,
                     items=working_items,
@@ -386,10 +439,8 @@ class CotizadorCLI:
                     currency_code=self.config.currency_code
                 )
 
-                # Guardar en historial
                 self.history_mgr.save_quote(versioned_quote)
 
-                # Generar archivos
                 with console.status("[bold green]Generando archivos de la nueva versión...[/bold green]"):
                     csv_p, html_p, pdf_p = self.exporter.export_all(versioned_quote, self.config.business)
 
@@ -541,7 +592,6 @@ class CotizadorCLI:
                 console.print(f"[bold red]Error al re-verificar:[/bold red] {e}")
                 return
 
-        # Mostrar tabla comparativa
         table = Table(title=f"Resultados de Verificación: {qid}", box=box.ROUNDED)
         table.add_column("Componente", style="white")
         table.add_column("Tienda", style="dim")
