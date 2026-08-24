@@ -1,6 +1,6 @@
 # Cotizador de Componentes Electrónicos (Guatemala) ⚡
 
-Herramienta en Python para integradores y vendedores de electrónica en Guatemala. Automatiza la búsqueda de componentes, cotizaciones con margen configurable (por defecto 12%), cálculo de costos de envío por tienda y generación de cotizaciones profesionales en formato **PDF**, **HTML** y **CSV**.
+Herramienta en Python para integradores y vendedores de electrónica en Guatemala. Automatiza la búsqueda de componentes, cotizaciones con margen configurable (por defecto 12%), cálculo de costos de envío por tienda y generación de cotizaciones profesionales en formato **PDF**, **HTML** y **CSV**, tanto por **Interfaz Gráfica Web (Streamlit)** como por **Terminal (CLI)**.
 
 ## Tiendas Locales Soportadas
 
@@ -10,8 +10,25 @@ Herramienta en Python para integradores y vendedores de electrónica en Guatemal
 
 ---
 
+## Cómo Iniciar la Aplicación
+
+### 🌐 Opción 1: Interfaz Gráfica Web (Recomendada)
+Abre el dashboard en tu navegador con vista previa en tiempo real:
+```bash
+./run_web.sh
+```
+
+### 💻 Opción 2: Terminal Interactiva (CLI)
+Ejecuta la interfaz de consola con menús y tablas en terminal:
+```bash
+./run.sh
+```
+
+---
+
 ## Características Principales
 
+- **🌐 Dashboard Web de Dos Columnas**: Panel de control a la izquierda y vista previa exacta del documento a la derecha con actualización en tiempo real.
 - **🔍 Metabuscador Multitienda en Paralelo**: Busca componentes por nombre o valor (ej. `ESP32`, `resistencia 220`) en las 3 tiendas al mismo tiempo en $\sim 1.5$s.
 - **🧩 Desempaquetado Inteligente de Variantes**: En tiendas multivariante como *Electrónica DIY*, desglosa cada variante coincidente (1/4W, 1/2W, 2W, SMD) como opción independiente con su `?variant=<id>` exacto.
 - **🚚 Costos de Envío con Reglas de Gratuidad**:
@@ -20,14 +37,7 @@ Herramienta en Python para integradores y vendedores de electrónica en Guatemal
   - *Electrónica DIY:* Gratis desde $Q\ 250.00$, configurable si no alcanza.
 - **✏️ Edición y Versionado de Cotizaciones**: Permite abrir cotizaciones anteriores, modificar componentes/cantidades y guardar como nueva versión (`COT-2026-0001_v2`).
 - **📑 Documentos Profesionales**: Generación automática de PDF con WeasyPrint, HTML responsivo y CSV interno.
-
----
-
-## Cómo Iniciar la Aplicación
-
-```bash
-./run.sh
-```
+- **💬 Enlace Directo a WhatsApp**: Envía cotizaciones a tus clientes por WhatsApp con un solo clic.
 
 ---
 
