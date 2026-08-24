@@ -35,7 +35,7 @@ def get_services():
 
 config, history_mgr, exporter = get_services()
 
-# 3. Inicialización del Estado de Sesión
+# 3. Inicialización del Estado de Sesión (usamos 'quote_items' para no colisionar con dict.items)
 def init_session_state():
     if "active_quote_id" not in st.session_state:
         st.session_state.active_quote_id = history_mgr.get_next_quote_id(config.quote_prefix)
@@ -47,8 +47,8 @@ def init_session_state():
         st.session_state.customer_name = ""
     if "customer_phone" not in st.session_state:
         st.session_state.customer_phone = ""
-    if "items" not in st.session_state:
-        st.session_state.items = []
+    if "quote_items" not in st.session_state:
+        st.session_state.quote_items = []
     if "custom_shipping_costs" not in st.session_state:
         st.session_state.custom_shipping_costs = {}
     if "search_results" not in st.session_state:
@@ -66,7 +66,7 @@ def reset_to_new_quote():
     st.session_state.base_quote_id = None
     st.session_state.customer_name = ""
     st.session_state.customer_phone = ""
-    st.session_state.items = []
+    st.session_state.quote_items = []
     st.session_state.custom_shipping_costs = {}
     st.session_state.search_results = []
     st.session_state.last_search_query = ""
@@ -78,7 +78,7 @@ def load_quote_for_editing(quote: Quote):
     st.session_state.base_quote_id = quote.base_quote_id or quote.quote_id.split('_v')[0]
     st.session_state.customer_name = quote.customer.name
     st.session_state.customer_phone = quote.customer.phone
-    st.session_state.items = copy.deepcopy(quote.items)
+    st.session_state.quote_items = copy.deepcopy(quote.items)
     st.session_state.custom_shipping_costs = {
         sd.store_name: sd.shipping_cost for sd in quote.shipping_details
     }
@@ -104,7 +104,7 @@ def generate_whatsapp_link(quote: Quote) -> str:
 
 # 4. Construcción del Objeto Quote Actual
 def get_current_quote() -> Quote:
-    items = st.session_state.items
+    items = st.session_state.quote_items
     customer = Customer(
         name=st.session_state.customer_name.strip() or "Cliente General",
         phone=st.session_state.customer_phone.strip()
@@ -239,7 +239,7 @@ with tab_cotizador:
                             if st.button("➕ Agregar", key=f"btn_add_{idx}_{res.url}", use_container_width=True):
                                 prod = scrape_product(res.url)
                                 item = QuoteCalculator.create_quote_item(prod, qty_val)
-                                st.session_state.items.append(item)
+                                st.session_state.quote_items.append(item)
                                 st.toast(f"✔ Agregado: {qty_val}x {prod.name}", icon="✅")
                                 st.rerun()
                         st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
@@ -260,7 +260,7 @@ with tab_cotizador:
                     try:
                         prod = scrape_product(direct_url.strip())
                         item = QuoteCalculator.create_quote_item(prod, direct_qty)
-                        st.session_state.items.append(item)
+                        st.session_state.quote_items.append(item)
                         st.toast(f"✔ Agregado: {direct_qty}x {prod.name}", icon="✅")
                         st.rerun()
                     except Exception as e:
@@ -269,13 +269,13 @@ with tab_cotizador:
         st.divider()
 
         # 3. Lista de Componentes Agregados (Editable)
-        st.markdown(f"#### 📦 Componentes en la Cotización ({len(st.session_state.items)})")
+        st.markdown(f"#### 📦 Componentes en la Cotización ({len(st.session_state.quote_items)})")
         
-        if not st.session_state.items:
+        if not st.session_state.quote_items:
             st.info("Aún no has agregado ningún componente a esta cotización.")
         else:
             items_to_delete = []
-            for i, item in enumerate(st.session_state.items):
+            for i, item in enumerate(st.session_state.quote_items):
                 i_col1, i_col2, i_col3, i_col4, i_col5 = st.columns([2.8, 1.0, 0.9, 1.1, 0.5])
                 with i_col1:
                     st.markdown(f"**{i+1}. {item.product.name}**")
@@ -285,7 +285,7 @@ with tab_cotizador:
                 with i_col3:
                     new_q = st.number_input("Cant.", min_value=1, value=item.quantity, step=1, key=f"item_qty_{i}", label_visibility="collapsed")
                     if new_q != item.quantity:
-                        st.session_state.items[i] = QuoteCalculator.create_quote_item(item.product, new_q)
+                        st.session_state.quote_items[i] = QuoteCalculator.create_quote_item(item.product, new_q)
                         st.rerun()
                 with i_col4:
                     st.markdown(f"**Q {item.subtotal:,.2f}**")
@@ -295,15 +295,15 @@ with tab_cotizador:
 
             if items_to_delete:
                 for idx in reversed(items_to_delete):
-                    st.session_state.items.pop(idx)
+                    st.session_state.quote_items.pop(idx)
                 st.rerun()
 
         st.divider()
 
         # 4. Evaluación y Costos de Envío por Tienda
         st.markdown("#### 🚚 Costos de Envío por Tienda")
-        if st.session_state.items:
-            store_subtotals = QuoteCalculator.calculate_store_subtotals(st.session_state.items)
+        if st.session_state.quote_items:
+            store_subtotals = QuoteCalculator.calculate_store_subtotals(st.session_state.quote_items)
             for store_name, sub in store_subtotals.items():
                 rule = config.shipping_rules.get(store_name, {})
                 is_pickup = rule.get("is_pickup_only", False)
@@ -352,12 +352,12 @@ with tab_cotizador:
             else:
                 btn_save_label = "💾 Guardar Cotización"
 
-            if st.button(btn_save_label, type="primary", use_container_width=True, disabled=len(st.session_state.items) == 0):
+            if st.button(btn_save_label, type="primary", use_container_width=True, disabled=len(st.session_state.quote_items) == 0):
                 if st.session_state.editing_mode:
                     new_qid, new_v, base_id = history_mgr.get_next_version_info(st.session_state.active_quote_id)
                     quote_to_save = QuoteCalculator.build_quote(
                         quote_id=new_qid,
-                        items=st.session_state.items,
+                        items=st.session_state.quote_items,
                         customer=Customer(st.session_state.customer_name or "Cliente General", st.session_state.customer_phone),
                         shipping_details=current_quote.shipping_details,
                         service_fee_percent=config.service_fee_percent,
