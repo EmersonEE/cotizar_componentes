@@ -96,3 +96,49 @@ if __name__ == "__main__":
     test_bom_parser_formats()
     test_match_scoring()
     test_parallel_bom_search()
+
+from src.core.bom_searcher import build_all_bom_scenarios
+from src.models import Customer
+from src.config import AppConfig
+
+def test_four_scenarios_generation():
+    print("\n--- 4. PROBANDO GENERACIÓN DE LAS 4 COTIZACIONES POR ESCENARIO ---")
+    config = AppConfig.load()
+    customer = Customer(name="Ing. Emerson Test", phone="49964191")
+
+    bom_input = """
+    2x ESP32 NodeMCU
+    10x Resistencia 220 ohm 1/4W
+    Sensor de temperatura DHT22
+    Modulo Relay 5V 2 canales
+    Pantalla OLED 0.96 I2C
+    """
+    parse_res = parse_bom_text(bom_input)
+    match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+
+    scenarios = build_all_bom_scenarios(
+        match_results=match_results,
+        customer=customer,
+        config=config,
+        service_fee_percent=10.0
+    )
+
+    assert len(scenarios) == 4, f"Debe generar exactamente 4 escenarios, obtuvo {len(scenarios)}"
+    
+    expected_titles = [
+        "Cotización Mixta (Mejor Precio Combinado)",
+        "Todo en Electrónica RyCH",
+        "Todo en La Electrónica",
+        "Todo en Electrónica DIY"
+    ]
+
+    for idx, (sc, exp_title) in enumerate(zip(scenarios, expected_titles), 1):
+        assert sc.title == exp_title, f"Título esperado '{exp_title}', obtuvo '{sc.title}'"
+        assert sc.scenario_id == idx
+        q = sc.quote
+        print(f"  [Opción {idx}] {sc.title:<42} | Cobertura: {sc.coverage_label:<18} | Subtotal: Q {q.items_subtotal:>6.2f} | Envíos: Q {q.total_shipping:>5.2f} | Margen: Q {q.service_fee_amount:>5.2f} | TOTAL: Q {q.total:>6.2f}")
+
+    print("\n--- TODOS LOS TESTS DE ESCENARIOS PASARON EXITOSAMENTE ---")
+
+if __name__ == "__main__":
+    test_four_scenarios_generation()
