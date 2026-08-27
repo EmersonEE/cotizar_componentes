@@ -16,6 +16,8 @@ from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotS
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
+from src.core.bom_parser import parse_bom_text, ParsedBOMItem
+from src.core.bom_searcher import search_bom_items_parallel, calculate_match_score, MatchResult
 
 # 1. Configuración de página
 st.set_page_config(
@@ -118,7 +120,6 @@ def get_current_quote() -> Quote:
     )
 
     if not items:
-        # Dummy display item if empty
         display_items = [QuoteItem(Product("Sin componentes agregados", "", "N/A", 0.0), 1, 0.0, 0.0)]
     else:
         display_items = items
@@ -189,7 +190,6 @@ with tab_cotizador:
     # COLUMNA IZQUIERDA: CONSTRUCTOR DE COTIZACIÓN
     # --------------------------------------------------
     with col_left:
-        # Modo edición banner
         if st.session_state.editing_mode:
             st.warning(f"✏️ **Modo Edición Activo:** Modificando cotización `{st.session_state.active_quote_id}`. Al guardar se creará la versión `v{st.session_state.version + 1}`.")
 
@@ -203,11 +203,40 @@ with tab_cotizador:
 
         st.divider()
 
-        # 2. Buscador y Adición de Componentes
+        # 2. Buscador y Adición de Componentes (Incluye BOM Multilínea)
         st.markdown("#### 🔍 Agregar Componentes")
-        modo_adicion = st.radio("Método de adición:", ["🔍 Buscar en las 3 tiendas (Metabuscador)", "🔗 Pegar URL directa"], horizontal=True)
+        modo_adicion = st.radio(
+            "Método de adición:",
+            ["📋 Pegar Lista Rápida (BOM)", "🔍 Buscar en las 3 tiendas (Metabuscador)", "🔗 Pegar URL directa"],
+            horizontal=True
+        )
 
-        if modo_adicion == "🔍 Buscar en las 3 tiendas (Metabuscador)":
+        if modo_adicion == "📋 Pegar Lista Rápida (BOM)":
+            st.caption("Pega una lista con cantidades y nombres (ej. formato WhatsApp). Se procesarán todas en paralelo:")
+            bom_input = st.text_area(
+                "Lista de Componentes",
+                placeholder="2x ESP32 NodeMCU\n10x Resistencia 220 ohm 1/4W\nSensor de temperatura DHT22\nModulo Relay 5V 2 canales\nPantalla OLED 0.96 I2C",
+                height=140,
+                label_visibility="collapsed"
+            )
+            if st.button("⚡ Procesar Lista y Buscar en Paralelo", type="primary", use_container_width=True) and bom_input.strip():
+                with st.spinner("Interpretando lista y buscando todos los componentes en paralelo..."):
+                    parse_res = parse_bom_text(bom_input)
+                    if parse_res.items:
+                        match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+                        added = 0
+                        for m in match_results:
+                            if m.best_match:
+                                prod = scrape_product(m.best_match.url)
+                                item = QuoteCalculator.create_quote_item(prod, m.bom_item.quantity)
+                                st.session_state.quote_items.append(item)
+                                added += 1
+                        st.toast(f"✔ ¡{added} componentes agregados exitosamente!", icon="🚀")
+                        st.rerun()
+                    else:
+                        st.error("No se pudo interpretar ningún componente del texto ingresado.")
+
+        elif modo_adicion == "🔍 Buscar en las 3 tiendas (Metabuscador)":
             search_col1, search_col2 = st.columns([3, 1])
             with search_col1:
                 search_query = st.text_input("Nombre o valor del componente", placeholder="Ej. ESP32, resistencia 220, pantalla OLED, LM358", label_visibility="collapsed")
@@ -222,7 +251,6 @@ with tab_cotizador:
             if st.session_state.search_results:
                 st.caption(f"Resultados para **'{st.session_state.last_search_query}'** ({len(st.session_state.search_results)} encontrados):")
                 
-                # Lista de resultados con botón de adición rápida
                 for idx, res in enumerate(st.session_state.search_results):
                     with st.container():
                         r_col1, r_col2, r_col3, r_col4 = st.columns([2.8, 1.1, 0.9, 1.0])
@@ -459,7 +487,6 @@ with tab_historial:
     if not saved_quotes:
         st.info("No hay cotizaciones guardadas en el historial todavía.")
     else:
-        # Filtro de búsqueda
         filtro_txt = st.text_input("Buscar por ID o Cliente", placeholder="Filtrar cotizaciones...")
         filtered = [
             q for q in saved_quotes
@@ -473,7 +500,6 @@ with tab_historial:
                     st.markdown(f"**Cliente:** {q.customer.name} | **Tel:** {q.customer.phone or 'N/A'}")
                     st.markdown(f"**Ítems:** {len(q.items)} | **Válida hasta:** {q.valid_until}")
                     
-                    # Mini tabla
                     for it in q.items:
                         st.caption(f"• {it.quantity}x [{it.product.name}]({it.product.url}) ({it.product.store_name}) = Q {it.subtotal:,.2f}")
                     

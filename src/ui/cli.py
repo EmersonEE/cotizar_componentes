@@ -17,6 +17,8 @@ from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotS
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
+from src.core.bom_parser import parse_bom_text, ParsedBOMItem
+from src.core.bom_searcher import search_bom_items_parallel, calculate_match_score, MatchResult
 
 console = Console()
 
@@ -39,26 +41,29 @@ class CotizadorCLI:
             console.clear()
             self.show_banner()
             console.print("\n[bold green]MENÚ PRINCIPAL[/bold green]")
-            console.print("  [bold cyan]1.[/bold cyan] ➕ Crear Nueva Cotización")
-            console.print("  [bold cyan]2.[/bold cyan] ✏️  Editar Cotización Guardada (Nueva Versión)")
-            console.print("  [bold cyan]3.[/bold cyan] 📋 Ver Historial de Cotizaciones")
-            console.print("  [bold cyan]4.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
-            console.print("  [bold cyan]5.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
-            console.print("  [bold cyan]6.[/bold cyan] 🚪 Salir")
+            console.print("  [bold cyan]1.[/bold cyan] 📋 Crear Cotización por Lista Rápida (BOM Multilínea)")
+            console.print("  [bold cyan]2.[/bold cyan] ➕ Crear Cotización Manual (Ítem por Ítem)")
+            console.print("  [bold cyan]3.[/bold cyan] ✏️  Editar Cotización Guardada (Nueva Versión)")
+            console.print("  [bold cyan]4.[/bold cyan] 📋 Ver Historial de Cotizaciones")
+            console.print("  [bold cyan]5.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
+            console.print("  [bold cyan]6.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
+            console.print("  [bold cyan]7.[/bold cyan] 🚪 Salir")
 
-            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6"], default="1")
+            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
 
             if choice == "1":
-                self.crear_nueva_cotizacion()
+                self.crear_cotizacion_bom()
             elif choice == "2":
-                self.editar_cotizacion()
+                self.crear_nueva_cotizacion()
             elif choice == "3":
-                self.ver_historial()
+                self.editar_cotizacion()
             elif choice == "4":
-                self.reverificar_cotizacion()
+                self.ver_historial()
             elif choice == "5":
-                self.configuracion_menu()
+                self.reverificar_cotizacion()
             elif choice == "6":
+                self.configuracion_menu()
+            elif choice == "7":
                 console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
                 sys.exit(0)
 
@@ -216,8 +221,232 @@ class CotizadorCLI:
                 except Exception:
                     pass
 
+    def _procesar_lista_rapida_bom(self) -> List[QuoteItem]:
+        """Collects multiline text, parses BOM, executes parallel search, and allows quick confirmation."""
+        console.print("\n[bold cyan]📋 INGRESO DE LISTA RÁPIDA (BOM MULTILÍNEA)[/bold cyan]")
+        console.print("[dim]Pega tu lista de componentes (ej. '2x ESP32 NodeMCU', '10x Resistencia 220 ohm 1/4W').[/dim]")
+        console.print("[yellow]Al terminar de pegar, presiona Enter dos veces (línea vacía):[/yellow]\n")
+
+        lines = []
+        while True:
+            try:
+                line = input()
+            except EOFError:
+                break
+            if not line.strip():
+                if lines:
+                    break
+                else:
+                    continue
+            lines.append(line)
+
+        if not lines:
+            console.print("[yellow]No se ingresó ninguna línea de texto.[/yellow]")
+            return []
+
+        raw_text = "\n".join(lines)
+        parse_res = parse_bom_text(raw_text)
+
+        if not parse_res.items:
+            console.print("[bold red]❌ No se pudo interpretar ningún componente del texto ingresado.[/bold red]")
+            return []
+
+        if parse_res.invalid_lines:
+            console.print(f"[yellow]⚠️ Se ignoraron {len(parse_res.invalid_lines)} líneas no interpretables.[/yellow]")
+
+        console.print(f"\n[bold green]✔ Se interpretaron {parse_res.total_items} componentes (Total: {parse_res.total_quantity} unidades).[/bold green]")
+        
+        with console.status(f"[bold green]Buscando {parse_res.total_items} componentes en paralelo en las 3 tiendas...[/bold green]", spinner="dots"):
+            match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+
+        # Interactive resolution loop
+        while True:
+            table = Table(title="Resultados y Mejores Coincidencias de la Lista BOM", box=box.ROUNDED)
+            table.add_column("#", justify="center", style="bold cyan", no_wrap=True)
+            table.add_column("Cant.", justify="center", style="bold")
+            table.add_column("Buscado", style="white")
+            table.add_column("Tienda Sugerida", style="dim")
+            table.add_column("Componente Asignado", style="white")
+            table.add_column("P. Unit.", justify="right", style="green")
+            table.add_column("Subtotal", justify="right", style="bold green")
+            table.add_column("Confianza", justify="center")
+
+            current_items_subtotal = 0.0
+            for idx, m in enumerate(match_results, 1):
+                qty = m.bom_item.quantity
+                if m.best_match:
+                    sub = qty * m.best_match.unit_price
+                    current_items_subtotal += sub
+                    table.add_row(
+                        str(idx),
+                        str(qty),
+                        m.bom_item.product_query[:25],
+                        m.best_match.store_name,
+                        m.best_match.title[:38] + ("..." if len(m.best_match.title) > 38 else ""),
+                        format_currency(m.best_match.unit_price, self.config.currency_symbol),
+                        format_currency(sub, self.config.currency_symbol),
+                        m.status_badge
+                    )
+                else:
+                    table.add_row(
+                        str(idx),
+                        str(qty),
+                        m.bom_item.product_query[:25],
+                        "-",
+                        "[red]No encontrado en tiendas[/red]",
+                        "-",
+                        "-",
+                        "❌ No encontrado"
+                    )
+
+            console.print("\n")
+            console.print(table)
+            console.print(f"[bold]Subtotal preliminar de componentes:[/bold] [green]{format_currency(current_items_subtotal, self.config.currency_symbol)}[/green]\n")
+
+            console.print("[bold cyan]Acciones:[/bold cyan]")
+            console.print("  [bold green][Enter][/bold green] Confirmar lista completa y proceder a calcular cotización")
+            console.print("  [bold cyan][#][/bold cyan]     Escribe el número de un ítem (ej. '1') para cambiar tienda/opción o buscar manualmente")
+            console.print("  [bold cyan][+][/bold cyan]     Agregar otro componente a la lista")
+            console.print("  [bold cyan][-][/bold cyan]     Eliminar un componente de la lista")
+            console.print("  [bold red][C][/bold red]     Cancelar cotización")
+
+            accion = Prompt.ask("\n¿Qué deseas hacer?", default="").strip()
+
+            if not accion:
+                # Confirmed!
+                break
+
+            if accion.lower() == "c":
+                return []
+
+            elif accion == "+":
+                new_p = self._obtener_producto_interactivo()
+                if new_p:
+                    new_qty = IntPrompt.ask("Cantidad deseada", default=1)
+                    synthetic_item = ParsedBOMItem(raw_line=f"{new_qty}x {new_p.name}", quantity=new_qty, product_query=new_p.name)
+                    synthetic_match = SearchResultItem(
+                        store_name=new_p.store_name,
+                        title=new_p.name,
+                        url=new_p.url,
+                        unit_price=new_p.unit_price,
+                        in_stock=new_p.in_stock,
+                        stock_status=new_p.stock_status,
+                        image_url=new_p.image_url
+                    )
+                    match_results.append(MatchResult(
+                        bom_item=synthetic_item,
+                        best_match=synthetic_match,
+                        all_candidates=[(synthetic_match, 1.0)],
+                        confidence_score=1.0,
+                        status="ALTA"
+                    ))
+                    console.print("[green]✔ Componente añadido a la lista.[/green]")
+
+            elif accion == "-":
+                del_idx = IntPrompt.ask(f"Ingresa el # de ítem a eliminar (1 a {len(match_results)})")
+                if 1 <= del_idx <= len(match_results):
+                    match_results.pop(del_idx - 1)
+                    console.print("[red]✔ Ítem eliminado.[/red]")
+
+            elif accion.isdigit():
+                item_idx = int(accion)
+                if 1 <= item_idx <= len(match_results):
+                    target_m = match_results[item_idx - 1]
+                    console.print(f"\n[bold yellow]Modificando Ítem #{item_idx}: '{target_m.bom_item.product_query}' (Cant: {target_m.bom_item.quantity})[/bold yellow]")
+                    
+                    if target_m.all_candidates:
+                        console.print("\n[cyan]Opciones encontradas en las tiendas:[/cyan]")
+                        for c_idx, (cand, score) in enumerate(target_m.all_candidates[:6], 1):
+                            stk_color = "green" if cand.in_stock else "red"
+                            console.print(f"  [{c_idx}] [bold]{cand.store_name:<16}[/bold] | {cand.title[:45]:<45} | Q {cand.unit_price:>6.2f} | [{stk_color}]{cand.stock_status}[/{stk_color}] (Similitud: {int(score*100)}%)")
+                        console.print(f"  [7] 🔍 Buscar con otro término para este componente")
+                        console.print(f"  [8] ✏️  Modificar cantidad")
+                        console.print(f"  [0] ↩️  Regresar")
+
+                        choice = IntPrompt.ask("Selecciona una opción", default=1)
+                        if 1 <= choice <= min(len(target_m.all_candidates), 6):
+                            target_m.best_match = target_m.all_candidates[choice - 1][0]
+                            target_m.confidence_score = target_m.all_candidates[choice - 1][1]
+                            target_m.status = "ALTA"
+                            console.print(f"[green]✔ Opción actualizada a: {target_m.best_match.title}[/green]")
+                        elif choice == 7:
+                            new_q = Prompt.ask("Nuevo término de búsqueda")
+                            if new_q.strip():
+                                with console.status("Buscando..."):
+                                    new_cands = metasearch(new_q.strip(), max_per_store=5)
+                                if new_cands:
+                                    target_m.bom_item.product_query = new_q.strip()
+                                    target_m.all_candidates = [(c, calculate_match_score(new_q, c.title, c.in_stock)) for c in new_cands]
+                                    target_m.all_candidates.sort(key=lambda x: x[1], reverse=True)
+                                    target_m.best_match = target_m.all_candidates[0][0]
+                                    target_m.confidence_score = target_m.all_candidates[0][1]
+                                    target_m.status = "ALTA" if target_m.confidence_score >= 0.75 else "MEDIA"
+                                    console.print("[green]✔ Búsqueda actualizada.[/green]")
+                        elif choice == 8:
+                            new_qty = IntPrompt.ask("Nueva cantidad", default=target_m.bom_item.quantity)
+                            if new_qty > 0:
+                                target_m.bom_item.quantity = new_qty
+                                console.print("[green]✔ Cantidad actualizada.[/green]")
+
+        final_quote_items: List[QuoteItem] = []
+        for m in match_results:
+            if m.best_match:
+                prod = scrape_product(m.best_match.url)
+                final_quote_items.append(QuoteCalculator.create_quote_item(prod, m.bom_item.quantity))
+
+        return final_quote_items
+
+    def crear_cotizacion_bom(self):
+        """Workflow for creating a quote from a multiline BOM list."""
+        console.print("\n[bold cyan]=== COTIZACIÓN POR LISTA RÁPIDA (BOM) ===[/bold cyan]")
+        
+        # 1. Datos del cliente
+        client_name = Prompt.ask("Nombre del cliente", default="Cliente General")
+        client_phone = Prompt.ask("Teléfono / WhatsApp (opcional)", default="")
+        customer = Customer(name=client_name, phone=client_phone)
+
+        # 2. Procesar BOM
+        items = self._procesar_lista_rapida_bom()
+        if not items:
+            console.print("[yellow]No se agregaron componentes. Cancelando cotización.[/yellow]")
+            return
+
+        # 3. Margen de servicio
+        margin = self.config.service_fee_percent
+        if Confirm.ask(f"\n¿Deseas usar el margen de compra predeterminado de {margin}%?", default=True):
+            fee_percent = margin
+        else:
+            fee_percent = FloatPrompt.ask("Ingresa el porcentaje de margen deseado (%)", default=margin)
+
+        # 4. Evaluación y confirmación interactiva de costos de envío
+        shipping_details = self._solicitar_envios_interactivo(items)
+
+        # 5. Construir cotización
+        quote_id = self.history_mgr.get_next_quote_id(self.config.quote_prefix)
+        quote = QuoteCalculator.build_quote(
+            quote_id=quote_id,
+            items=items,
+            customer=customer,
+            shipping_details=shipping_details,
+            service_fee_percent=fee_percent,
+            validity_days=self.config.validity_days,
+            currency_symbol=self.config.currency_symbol,
+            currency_code=self.config.currency_code
+        )
+
+        # 6. Mostrar resumen final
+        self._mostrar_cotizacion_completa(quote)
+
+        # 7. Confirmar y exportar
+        if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (Cliente + Interno)?", default=True):
+            self.history_mgr.save_quote(quote)
+            with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
+                exp_res = self.exporter.export_all(quote, self.config.business)
+
+            self._mostrar_panel_documentos(exp_res, quote.quote_id)
+
     def crear_nueva_cotizacion(self):
-        console.print("\n[bold cyan]=== NUEVA COTIZACIÓN ===[/bold cyan]")
+        console.print("\n[bold cyan]=== NUEVA COTIZACIÓN MANUAL ===[/bold cyan]")
         
         # 1. Datos del cliente (Nombre y Teléfono)
         client_name = Prompt.ask("Nombre del cliente", default="Cliente General")
@@ -308,7 +537,7 @@ class CotizadorCLI:
         # 7. Confirmar y exportar
         if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (Cliente + Interno)?", default=True):
             self.history_mgr.save_quote(quote)
-            with console.status("[bold green]Generando archivos PDF (Cliente e Interno con Enlaces), HTML y CSV...[/bold green]", spinner="dots"):
+            with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
                 exp_res = self.exporter.export_all(quote, self.config.business)
 
             self._mostrar_panel_documentos(exp_res, quote.quote_id)
