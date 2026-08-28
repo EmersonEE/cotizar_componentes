@@ -895,7 +895,7 @@ class CotizadorCLI:
             console.print("  [bold green][V][/bold green] Ver detalle completo")
             console.print("  [bold green][S][/bold green] 🏷️  Cambiar estado comercial (Borrador, Enviada, Aceptada...)")
             console.print("  [bold green][D][/bold green] 📄 Duplicar cotización como nueva independiente")
-            console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo")
+            console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo (Crear nueva versión)")
             console.print("  [bold green][P][/bold green] 📑 Re-generar / Abrir archivos PDF")
             console.print("  [bold cyan][B][/bold cyan] 🔍 Nueva búsqueda en historial")
             console.print("  [bold cyan][0][/bold cyan] ↩️  Regresar al menú principal")
@@ -962,15 +962,7 @@ class CotizadorCLI:
 
             elif hist_opc == "r":
                 qid = Prompt.ask("Ingresa el ID de la cotización").strip()
-                quote = self.history_mgr.get_quote(qid)
-                if quote:
-                    with console.status("[bold yellow]Actualizando precios en tiempo real...[/bold yellow]"):
-                        up_q, changes = self.history_mgr.reverify_quote_prices(qid)
-                    console.print(f"[bold green]✔ Precios actualizados. Nuevo total: Q {up_q.total:,.2f}[/bold green]")
-                    exp_res = self.exporter.export_all(up_q, self.config.business)
-                    self._mostrar_panel_documentos(exp_res, up_q.quote_id)
-                else:
-                    console.print("[red]Cotización no encontrada.[/red]")
+                self._ejecutar_reverificacion_interactiva(qid)
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif hist_opc == "p":
@@ -985,57 +977,101 @@ class CotizadorCLI:
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
     def reverificar_cotizacion(self):
-        console.print("\n[bold cyan]=== RE-VERIFICAR PRECIOS DE COTIZACIÓN ===[/bold cyan]")
+        console.print("\n[bold cyan]=== RE-VERIFICAR PRECIOS DE COTIZACIÓN (VERSIONADO INMUTABLE) ===[/bold cyan]")
         quotes = self.history_mgr.load_all_quotes()
         if not quotes:
             console.print("[yellow]No hay cotizaciones registradas para verificar.[/yellow]")
             return
 
         qid = Prompt.ask("Ingresa el ID de la cotización que deseas re-verificar").strip()
+        self._ejecutar_reverificacion_interactiva(qid)
+
+    def _ejecutar_reverificacion_interactiva(self, qid: str):
         quote = self.history_mgr.get_quote(qid)
         if not quote:
-            console.print("[red]Cotización no encontrada.[/red]")
+            console.print(f"[red]Cotización '{qid}' no encontrada.[/red]")
             return
 
         console.print(f"\n[cyan]Consultando tiendas para los {len(quote.items)} componentes de {qid}...[/cyan]")
         
         with console.status("[bold yellow]Actualizando precios en tiempo real...[/bold yellow]", spinner="bouncingBar"):
             try:
-                updated_quote, changes = self.history_mgr.reverify_quote_prices(qid)
+                candidate_q, changes, diff = self.history_mgr.check_quote_price_updates(qid)
             except Exception as e:
                 console.print(f"[bold red]Error al re-verificar:[/bold red] {e}")
                 return
 
-        table = Table(title=f"Resultados de Verificación: {qid}", box=box.ROUNDED)
+        # 1. Tabla de items y diferencias de precio
+        table = Table(title=f"Comparativa de Precios en Vivo: {quote.quote_id} ➔ {candidate_q.quote_id}", box=box.ROUNDED)
         table.add_column("Componente", style="white")
         table.add_column("Tienda", style="dim")
         table.add_column("Precio Anterior", justify="right")
         table.add_column("Precio Actual", justify="right")
-        table.add_column("Diferencia", justify="right")
-        table.add_column("Stock", justify="center")
+        table.add_column("Diferencia U.", justify="right")
+        table.add_column("Subtotal Actual", justify="right")
+        table.add_column("Disponibilidad", justify="center")
 
         for c in changes:
-            diff_style = "green" if c["diff"] < 0 else ("red" if c["diff"] > 0 else "dim")
-            diff_str = f"{c['diff']:+.2f}" if c["diff"] != 0 else "0.00"
-            stock_style = "green" if c["in_stock"] else "red"
+            diff_style = "green" if c["price_diff"] < 0 else ("red" if c["price_diff"] > 0 else "dim")
+            diff_str = f"{c['price_diff']:+.2f}" if c["price_diff"] != 0 else "0.00"
+            stock_style = "green" if c["new_in_stock"] else "red"
             
             table.add_row(
-                c["product_name"][:35],
+                c["product_name"][:32],
                 c["store"],
-                f"Q {c['old_price']:.2f}",
-                f"Q {c['new_price']:.2f}",
+                format_currency(c["old_price"], quote.currency_symbol),
+                format_currency(c["new_price"], quote.currency_symbol),
                 f"[{diff_style}]{diff_str}[/{diff_style}]",
+                format_currency(c["new_subtotal"], quote.currency_symbol),
                 f"[{stock_style}]{c['stock_status']}[/{stock_style}]"
             )
 
+        console.print("\n")
         console.print(table)
-        console.print(f"\n[bold]Total anterior:[/bold] {format_currency(quote.total, quote.currency_symbol)}")
-        console.print(f"[bold green]Nuevo Total:[/bold green]   {format_currency(updated_quote.total, updated_quote.currency_symbol)}")
 
-        if Confirm.ask("\n¿Deseas regenerar los documentos (Cliente + Interno) con los precios actualizados?", default=True):
-            with console.status("[bold green]Generando archivos actualizados...[/bold green]"):
-                exp_res = self.exporter.export_all(updated_quote, self.config.business)
-            self._mostrar_panel_documentos(exp_res, updated_quote.quote_id)
+        # 2. Desglose de cambios de envío
+        if diff["shipping_diff_details"]:
+            s_table = Table(title="Desglose de Envíos por Tienda", box=box.SIMPLE)
+            s_table.add_column("Tienda", style="cyan")
+            s_table.add_column("Envío Anterior", justify="right")
+            s_table.add_column("Envío Actual", justify="right")
+            s_table.add_column("Diferencia", justify="right")
+
+            for sd in diff["shipping_diff_details"]:
+                sd_diff_str = f"{sd['diff']:+.2f}" if sd['diff'] != 0 else "0.00"
+                sd_style = "green" if sd['diff'] <= 0 else "red"
+                s_table.add_row(
+                    sd["store"],
+                    format_currency(sd["old_shipping"], quote.currency_symbol),
+                    format_currency(sd["new_shipping"], quote.currency_symbol),
+                    f"[{sd_style}]{sd_diff_str}[/{sd_style}]"
+                )
+            console.print(s_table)
+
+        # 3. Resumen financiero comparativo con deltas
+        sum_table = Table(box=box.SIMPLE, show_header=False)
+        
+        tot_diff = diff["total_diff"]
+        tot_style = "green" if tot_diff < 0 else ("red" if tot_diff > 0 else "dim")
+        tot_diff_str = f"{tot_diff:+.2f}" if tot_diff != 0 else "0.00"
+
+        sum_table.add_row("Subtotal Componentes:", f"{format_currency(diff['old_items_subtotal'], quote.currency_symbol)}  ➔  [bold]{format_currency(diff['new_items_subtotal'], quote.currency_symbol)}[/bold] ({diff['items_subtotal_diff']:+.2f})")
+        sum_table.add_row("Margen de Servicio:", f"{format_currency(diff['old_service_fee'], quote.currency_symbol)}  ➔  [bold]{format_currency(diff['new_service_fee'], quote.currency_symbol)}[/bold] ({diff['service_fee_diff']:+.2f})")
+        sum_table.add_row("Total Envíos:", f"{format_currency(diff['old_total_shipping'], quote.currency_symbol)}  ➔  [bold]{format_currency(diff['new_total_shipping'], quote.currency_symbol)}[/bold] ({diff['total_shipping_diff']:+.2f})")
+        sum_table.add_row("[bold]TOTAL GENERAL:[/bold]", f"[bold]{format_currency(diff['old_total'], quote.currency_symbol)}[/bold]  ➔  [bold green]{format_currency(diff['new_total'], quote.currency_symbol)}[/bold green] ([{tot_style}]{tot_diff_str}[/{tot_style}])")
+
+        console.print(Panel(sum_table, title="[bold cyan]Resumen de Diferencias Financieras[/bold cyan]", border_style="cyan"))
+
+        console.print(f"\n[bold yellow]⚠️ Aviso de Inmutabilidad:[/bold yellow] La versión original [bold]{quote.quote_id}[/bold] permanecerá intacta en el historial.")
+        if Confirm.ask(f"\n¿Deseas aceptar los cambios y crear la versión [bold green]{candidate_q.quote_id}[/bold green] (v{candidate_q.version})?", default=True):
+            saved_v = self.history_mgr.save_reverified_version(candidate_q)
+            with console.status("[bold green]Generando archivos PDF, HTML y CSV para la nueva versión...[/bold green]"):
+                exp_res = self.exporter.export_all(saved_v, self.config.business)
+
+            console.print(f"\n[bold green]✔ ¡Nueva versión {saved_v.quote_id} creada y guardada con éxito![/bold green]")
+            self._mostrar_panel_documentos(exp_res, saved_v.quote_id)
+        else:
+            console.print("\n[yellow]Revalidación cancelada. El historial no ha sufrido ninguna modificación.[/yellow]")
 
     def configuracion_menu(self):
         console.print("\n[bold cyan]=== CONFIGURACIÓN DE PARÁMETROS ===[/bold cyan]")

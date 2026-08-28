@@ -583,14 +583,56 @@ with tab_historial:
                         st.toast(f"Cotización {q.quote_id} cargada en el panel de trabajo.", icon="✏️")
                         st.rerun()
 
+                    reverify_key = f"reverify_preview_{q.quote_id}"
                     if st.button("🔄 Re-verificar Precios", key=f"reverify_{q.quote_id}", use_container_width=True):
-                        with st.spinner(f"Re-verificando precios en vivo para {q.quote_id}..."):
-                            up_q, changes = history_mgr.reverify_quote_prices(q.quote_id)
-                            exporter.export_all(up_q, config.business)
-                            st.success(f"✔ Precios actualizados. Nuevo total: Q {up_q.total:,.2f}")
-                            for c in changes:
-                                diff_str = f"{c['diff']:+.2f}" if c['diff'] != 0 else "Sin cambio"
-                                st.caption(f"• {c['product_name']}: Q {c['old_price']:.2f} → Q {c['new_price']:.2f} ({diff_str})")
+                        with st.spinner(f"Consultando precios en vivo para {q.quote_id}..."):
+                            try:
+                                candidate_q, changes, diff = history_mgr.check_quote_price_updates(q.quote_id)
+                                st.session_state[reverify_key] = {
+                                    "candidate": candidate_q,
+                                    "changes": changes,
+                                    "diff": diff
+                                }
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+
+                # Display Reverification Preview if active
+                reverify_key = f"reverify_preview_{q.quote_id}"
+                if reverify_key in st.session_state:
+                    rev_data = st.session_state[reverify_key]
+                    cand = rev_data["candidate"]
+                    ch_list = rev_data["changes"]
+                    d = rev_data["diff"]
+
+                    st.markdown("---")
+                    st.info(f"🔍 **Vista Previa de Revalidación:** Los cambios crearán la versión **`{cand.quote_id}` (v{cand.version})**. La versión `{q.quote_id}` permanecerá intacta.")
+
+                    # Item price & stock changes
+                    st.markdown("##### 🛒 Comparativa de Componentes")
+                    for c in ch_list:
+                        d_str = f"{c['price_diff']:+.2f}" if c['price_diff'] != 0 else "Sin cambio"
+                        st_icon = "🟢" if c['new_in_stock'] else "🔴"
+                        st.caption(f"• **{c['product_name']}** ({c['store']}): Q {c['old_price']:.2f} ➔ **Q {c['new_price']:.2f}** ({d_str}) | {st_icon} {c['stock_status']}")
+
+                    # Totals comparison
+                    st.markdown("##### 💰 Resumen Financiero")
+                    r_c1, r_c2, r_c3, r_c4 = st.columns(4)
+                    r_c1.metric("Subtotal Comp.", f"Q {d['new_items_subtotal']:,.2f}", f"{d['items_subtotal_diff']:+.2f}")
+                    r_c2.metric("Margen Servicio", f"Q {d['new_service_fee']:,.2f}", f"{d['service_fee_diff']:+.2f}")
+                    r_c3.metric("Total Envíos", f"Q {d['new_total_shipping']:,.2f}", f"{d['total_shipping_diff']:+.2f}")
+                    r_c4.metric("TOTAL A PAGAR", f"Q {d['new_total']:,.2f}", f"{d['total_diff']:+.2f}")
+
+                    act1, act2 = st.columns(2)
+                    with act1:
+                        if st.button(f"✅ Aceptar y Crear Versión v{cand.version}", key=f"btn_accept_{q.quote_id}", type="primary", use_container_width=True):
+                            saved_v = history_mgr.save_reverified_version(cand)
+                            exporter.export_all(saved_v, config.business)
+                            del st.session_state[reverify_key]
+                            st.success(f"✔ ¡Versión `{saved_v.quote_id}` guardada con éxito!")
+                            st.rerun()
+                    with act2:
+                        if st.button("❌ Cancelar Revalidación", key=f"btn_cancel_{q.quote_id}", use_container_width=True):
+                            del st.session_state[reverify_key]
                             st.rerun()
 
 # ==========================================

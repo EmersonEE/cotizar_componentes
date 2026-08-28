@@ -113,7 +113,7 @@ class HistoryManager:
         customer = copy.deepcopy(new_customer) if new_customer is not None else copy.deepcopy(original.customer)
         items = copy.deepcopy(original.items)
 
-        # Recalculate shipping based on items
+        # Recalculate shipping based on items preserving original custom shipping costs
         store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
         custom_shipping_costs = {sd.store_name: sd.shipping_cost for sd in original.shipping_details}
         shipping_details = QuoteCalculator.evaluate_shipping_details(
@@ -134,11 +134,170 @@ class HistoryManager:
             currency_symbol=original.currency_symbol,
             currency_code=original.currency_code
         )
-        # Ensure new quote starts in GUARDADA state
         duplicated_quote.status = QuoteStatus.GUARDADA.value
 
         self.save_quote(duplicated_quote)
         return duplicated_quote
+
+    def check_quote_price_updates(self, quote_id: str) -> Tuple[Quote, List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Inspects live prices for all products in quote_id WITHOUT modifying history.
+        Preserves original custom shipping costs and calculates candidate new version (e.g. v2).
+        Returns:
+            (candidate_versioned_quote, item_changes, summary_diff)
+        """
+        original_quote = self.get_quote(quote_id)
+        if not original_quote:
+            raise ValueError(f"No se encontró la cotización con ID: {quote_id}")
+
+        config = AppConfig.load()
+        new_qid, new_version, base_id = self.get_next_version_info(quote_id)
+
+        item_changes: List[Dict[str, Any]] = []
+        updated_items: List[QuoteItem] = []
+        stock_alerts: List[Dict[str, Any]] = []
+
+        for item in original_quote.items:
+            old_price = item.unit_price
+            old_subtotal = item.subtotal
+            old_in_stock = item.product.in_stock
+            url = item.product.url
+
+            try:
+                scraped_prod = scrape_product(url)
+                new_price = scraped_prod.unit_price
+                new_in_stock = scraped_prod.in_stock
+                stock_status = scraped_prod.stock_status
+
+                updated_item = QuoteCalculator.create_quote_item(scraped_prod, item.quantity)
+                updated_items.append(updated_item)
+
+                price_diff = round(new_price - old_price, 2)
+                subtotal_diff = round(updated_item.subtotal - old_subtotal, 2)
+
+                change_info = {
+                    "product_name": item.product.name,
+                    "store": item.product.store_name,
+                    "url": url,
+                    "quantity": item.quantity,
+                    "old_price": old_price,
+                    "new_price": new_price,
+                    "price_diff": price_diff,
+                    "old_subtotal": old_subtotal,
+                    "new_subtotal": updated_item.subtotal,
+                    "subtotal_diff": subtotal_diff,
+                    "old_in_stock": old_in_stock,
+                    "new_in_stock": new_in_stock,
+                    "stock_status": stock_status,
+                    "status_label": "Actualizado" if price_diff != 0 else "Sin cambio"
+                }
+                item_changes.append(change_info)
+
+                if old_in_stock != new_in_stock:
+                    stock_alerts.append({
+                        "product_name": item.product.name,
+                        "store": item.product.store_name,
+                        "old_stock": "Disponible" if old_in_stock else "Agotado",
+                        "new_stock": stock_status
+                    })
+
+            except Exception as e:
+                # If error, retain original item values and flag the error
+                updated_items.append(item)
+                item_changes.append({
+                    "product_name": item.product.name,
+                    "store": item.product.store_name,
+                    "url": url,
+                    "quantity": item.quantity,
+                    "old_price": old_price,
+                    "new_price": old_price,
+                    "price_diff": 0.0,
+                    "old_subtotal": old_subtotal,
+                    "new_subtotal": old_subtotal,
+                    "subtotal_diff": 0.0,
+                    "old_in_stock": old_in_stock,
+                    "new_in_stock": old_in_stock,
+                    "stock_status": "Error al consultar",
+                    "status_label": f"Error: {str(e)}"
+                })
+
+        # Preserve custom shipping costs from original quote
+        custom_shipping_costs = {sd.store_name: sd.shipping_cost for sd in original_quote.shipping_details}
+        store_subtotals = QuoteCalculator.calculate_store_subtotals(updated_items)
+        recalculated_shipping = QuoteCalculator.evaluate_shipping_details(
+            store_subtotals,
+            config.shipping_rules,
+            custom_shipping_costs
+        )
+
+        candidate_quote = QuoteCalculator.build_quote(
+            quote_id=new_qid,
+            items=updated_items,
+            customer=copy.deepcopy(original_quote.customer),
+            shipping_details=recalculated_shipping,
+            service_fee_percent=original_quote.service_fee_percent,
+            validity_days=config.validity_days,
+            version=new_version,
+            base_quote_id=base_id,
+            currency_symbol=original_quote.currency_symbol,
+            currency_code=original_quote.currency_code
+        )
+        candidate_quote.status = QuoteStatus.GUARDADA.value
+
+        # Calculate full financial summary diff
+        old_shipping_by_store = {sd.store_name: sd.shipping_cost for sd in original_quote.shipping_details}
+        new_shipping_by_store = {sd.store_name: sd.shipping_cost for sd in candidate_quote.shipping_details}
+        shipping_diff_details = []
+        for store, new_sc in new_shipping_by_store.items():
+            old_sc = old_shipping_by_store.get(store, 0.0)
+            shipping_diff_details.append({
+                "store": store,
+                "old_shipping": old_sc,
+                "new_shipping": new_sc,
+                "diff": round(new_sc - old_sc, 2)
+            })
+
+        summary_diff = {
+            "original_quote_id": original_quote.quote_id,
+            "original_version": original_quote.version,
+            "candidate_quote_id": candidate_quote.quote_id,
+            "candidate_version": candidate_quote.version,
+            "old_items_subtotal": original_quote.items_subtotal,
+            "new_items_subtotal": candidate_quote.items_subtotal,
+            "items_subtotal_diff": round(candidate_quote.items_subtotal - original_quote.items_subtotal, 2),
+            "old_service_fee": original_quote.service_fee_amount,
+            "new_service_fee": candidate_quote.service_fee_amount,
+            "service_fee_diff": round(candidate_quote.service_fee_amount - original_quote.service_fee_amount, 2),
+            "old_total_shipping": original_quote.total_shipping,
+            "new_total_shipping": candidate_quote.total_shipping,
+            "total_shipping_diff": round(candidate_quote.total_shipping - original_quote.total_shipping, 2),
+            "old_total": original_quote.total,
+            "new_total": candidate_quote.total,
+            "total_diff": round(candidate_quote.total - original_quote.total, 2),
+            "stock_alerts": stock_alerts,
+            "shipping_diff_details": shipping_diff_details
+        }
+
+        return candidate_quote, item_changes, summary_diff
+
+    def save_reverified_version(self, candidate_quote: Quote) -> Quote:
+        """
+        Saves a reverified candidate quote as a brand new version in history.
+        Original quote is 100% untouched.
+        """
+        self.save_quote(candidate_quote)
+        return candidate_quote
+
+    def reverify_quote_prices(self, quote_id: str, auto_save_new_version: bool = True) -> Tuple[Quote, List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Re-evaluates prices for quote_id.
+        If auto_save_new_version is True, saves the new version into history.json.
+        Returns (candidate_or_saved_quote, changes, summary_diff).
+        """
+        candidate_quote, changes, summary_diff = self.check_quote_price_updates(quote_id)
+        if auto_save_new_version:
+            self.save_reverified_version(candidate_quote)
+        return candidate_quote, changes, summary_diff
 
     def get_next_quote_id(self, prefix: str = "COT") -> str:
         quotes = self.load_all_quotes()
@@ -191,70 +350,3 @@ class HistoryManager:
         next_v = highest_v + 1
         new_version_id = f"{base_id}_v{next_v}"
         return new_version_id, next_v, base_id
-
-    def reverify_quote_prices(self, quote_id: str) -> Tuple[Quote, List[Dict[str, Any]]]:
-        """
-        Re-scrapes all product URLs in the quote, updates unit prices,
-        recalculates subtotals and shipping, and returns the updated Quote.
-        """
-        quote = self.get_quote(quote_id)
-        if not quote:
-            raise ValueError(f"No se encontró la cotización con ID: {quote_id}")
-
-        config = AppConfig.load()
-        changes = []
-        updated_items: List[QuoteItem] = []
-
-        for item in quote.items:
-            old_price = item.unit_price
-            url = item.product.url
-            try:
-                scraped_prod = scrape_product(url)
-                new_price = scraped_prod.unit_price
-                price_diff = round(new_price - old_price, 2)
-                
-                updated_item = QuoteCalculator.create_quote_item(scraped_prod, item.quantity)
-                updated_items.append(updated_item)
-
-                changes.append({
-                    "product_name": item.product.name,
-                    "store": item.product.store_name,
-                    "url": url,
-                    "old_price": old_price,
-                    "new_price": new_price,
-                    "diff": price_diff,
-                    "in_stock": scraped_prod.in_stock,
-                    "stock_status": scraped_prod.stock_status,
-                    "status": "Actualizado" if price_diff != 0 else "Sin cambio"
-                })
-            except Exception as e:
-                updated_items.append(item)
-                changes.append({
-                    "product_name": item.product.name,
-                    "store": item.product.store_name,
-                    "url": url,
-                    "old_price": old_price,
-                    "new_price": old_price,
-                    "diff": 0.0,
-                    "in_stock": item.product.in_stock,
-                    "stock_status": "Error al verificar",
-                    "status": f"Error: {str(e)}"
-                })
-
-        updated_quote = QuoteCalculator.build_quote(
-            quote_id=quote.quote_id,
-            items=updated_items,
-            customer=quote.customer,
-            shipping_rules=config.shipping_rules,
-            service_fee_percent=quote.service_fee_percent,
-            validity_days=config.validity_days,
-            version=quote.version,
-            base_quote_id=quote.base_quote_id,
-            currency_symbol=quote.currency_symbol,
-            currency_code=quote.currency_code
-        )
-        updated_quote.status = quote.status
-        updated_quote.status_updated_at = quote.status_updated_at
-        
-        self.save_quote(updated_quote)
-        return updated_quote, changes
