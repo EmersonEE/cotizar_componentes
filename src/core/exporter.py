@@ -48,7 +48,9 @@ class QuoteExporter:
             writer = csv.writer(f)
             # Metadata header
             writer.writerow(["COTIZACIÓN", quote.quote_id, "VERSIÓN", quote.version, "FECHA", quote.date, "VIGENCIA", quote.valid_until])
-            writer.writerow(["CLIENTE", quote.customer.name, "TEL", quote.customer.phone])
+            writer.writerow(["CLIENTE", quote.customer.name, "TEL", quote.customer.phone or "N/A", "EMAIL", quote.customer.email or "N/A"])
+            if quote.customer.notes:
+                writer.writerow(["NOTAS CLIENTE", quote.customer.notes])
             writer.writerow([])
             # Items table
             writer.writerow(["#", "Componente", "Tienda", "Cantidad", "Precio Unitario (GTQ)", "Subtotal (GTQ)", "URL Origen", "Stock"])

@@ -49,6 +49,10 @@ def init_session_state():
         st.session_state.customer_name = ""
     if "customer_phone" not in st.session_state:
         st.session_state.customer_phone = ""
+    if "customer_email" not in st.session_state:
+        st.session_state.customer_email = ""
+    if "customer_notes" not in st.session_state:
+        st.session_state.customer_notes = ""
     if "quote_items" not in st.session_state:
         st.session_state.quote_items = []
     if "custom_shipping_costs" not in st.session_state:
@@ -68,6 +72,8 @@ def reset_to_new_quote():
     st.session_state.base_quote_id = None
     st.session_state.customer_name = ""
     st.session_state.customer_phone = ""
+    st.session_state.customer_email = ""
+    st.session_state.customer_notes = ""
     st.session_state.quote_items = []
     st.session_state.custom_shipping_costs = {}
     st.session_state.search_results = []
@@ -80,6 +86,8 @@ def load_quote_for_editing(quote: Quote):
     st.session_state.base_quote_id = quote.base_quote_id or quote.quote_id.split('_v')[0]
     st.session_state.customer_name = quote.customer.name
     st.session_state.customer_phone = quote.customer.phone
+    st.session_state.customer_email = quote.customer.email
+    st.session_state.customer_notes = quote.customer.notes
     st.session_state.quote_items = copy.deepcopy(quote.items)
     st.session_state.custom_shipping_costs = {
         sd.store_name: sd.shipping_cost for sd in quote.shipping_details
@@ -109,7 +117,9 @@ def get_current_quote() -> Quote:
     items = st.session_state.quote_items
     customer = Customer(
         name=st.session_state.customer_name.strip() or "Cliente General",
-        phone=st.session_state.customer_phone.strip()
+        phone=st.session_state.customer_phone.strip(),
+        email=st.session_state.customer_email.strip(),
+        notes=st.session_state.customer_notes.strip()
     )
     
     store_subtotals = QuoteCalculator.calculate_store_subtotals(items) if items else {}
@@ -198,8 +208,10 @@ with tab_cotizador:
         c1, c2 = st.columns([1.2, 1.0])
         with c1:
             st.session_state.customer_name = st.text_input("Nombre del Cliente", value=st.session_state.customer_name, placeholder="Ej. Ing. Carlos Mendoza")
+            st.session_state.customer_email = st.text_input("Correo Electrónico (opcional)", value=st.session_state.customer_email, placeholder="cliente@correo.com")
         with c2:
-            st.session_state.customer_phone = st.text_input("Teléfono / WhatsApp", value=st.session_state.customer_phone, placeholder="Ej. +502 4433-2211")
+            st.session_state.customer_phone = st.text_input("Teléfono / WhatsApp (opcional)", value=st.session_state.customer_phone, placeholder="Ej. +502 4433-2211")
+            st.session_state.customer_notes = st.text_input("Notas / Observaciones (opcional)", value=st.session_state.customer_notes, placeholder="Ej. Proyecto IoT, entrega urgente")
 
         st.divider()
 
@@ -368,7 +380,7 @@ with tab_cotizador:
         sum_c1, sum_c2 = st.columns([1, 1])
         with sum_c1:
             st.metric("Subtotal Componentes", f"Q {current_quote.items_subtotal:,.2f}")
-            st.metric(f"Servicio Gestión ({current_quote.service_fee_percent}%)", f"Q {current_quote.service_fee_amount:,.2f}")
+            st.metric(f"Servicio Gestión ({current_quote.service_fee_percent}%):", f"Q {current_quote.service_fee_amount:,.2f}")
         with sum_c2:
             st.metric("Total Envíos", f"Q {current_quote.total_shipping:,.2f}")
             st.metric("TOTAL COTIZADO", f"Q {current_quote.total:,.2f}")
@@ -386,7 +398,12 @@ with tab_cotizador:
                     quote_to_save = QuoteCalculator.build_quote(
                         quote_id=new_qid,
                         items=st.session_state.quote_items,
-                        customer=Customer(st.session_state.customer_name or "Cliente General", st.session_state.customer_phone),
+                        customer=Customer(
+                            name=st.session_state.customer_name.strip() or "Cliente General",
+                            phone=st.session_state.customer_phone.strip(),
+                            email=st.session_state.customer_email.strip(),
+                            notes=st.session_state.customer_notes.strip()
+                        ),
                         shipping_details=current_quote.shipping_details,
                         service_fee_percent=config.service_fee_percent,
                         validity_days=config.validity_days,
@@ -481,31 +498,41 @@ with tab_cotizador:
 # PESTAÑA 2: HISTORIAL Y EDICIÓN
 # ==========================================
 with tab_historial:
-    st.markdown("### 📋 Historial de Cotizaciones Guardadas")
-    saved_quotes = history_mgr.load_all_quotes()
+    st.markdown("### 📋 Historial y Búsqueda de Cotizaciones")
+    
+    filtro_txt = st.text_input("🔍 Buscar por ID, Nombre de Cliente, Teléfono, Email o Fecha", placeholder="Escribe para buscar...")
+    filtered_quotes = history_mgr.search_quotes(filtro_txt)
 
-    if not saved_quotes:
-        st.info("No hay cotizaciones guardadas en el historial todavía.")
+    if not filtered_quotes:
+        if filtro_txt:
+            st.info(f"No se encontraron cotizaciones para la búsqueda '{filtro_txt}'.")
+        else:
+            st.info("No hay cotizaciones guardadas en el historial todavía.")
     else:
-        filtro_txt = st.text_input("Buscar por ID o Cliente", placeholder="Filtrar cotizaciones...")
-        filtered = [
-            q for q in saved_quotes
-            if not filtro_txt or filtro_txt.lower() in q.quote_id.lower() or filtro_txt.lower() in q.customer.name.lower()
-        ]
-
-        for q in reversed(filtered):
+        st.caption(f"Mostrando {len(filtered_quotes)} cotizaciones registradas:")
+        for q in reversed(filtered_quotes):
             with st.expander(f"📄 **{q.quote_id}** (v{q.version}) — {q.customer.name} — **Q {q.total:,.2f}** ({q.date})"):
                 h_col1, h_col2 = st.columns([2, 1])
                 with h_col1:
                     st.markdown(f"**Cliente:** {q.customer.name} | **Tel:** {q.customer.phone or 'N/A'}")
+                    if q.customer.email:
+                        st.markdown(f"**Email:** `{q.customer.email}`")
+                    if q.customer.notes:
+                        st.markdown(f"**Notas:** _{q.customer.notes}_")
                     st.markdown(f"**Ítems:** {len(q.items)} | **Válida hasta:** {q.valid_until}")
                     
                     for it in q.items:
                         st.caption(f"• {it.quantity}x [{it.product.name}]({it.product.url}) ({it.product.store_name}) = Q {it.subtotal:,.2f}")
                     
-                    st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen (12%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
+                    st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen ({q.service_fee_percent}%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
 
                 with h_col2:
+                    if st.button("📄 Duplicar Cotización", key=f"dup_{q.quote_id}", help="Duplica esta cotización como un nuevo presupuesto independiente", use_container_width=True):
+                        dup = history_mgr.duplicate_quote(q.quote_id)
+                        exporter.export_all(dup, config.business)
+                        st.toast(f"✔ Cotización duplicada como {dup.quote_id}", icon="📄")
+                        st.rerun()
+
                     if st.button("✏️ Cargar para Editar", key=f"load_edit_{q.quote_id}", use_container_width=True):
                         load_quote_for_editing(q)
                         st.toast(f"Cotización {q.quote_id} cargada en el panel de trabajo.", icon="✏️")
@@ -514,6 +541,7 @@ with tab_historial:
                     if st.button("🔄 Re-verificar Precios", key=f"reverify_{q.quote_id}", use_container_width=True):
                         with st.spinner(f"Re-verificando precios en vivo para {q.quote_id}..."):
                             up_q, changes = history_mgr.reverify_quote_prices(q.quote_id)
+                            exporter.export_all(up_q, config.business)
                             st.success(f"✔ Precios actualizados. Nuevo total: Q {up_q.total:,.2f}")
                             for c in changes:
                                 diff_str = f"{c['diff']:+.2f}" if c['diff'] != 0 else "Sin cambio"

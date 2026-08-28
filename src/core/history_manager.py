@@ -1,10 +1,11 @@
 import json
 import re
 import os
+import copy
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict, Any
-from src.models import Quote, QuoteItem, StoreShippingDetail
+from src.models import Quote, QuoteItem, Customer, StoreShippingDetail
 from src.scrapers import scrape_product
 from src.core.calculator import QuoteCalculator
 from src.config import AppConfig
@@ -48,6 +49,74 @@ class HistoryManager:
                 return q
         return None
 
+    def search_quotes(self, query: str) -> List[Quote]:
+        """
+        Searches quotes across ID, customer name, customer phone, customer email,
+        customer notes, and creation date.
+        Returns matching quotes (case-insensitive substring match).
+        """
+        if not query or not query.strip():
+            return self.load_all_quotes()
+
+        q_clean = query.strip().lower()
+        results = []
+        for q in self.load_all_quotes():
+            match_id = q_clean in q.quote_id.lower()
+            match_name = q_clean in q.customer.name.lower()
+            match_phone = q_clean in q.customer.phone.lower()
+            match_email = q_clean in q.customer.email.lower()
+            match_notes = q_clean in q.customer.notes.lower()
+            match_date = q_clean in q.date.lower()
+
+            if match_id or match_name or match_phone or match_email or match_notes or match_date:
+                results.append(q)
+        return results
+
+    def duplicate_quote(self, quote_id: str, new_customer: Optional[Customer] = None, prefix: str = "COT") -> Quote:
+        """
+        Duplicates an existing quote as a new independent quote.
+        - Assigns a fresh sequential quote_id (e.g. 'COT-2026-0005')
+        - Sets version = 1 and base_quote_id = None
+        - Sets current date and recalculated validity date
+        - Copies items and calculates fresh financial totals and shipping
+        - Original quote is 100% untouched.
+        """
+        original = self.get_quote(quote_id)
+        if not original:
+            raise ValueError(f"No se encontró la cotización con ID: {quote_id}")
+
+        config = AppConfig.load()
+        new_qid = self.get_next_quote_id(prefix or config.quote_prefix)
+
+        # Deep copy customer and items
+        customer = copy.deepcopy(new_customer) if new_customer is not None else copy.deepcopy(original.customer)
+        items = copy.deepcopy(original.items)
+
+        # Recalculate shipping based on items
+        store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
+        custom_shipping_costs = {sd.store_name: sd.shipping_cost for sd in original.shipping_details}
+        shipping_details = QuoteCalculator.evaluate_shipping_details(
+            store_subtotals,
+            config.shipping_rules,
+            custom_shipping_costs
+        )
+
+        duplicated_quote = QuoteCalculator.build_quote(
+            quote_id=new_qid,
+            items=items,
+            customer=customer,
+            shipping_details=shipping_details,
+            service_fee_percent=original.service_fee_percent,
+            validity_days=config.validity_days,
+            version=1,
+            base_quote_id=None,
+            currency_symbol=original.currency_symbol,
+            currency_code=original.currency_code
+        )
+
+        self.save_quote(duplicated_quote)
+        return duplicated_quote
+
     def get_next_quote_id(self, prefix: str = "COT") -> str:
         quotes = self.load_all_quotes()
         year = datetime.now().year
@@ -55,7 +124,6 @@ class HistoryManager:
         
         highest_seq = 0
         for q in quotes:
-            # Check base IDs without version suffix
             base = q.base_quote_id or q.quote_id.split('_v')[0]
             if base.startswith(pattern_prefix):
                 try:
@@ -83,14 +151,12 @@ class HistoryManager:
         else:
             base_id = quote_id.split('_v')[0]
 
-        # Find all versions for this base_id
         highest_v = 1
         for q in quotes:
             q_base = q.base_quote_id or q.quote_id.split('_v')[0]
             if q_base.upper() == base_id.upper():
                 if q.version > highest_v:
                     highest_v = q.version
-                # Also check version suffix in ID if version property was 1
                 if '_v' in q.quote_id:
                     try:
                         v_num = int(q.quote_id.split('_v')[-1])

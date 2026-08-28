@@ -424,6 +424,16 @@
             <div class="info-card-content">
               <div class="client-name">{{ quote.customer.name }}</div>
               {% if quote.customer.phone %}<div><strong>Teléfono:</strong> {{ quote.customer.phone }}</div>{% endif %}
+              {% if quote.customer.email %}<div><strong>Email:</strong> {{ quote.customer.email }}</div>{% endif %}
+              {% if is_internal and quote.customer.notes %}
+              <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed #cbd5e1; color: #475569; font-size: 11px;">
+                <strong>Notas Internas:</strong> {{ quote.customer.notes }}
+              </div>
+              {% elif not is_internal and quote.customer.notes %}
+              <div style="margin-top: 5px; font-size: 11px; color: #64748b;">
+                <strong>Observaciones:</strong> {{ quote.customer.notes }}
+              </div>
+              {% endif %}
             </div>
           </div>
         </td>
