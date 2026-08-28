@@ -19,7 +19,8 @@ from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotS
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
-from src.core.bom_parser import parse_bom_text, ParsedBOMItem
+from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid, ParsedBOMItem
+from src.core.ai_service import extract_bom_with_ai, suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
@@ -252,7 +253,15 @@ with tab_cotizador:
         )
 
         if modo_adicion == "📋 Pegar Lista Rápida (BOM)":
-            st.caption("Pega una lista multilínea (ej. formato WhatsApp). Se buscarán todas en paralelo mostrando candidatos y scores:")
+            st.caption("Pega una lista multilínea (ej. formato WhatsApp, notas de audio transcritas). Se buscarán todas en paralelo:")
+            
+            ai_is_ready = config.enable_ai and check_ollama_status(config.ollama_url)
+            use_ai_extraction = st.checkbox(
+                f"🧠 Extraer con IA Local (Ollama: {config.ollama_model})",
+                value=ai_is_ready,
+                help="Utiliza el modelo local Qwen 2.5 7B en tu GPU para interpretar mensajes desordenados o conversacionales de WhatsApp."
+            )
+
             bom_input = st.text_area(
                 "Lista de Componentes",
                 placeholder="2x ESP32 NodeMCU\n10x Resistencia 220 ohm 1/4W\nSensor de temperatura DHT22\nModulo Relay 5V 2 canales\nPantalla OLED 0.96 I2C",
@@ -263,12 +272,14 @@ with tab_cotizador:
             b_c1, b_c2 = st.columns([1.5, 1.0])
             with b_c1:
                 if st.button("⚡ Procesar Lista y Buscar en Paralelo", type="primary", use_container_width=True) and bom_input.strip():
-                    with st.spinner("Interpretando lista y consultando tiendas en paralelo..."):
-                        parse_res = parse_bom_text(bom_input)
+                    with st.spinner("Interpretando lista (IA / Regex) y consultando tiendas en paralelo..."):
+                        parse_res = parse_bom_text_hybrid(bom_input, config=config, force_ai=use_ai_extraction) if use_ai_extraction else parse_bom_text(bom_input)
                         if parse_res.items:
                             match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
                             st.session_state.bom_match_results = match_results
                             st.session_state.bom_scenarios = None
+                            if getattr(parse_res, "source", "") == "ai_ollama":
+                                st.toast("✔ Componentes extraídos con IA Local (Qwen 2.5)", icon="🧠")
                             st.rerun()
                         else:
                             st.error("No se pudo interpretar ningún componente del texto ingresado.")
@@ -343,6 +354,43 @@ with tab_cotizador:
                             m.selected_candidate = None
                             m.status = "NO_ENCONTRADO"
                             unfound_lines.append(f"{m.bom_item.quantity}x {m.bom_item.product_query}")
+
+                        # Sugerencias con IA si la IA está activa
+                        if config.enable_ai:
+                            with st.expander(f"💡 Sugerir Reemplazos / Equivalentes con IA para '{m.bom_item.product_query}'"):
+                                if st.button("🧠 Consultar alternativas a la IA Local", key=f"btn_alt_ai_{idx}"):
+                                    with st.spinner("Analizando compatibilidad y componentes alternativos..."):
+                                        alts = suggest_alternatives_with_ai(m.bom_item.product_query, host=config.ollama_url, model=config.ollama_model)
+                                        st.session_state[f"ai_alts_{idx}"] = alts
+
+                                if f"ai_alts_{idx}" in st.session_state and st.session_state[f"ai_alts_{idx}"]:
+                                    alts = st.session_state[f"ai_alts_{idx}"]
+                                    for alt_i, alt in enumerate(alts):
+                                        st.markdown(f"• **{alt['nombre']}** ({alt['compatibilidad']}) — *{alt['explicacion']}*")
+                                        if st.button(f"🔍 Asignar y buscar '{alt['nombre']}'", key=f"btn_use_alt_{idx}_{alt_i}"):
+                                            with st.spinner(f"Buscando '{alt['nombre']}' en las 3 tiendas..."):
+                                                try:
+                                                    raw_cands = metasearch(alt['nombre'], max_per_store=5)
+                                                    valid_cands = [c for c in raw_cands if c.unit_price > 0]
+                                                    if valid_cands:
+                                                        scored = []
+                                                        for vc in valid_cands:
+                                                            sc = calculate_match_score(alt['nombre'], vc.title, vc.in_stock)
+                                                            if sc >= 0.15:
+                                                                scored.append((vc, sc))
+                                                        scored.sort(key=lambda x: (x[1], x[0].in_stock, -x[0].unit_price), reverse=True)
+                                                        m.all_candidates = scored
+                                                        if scored:
+                                                            m.selected_candidate = scored[0][0]
+                                                            m.confidence_score = scored[0][1]
+                                                            m.status = "ALTA" if scored[0][1] >= 0.70 and scored[0][0].in_stock else "MEDIA"
+                                                            m.is_confirmed = True
+                                                            st.toast(f"✔ Alternativa '{alt['nombre']}' asignada a la línea {idx+1}", icon="💡")
+                                                            st.rerun()
+                                                    else:
+                                                        st.warning(f"No se encontraron unidades en stock para '{alt['nombre']}'.")
+                                                except Exception as e:
+                                                    st.error(f"Error al buscar alternativa: {e}")
 
                         st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
 
@@ -442,7 +490,15 @@ with tab_cotizador:
                                 st.rerun()
                         st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
             elif btn_buscar:
-                st.info("No se encontraron resultados válidos para este término.")
+                st.info(f"No se encontraron resultados válidos para '{st.session_state.get('last_search_query', search_query)}'.")
+                if config.enable_ai:
+                    with st.expander(f"💡 Sugerencias de Reemplazos / Alternativas con IA para '{search_query}'"):
+                        if st.button("🧠 Consultar alternativas a la IA Local", key="btn_search_ai_alt"):
+                            with st.spinner("Consultando equivalencias a la IA Local..."):
+                                st.session_state.search_ai_alts = suggest_alternatives_with_ai(search_query, host=config.ollama_url, model=config.ollama_model)
+                        if "search_ai_alts" in st.session_state and st.session_state.search_ai_alts:
+                            for alt in st.session_state.search_ai_alts:
+                                st.markdown(f"• **{alt['nombre']}** ({alt['compatibilidad']}) — *{alt['explicacion']}*")
 
         elif modo_adicion == "🔗 Pegar URL directa":
             url_col1, url_col2, url_col3 = st.columns([3, 1, 1])
@@ -833,6 +889,14 @@ with tab_config:
         new_fee = st.number_input("Margen de servicio predeterminado (%)", min_value=0.0, max_value=100.0, value=float(config.service_fee_percent), step=0.5)
         new_days = st.number_input("Vigencia de cotización (días)", min_value=1, max_value=60, value=int(config.validity_days), step=1)
         
+        st.markdown("#### 🧠 Inteligencia Artificial Local (Ollama)")
+        ollama_live = check_ollama_status(config.ollama_url)
+        st_color = "🟢 Conectado y Listo" if ollama_live else "🔴 Ollama no detectado en localhost:11434"
+        st.caption(f"Estado de Ollama: **{st_color}**")
+        new_enable_ai = st.toggle("Habilitar Asistente IA Local", value=bool(config.enable_ai))
+        new_ollama_url = st.text_input("URL del Servidor Ollama", value=config.ollama_url)
+        new_ollama_model = st.text_input("Modelo de IA", value=config.ollama_model)
+
         st.markdown("#### Umbrales de Envío Gratis")
         new_la_thresh = st.number_input("La Electrónica: Mínimo envío gratis (Q)", value=float(config.shipping_rules["La Electrónica"]["free_threshold"]))
         new_la_cost = st.number_input("La Electrónica: Costo si no alcanza mínimo (Q)", value=float(config.shipping_rules["La Electrónica"]["default_cost"]))
@@ -855,6 +919,9 @@ with tab_config:
         config.business.phone = new_biz_phone
         config.business.email = new_biz_email
         config.business.address = new_biz_address
+        config.enable_ai = new_enable_ai
+        config.ollama_url = new_ollama_url
+        config.ollama_model = new_ollama_model
         config.shipping_rules["La Electrónica"]["free_threshold"] = new_la_thresh
         config.shipping_rules["La Electrónica"]["default_cost"] = new_la_cost
         config.shipping_rules["Electrónica DIY"]["free_threshold"] = new_diy_thresh

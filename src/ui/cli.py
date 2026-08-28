@@ -20,7 +20,8 @@ from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotS
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
-from src.core.bom_parser import parse_bom_text, ParsedBOMItem
+from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid, ParsedBOMItem
+from src.core.ai_service import extract_bom_with_ai, suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
@@ -241,6 +242,31 @@ class CotizadorCLI:
 
                 if not results:
                     console.print(f"[yellow]No se encontraron resultados con precio válido para '{query}'.[/yellow]")
+                    
+                    if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
+                        if Confirm.ask("¿Deseas pedirle a la IA Local (Qwen 2.5) sugerencias de reemplazos o equivalentes compatibles?", default=True):
+                            with console.status(f"[bold magenta]Consultando sugerencias de reemplazo para '{query}' a la IA Local...[/bold magenta]", spinner="dots"):
+                                alts = suggest_alternatives_with_ai(query, host=self.config.ollama_url, model=self.config.ollama_model)
+                            
+                            if alts:
+                                alt_table = Table(title=f"💡 Sugerencias de Reemplazo por IA para '{query}'", box=box.ROUNDED)
+                                alt_table.add_column("#", justify="center", style="bold magenta")
+                                alt_table.add_column("Componente Sugerido", style="bold white")
+                                alt_table.add_column("Compatibilidad", style="cyan")
+                                alt_table.add_column("Justificación Técnica", style="dim")
+                                for a_i, alt in enumerate(alts, 1):
+                                    alt_table.add_row(str(a_i), alt["nombre"], alt["compatibilidad"], alt["explicacion"])
+                                console.print(alt_table)
+                                
+                                console.print("  [bold cyan][#][/bold cyan] Selecciona número para buscar esa alternativa en las tiendas")
+                                console.print("  [bold cyan][0][/bold cyan] No buscar ninguna de las sugerencias")
+                                alt_sel = IntPrompt.ask(f"Opción (0 a {len(alts)})", default=1)
+                                if 1 <= alt_sel <= len(alts):
+                                    chosen_alt = alts[alt_sel - 1]["nombre"]
+                                    console.print(f"[green]Buscando alternativa sugerida: '{chosen_alt}'...[/green]")
+                                    query = chosen_alt
+                                    continue
+
                     if Confirm.ask("¿Deseas ingresar este producto manualmente?", default=False):
                         return self._ingresar_producto_manual(default_name=query)
                     if not Confirm.ask("¿Deseas buscar con otro término?", default=True):
@@ -383,7 +409,16 @@ class CotizadorCLI:
             return
 
         raw_text = "\n".join(lines)
-        parse_res = parse_bom_text(raw_text)
+        
+        # Check if local Ollama AI is enabled & running
+        if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
+            if Confirm.ask(f"\n¿Deseas interpretar el texto con IA Local (Ollama: {self.config.ollama_model})? (Recomendado para mensajes de WhatsApp o notas libres)", default=True):
+                with console.status(f"[bold magenta]Extrayendo componentes con IA Local ({self.config.ollama_model})...[/bold magenta]", spinner="dots"):
+                    parse_res = parse_bom_text_hybrid(raw_text, config=self.config, force_ai=True)
+            else:
+                parse_res = parse_bom_text(raw_text)
+        else:
+            parse_res = parse_bom_text(raw_text)
 
         if not parse_res.items:
             console.print("[bold red]❌ No se pudo interpretar ningún componente del texto ingresado.[/bold red]")
@@ -392,7 +427,8 @@ class CotizadorCLI:
         if parse_res.invalid_lines:
             console.print(f"[yellow]⚠️ Se ignoraron {len(parse_res.invalid_lines)} líneas no interpretables.[/yellow]")
 
-        console.print(f"\n[bold green]✔ Se interpretaron {parse_res.total_items} componentes (Total: {parse_res.total_quantity} unidades).[/bold green]")
+        src_label = " [magenta](Extracción IA Local Qwen 2.5)[/magenta]" if getattr(parse_res, "source", "") == "ai_ollama" else ""
+        console.print(f"\n[bold green]✔ Se interpretaron {parse_res.total_items} componentes (Total: {parse_res.total_quantity} unidades).[/bold green]{src_label}")
         
         margin = self.config.service_fee_percent
         if Confirm.ask(f"\n¿Deseas usar el margen de compra predeterminado de {margin}%?", default=True):
@@ -474,6 +510,8 @@ class CotizadorCLI:
             console.print("\n[bold cyan]Acciones Disponibles:[/bold cyan]")
             console.print("  [bold green][C][/bold green] 🚀 [bold green]Continuar y generar las 4 opciones de cotización[/bold green]")
             console.print("  [bold yellow][#][/bold yellow] Ver todos los candidatos / cambiar candidato de una línea (ej. escribe '1', '2'...)")
+            if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
+                console.print("  [bold magenta][A][/bold magenta] 💡 [bold magenta]Sugerir reemplazos / equivalentes con IA Local (Qwen 2.5)[/bold magenta]")
             console.print("  [bold red][X][/bold red] Cancelar cotización")
 
             user_action = Prompt.ask("\nSelecciona una acción", default="C").strip().lower()
@@ -495,6 +533,55 @@ class CotizadorCLI:
                             m.status = "NO_ENCONTRADO"
                     continue
                 break
+
+            elif user_action == "a" and self.config.enable_ai and check_ollama_status(self.config.ollama_url):
+                line_to_alt = IntPrompt.ask(f"Ingresa el número de línea para sugerir reemplazos (1 a {len(match_results)})", default=1)
+                if 1 <= line_to_alt <= len(match_results):
+                    target_m = match_results[line_to_alt - 1]
+                    target_name = target_m.bom_item.product_query
+                    with console.status(f"[bold magenta]Consultando a la IA Local alternativas para '{target_name}'...[/bold magenta]", spinner="dots"):
+                        alts = suggest_alternatives_with_ai(target_name, host=self.config.ollama_url, model=self.config.ollama_model)
+                    
+                    if alts:
+                        alt_table = Table(title=f"💡 Sugerencias de Reemplazo por IA para Línea #{line_to_alt} ('{target_name}')", box=box.ROUNDED)
+                        alt_table.add_column("#", justify="center", style="bold magenta")
+                        alt_table.add_column("Componente Sugerido", style="bold white")
+                        alt_table.add_column("Compatibilidad", style="cyan")
+                        alt_table.add_column("Justificación Técnica", style="dim")
+                        for a_i, alt in enumerate(alts, 1):
+                            alt_table.add_row(str(a_i), alt["nombre"], alt["compatibilidad"], alt["explicacion"])
+                        console.print(alt_table)
+
+                        if Confirm.ask("¿Deseas buscar alguna de estas sugerencias en las tiendas para esta línea?", default=True):
+                            alt_idx = IntPrompt.ask(f"Selecciona sugerencia (1 a {len(alts)})", default=1)
+                            if 1 <= alt_idx <= len(alts):
+                                chosen_alt_name = alts[alt_idx - 1]["nombre"]
+                                console.print(f"[green]Buscando en tiendas para: '{chosen_alt_name}'...[/green]")
+                                try:
+                                    with console.status(f"Consultando tiendas para '{chosen_alt_name}'...", spinner="dots"):
+                                        alt_cands = metasearch(chosen_alt_name, max_per_store=5)
+                                    alt_cands = [c for c in alt_cands if c.unit_price > 0]
+                                    if alt_cands:
+                                        scored = []
+                                        for ac in alt_cands:
+                                            sc = calculate_match_score(chosen_alt_name, ac.title, ac.in_stock)
+                                            if sc >= 0.15:
+                                                scored.append((ac, sc))
+                                        scored.sort(key=lambda x: (x[1], x[0].in_stock, -x[0].unit_price), reverse=True)
+                                        target_m.all_candidates = scored
+                                        if scored:
+                                            target_m.selected_candidate = scored[0][0]
+                                            target_m.confidence_score = scored[0][1]
+                                            target_m.status = "ALTA" if scored[0][1] >= 0.70 and scored[0][0].in_stock else ("MEDIA" if scored[0][1] >= 0.50 else "REVISAR")
+                                            target_m.is_confirmed = True
+                                            console.print(f"[bold green]✔ Alternativa asignada a Línea #{line_to_alt}:[/bold green] {scored[0][0].title} ({scored[0][0].store_name})")
+                                    else:
+                                        console.print(f"[yellow]No se encontraron productos en stock para '{chosen_alt_name}'.[/yellow]")
+                                except Exception as e:
+                                    console.print(f"[red]Error al buscar alternativa:[/red] {e}")
+                    else:
+                        console.print("[yellow]La IA no pudo generar sugerencias para este componente.[/yellow]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif user_action.isdigit():
                 line_num = int(user_action)

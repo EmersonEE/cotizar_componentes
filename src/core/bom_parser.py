@@ -1,6 +1,9 @@
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
+
+from src.config import AppConfig
+from src.core.ai_service import extract_bom_with_ai, check_ollama_status
 
 @dataclass
 class ParsedBOMItem:
@@ -19,6 +22,7 @@ class BOMParseResult:
     """Consolidated result of parsing a multiline BOM block."""
     items: List[ParsedBOMItem]
     invalid_lines: List[str]
+    source: str = "regex"  # "regex" or "ai_ollama"
 
     @property
     def total_items(self) -> int:
@@ -55,7 +59,6 @@ def parse_bom_line(line: str) -> Optional[ParsedBOMItem]:
     )
     if m_lead:
         qty_str, item_name = m_lead.group(1), m_lead.group(2).strip()
-        # Clean trailing commas/semicolons
         item_name = re.sub(r"[,;]+$", "", item_name).strip()
         if item_name:
             qty = max(1, int(qty_str))
@@ -85,7 +88,7 @@ def parse_bom_line(line: str) -> Optional[ParsedBOMItem]:
 
 def parse_bom_text(text: str) -> BOMParseResult:
     """
-    Parses a multiline BOM block into structured items.
+    Parses a multiline BOM block into structured items using classic fast regex rules.
     Handles empty lines and reports invalid lines without failing the entire batch.
     """
     items: List[ParsedBOMItem] = []
@@ -100,4 +103,42 @@ def parse_bom_text(text: str) -> BOMParseResult:
         else:
             invalid_lines.append(parsed.raw_line)
 
-    return BOMParseResult(items=items, invalid_lines=invalid_lines)
+    return BOMParseResult(items=items, invalid_lines=invalid_lines, source="regex")
+
+def parse_bom_text_hybrid(
+    text: str,
+    config: Optional[AppConfig] = None,
+    force_ai: bool = False
+) -> BOMParseResult:
+    """
+    Hybrid BOM parser:
+    - If force_ai is True or if text is conversational/unstructured and AI is enabled,
+      uses Ollama LLM to extract items with structured JSON output.
+    - If AI fails or is disabled, gracefully falls back to classic regex parser.
+    """
+    if not text or not text.strip():
+        return BOMParseResult(items=[], invalid_lines=[], source="regex")
+
+    cfg = config or AppConfig.load()
+
+    # If AI is enabled or forced, attempt extraction with Ollama
+    if force_ai or cfg.enable_ai:
+        ai_items = extract_bom_with_ai(
+            raw_text=text,
+            host=cfg.ollama_url,
+            model=cfg.ollama_model,
+            timeout=15.0
+        )
+        if ai_items:
+            parsed_items: List[ParsedBOMItem] = []
+            for it in ai_items:
+                parsed_items.append(ParsedBOMItem(
+                    raw_line=f"{it['cantidad']}x {it['componente']}",
+                    quantity=it['cantidad'],
+                    product_query=it['componente'],
+                    is_valid=True
+                ))
+            return BOMParseResult(items=parsed_items, invalid_lines=[], source="ai_ollama")
+
+    # Fallback to standard regex parser
+    return parse_bom_text(text)
