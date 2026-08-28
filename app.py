@@ -10,7 +10,10 @@ import streamlit.components.v1 as components
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.models import Product, QuoteItem, Quote, Customer, StoreShippingDetail
+from src.models import (
+    Product, QuoteItem, Quote, Customer, StoreShippingDetail,
+    QuoteStatus, InvalidStatusTransitionError
+)
 from src.config import AppConfig
 from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError
 from src.core.calculator import QuoteCalculator, format_currency
@@ -45,6 +48,8 @@ def init_session_state():
         st.session_state.version = 1
     if "base_quote_id" not in st.session_state:
         st.session_state.base_quote_id = None
+    if "status" not in st.session_state:
+        st.session_state.status = QuoteStatus.GUARDADA.value
     if "customer_name" not in st.session_state:
         st.session_state.customer_name = ""
     if "customer_phone" not in st.session_state:
@@ -70,6 +75,7 @@ def reset_to_new_quote():
     st.session_state.active_quote_id = history_mgr.get_next_quote_id(config.quote_prefix)
     st.session_state.version = 1
     st.session_state.base_quote_id = None
+    st.session_state.status = QuoteStatus.GUARDADA.value
     st.session_state.customer_name = ""
     st.session_state.customer_phone = ""
     st.session_state.customer_email = ""
@@ -84,6 +90,7 @@ def load_quote_for_editing(quote: Quote):
     st.session_state.active_quote_id = quote.quote_id
     st.session_state.version = quote.version
     st.session_state.base_quote_id = quote.base_quote_id or quote.quote_id.split('_v')[0]
+    st.session_state.status = quote.status
     st.session_state.customer_name = quote.customer.name
     st.session_state.customer_phone = quote.customer.phone
     st.session_state.customer_email = quote.customer.email
@@ -134,7 +141,7 @@ def get_current_quote() -> Quote:
     else:
         display_items = items
 
-    return QuoteCalculator.build_quote(
+    q = QuoteCalculator.build_quote(
         quote_id=st.session_state.active_quote_id,
         items=display_items,
         customer=customer,
@@ -146,6 +153,8 @@ def get_current_quote() -> Quote:
         currency_symbol=config.currency_symbol,
         currency_code=config.currency_code
     )
+    q.status = st.session_state.status
+    return q
 
 # 5. Encabezado de la Aplicación
 st.markdown("""
@@ -174,6 +183,13 @@ st.markdown("""
   .badge-store-rych { background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
   .badge-store-diy { background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
   .badge-store-la { background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+  
+  .status-badge-aceptada { background-color: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .status-badge-enviada { background-color: #f3e8ff; color: #6b21a8; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .status-badge-guardada { background-color: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .status-badge-rechazada { background-color: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .status-badge-vencida { background-color: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .status-badge-borrador { background-color: #fef9c3; color: #854d0e; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
 </style>
 <div class="main-header">
   <div>
@@ -410,15 +426,18 @@ with tab_cotizador:
                         version=new_v,
                         base_quote_id=base_id
                     )
+                    quote_to_save.status = QuoteStatus.GUARDADA.value
                 else:
                     quote_to_save = current_quote
+                    quote_to_save.status = QuoteStatus.GUARDADA.value
 
                 history_mgr.save_quote(quote_to_save)
                 exporter.export_all(quote_to_save, config.business)
-                st.success(f"✔ ¡Cotización `{quote_to_save.quote_id}` guardada con éxito (Cliente + Interno)!")
+                st.success(f"✔ ¡Cotización `{quote_to_save.quote_id}` guardada con éxito!")
                 st.session_state.editing_mode = False
                 st.session_state.active_quote_id = quote_to_save.quote_id
                 st.session_state.version = quote_to_save.version
+                st.session_state.status = quote_to_save.status
                 st.rerun()
 
         with act_c2:
@@ -434,9 +453,9 @@ with tab_cotizador:
         with p_c1:
             st.markdown("#### 👁️ Vista Previa en Vivo")
         with p_c2:
-            tipo_vista = st.radio("Modo:", ["Cliente (Limpio)", "Interno (con Links)"], horizontal=True, label_visibility="collapsed")
+            tipo_vista = st.radio("Modo:", ["Cliente (Limpio)", "Interno (con Links y Estado)"], horizontal=True, label_visibility="collapsed")
 
-        is_internal_view = (tipo_vista == "Interno (con Links)")
+        is_internal_view = (tipo_vista == "Interno (con Links y Estado)")
         current_quote = get_current_quote()
 
         # Renderizado instantáneo de HTML
@@ -469,7 +488,7 @@ with tab_cotizador:
                 html_intern = exporter.render_html_string(current_quote, config.business, is_internal=True)
                 pdf_intern_bytes = HTML(string=html_intern).write_pdf()
                 st.download_button(
-                    label="🔗 Descargar PDF (Interno con Links)",
+                    label="🔗 Descargar PDF (Interno)",
                     data=pdf_intern_bytes,
                     file_name=f"{current_quote.quote_id}_Interna.pdf",
                     mime="application/pdf",
@@ -500,20 +519,29 @@ with tab_cotizador:
 with tab_historial:
     st.markdown("### 📋 Historial y Búsqueda de Cotizaciones")
     
-    filtro_txt = st.text_input("🔍 Buscar por ID, Nombre de Cliente, Teléfono, Email o Fecha", placeholder="Escribe para buscar...")
-    filtered_quotes = history_mgr.search_quotes(filtro_txt)
+    f_col1, f_col2 = st.columns([2.5, 1.2])
+    with f_col1:
+        filtro_txt = st.text_input("🔍 Buscar por ID, Nombre de Cliente, Teléfono, Email o Fecha", placeholder="Escribe para buscar...")
+    with f_col2:
+        filtro_estado = st.selectbox("Filtrar por Estado Comercial", ["TODOS", "BORRADOR", "GUARDADA", "ENVIADA", "ACEPTADA", "RECHAZADA", "VENCIDA"])
+
+    filtered_quotes = history_mgr.search_quotes(query=filtro_txt, status_filter=filtro_estado)
 
     if not filtered_quotes:
-        if filtro_txt:
-            st.info(f"No se encontraron cotizaciones para la búsqueda '{filtro_txt}'.")
+        if filtro_txt or filtro_estado != "TODOS":
+            st.info("No se encontraron cotizaciones con los criterios seleccionados.")
         else:
             st.info("No hay cotizaciones guardadas en el historial todavía.")
     else:
         st.caption(f"Mostrando {len(filtered_quotes)} cotizaciones registradas:")
         for q in reversed(filtered_quotes):
-            with st.expander(f"📄 **{q.quote_id}** (v{q.version}) — {q.customer.name} — **Q {q.total:,.2f}** ({q.date})"):
+            st_class = f"status-badge-{q.status.lower()}"
+            header_title = f"📄 **{q.quote_id}** (v{q.version}) — {q.customer.name} — **Q {q.total:,.2f}** ({q.date})"
+            
+            with st.expander(header_title):
                 h_col1, h_col2 = st.columns([2, 1])
                 with h_col1:
+                    st.markdown(f"**Estado Comercial:** <span class='{st_class}'>{q.status}</span> &nbsp;&nbsp; *(Actualizado: {q.status_updated_at[:19] if q.status_updated_at else q.date})*", unsafe_allow_html=True)
                     st.markdown(f"**Cliente:** {q.customer.name} | **Tel:** {q.customer.phone or 'N/A'}")
                     if q.customer.email:
                         st.markdown(f"**Email:** `{q.customer.email}`")
@@ -527,6 +555,23 @@ with tab_historial:
                     st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen ({q.service_fee_percent}%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
 
                 with h_col2:
+                    # Commercial status transition controls
+                    allowed_transitions = q.get_allowed_transitions()
+                    if allowed_transitions:
+                        st.markdown("##### 🏷️ Cambiar Estado")
+                        st_opts = [t.value for t in allowed_transitions]
+                        new_st_choice = st.selectbox("Nuevo estado", st_opts, key=f"sel_st_{q.quote_id}", label_visibility="collapsed")
+                        if st.button("✔ Aplicar Estado", key=f"btn_st_{q.quote_id}", use_container_width=True):
+                            try:
+                                up_q = history_mgr.update_quote_status(q.quote_id, new_st_choice)
+                                exporter.export_all(up_q, config.business)
+                                st.toast(f"✔ Estado de {q.quote_id} actualizado a {new_st_choice}", icon="🏷️")
+                                st.rerun()
+                            except InvalidStatusTransitionError as e:
+                                st.error(f"Error: {e}")
+
+                    st.divider()
+
                     if st.button("📄 Duplicar Cotización", key=f"dup_{q.quote_id}", help="Duplica esta cotización como un nuevo presupuesto independiente", use_container_width=True):
                         dup = history_mgr.duplicate_quote(q.quote_id)
                         exporter.export_all(dup, config.business)

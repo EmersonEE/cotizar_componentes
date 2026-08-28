@@ -11,7 +11,10 @@ from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 from rich.text import Text
 from rich import box
 
-from src.models import Product, QuoteItem, Quote, Customer, StoreShippingDetail
+from src.models import (
+    Product, QuoteItem, Quote, Customer, StoreShippingDetail,
+    QuoteStatus, InvalidStatusTransitionError
+)
 from src.config import AppConfig
 from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError, ScraperError
 from src.core.calculator import QuoteCalculator, format_currency
@@ -27,6 +30,22 @@ from src.core.bom_searcher import (
 )
 
 console = Console()
+
+def get_status_style(status_str: str) -> str:
+    s = status_str.upper()
+    if s == "ACEPTADA":
+        return "bold green"
+    elif s == "ENVIADA":
+        return "bold magenta"
+    elif s == "GUARDADA":
+        return "bold cyan"
+    elif s == "RECHAZADA":
+        return "bold red"
+    elif s == "VENCIDA":
+        return "dim white"
+    elif s == "BORRADOR":
+        return "bold yellow"
+    return "white"
 
 class CotizadorCLI:
     def __init__(self):
@@ -236,7 +255,7 @@ class CotizadorCLI:
             f"[bold cyan]Archivos para el Cliente:[/bold cyan]\n"
             f"  📑 [bold]PDF Cliente:[/bold]  {exp_res.client_pdf if exp_res.client_pdf else 'No generado'}\n"
             f"  🌐 [bold]HTML Cliente:[/bold] {exp_res.client_html}\n\n"
-            f"[bold yellow]Archivos de Control Interno (con Enlaces de Compra):[/bold yellow]\n"
+            f"[bold yellow]Archivos de Control Interno (con Enlaces de Compra y Estado Comercial):[/bold yellow]\n"
             f"  🔗 [bold]PDF Interno:[/bold]  {exp_res.internal_pdf if exp_res.internal_pdf else 'No generado'}\n"
             f"  🌐 [bold]HTML Interno:[/bold] {exp_res.internal_html}\n"
             f"  📊 [bold]CSV Registro:[/bold] {exp_res.csv}",
@@ -267,10 +286,8 @@ class CotizadorCLI:
         """Workflow for creating a quote from a multiline BOM list with 4 comparison options."""
         console.print("\n[bold cyan]=== COTIZADOR POR LISTA RÁPIDA (BOM MULTILÍNEA) ===[/bold cyan]")
         
-        # 1. Datos del cliente
         customer = self._pedir_datos_cliente()
 
-        # 2. Captura de texto multilínea
         console.print("\n[dim]Pega tu lista de componentes (ej. '2x ESP32 NodeMCU', '10x Resistencia 220 ohm 1/4W').[/dim]")
         console.print("[yellow]Al terminar de pegar, presiona Enter en una línea vacía:[/yellow]\n")
 
@@ -303,18 +320,15 @@ class CotizadorCLI:
 
         console.print(f"\n[bold green]✔ Se interpretaron {parse_res.total_items} componentes (Total: {parse_res.total_quantity} unidades).[/bold green]")
         
-        # 3. Margen de servicio
         margin = self.config.service_fee_percent
         if Confirm.ask(f"\n¿Deseas usar el margen de compra predeterminado de {margin}%?", default=True):
             fee_percent = margin
         else:
             fee_percent = FloatPrompt.ask("Ingresa el porcentaje de margen deseado (%)", default=margin)
 
-        # 4. Búsqueda concurrente en paralelo
         with console.status(f"[bold green]Consultando las 3 tiendas en paralelo para los {parse_res.total_items} componentes...[/bold green]", spinner="dots"):
             match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
 
-        # 5. Construir los 4 escenarios de cotización
         scenarios = build_all_bom_scenarios(
             match_results=match_results,
             customer=customer,
@@ -322,14 +336,12 @@ class CotizadorCLI:
             service_fee_percent=fee_percent
         )
 
-        # 6. Menú interactivo de selección y visualización de las 4 opciones
         while True:
             console.clear()
             self.show_banner()
             console.print(f"\n[bold cyan]=== COMPARATIVA DE LAS 4 OPCIONES DE COTIZACIÓN ===[/bold cyan]")
             console.print(f"[dim]Cliente: {customer.name} | Tel: {customer.phone or 'N/A'} | Ítems solicitados: {len(parse_res.items)}[/dim]\n")
 
-            # Tabla resumen de las 4 opciones
             comp_table = Table(box=box.ROUNDED)
             comp_table.add_column("Opción", justify="center", style="bold cyan", no_wrap=True)
             comp_table.add_column("Escenario de Cotización", style="white")
@@ -426,6 +438,7 @@ class CotizadorCLI:
                     currency_symbol=self.config.currency_symbol,
                     currency_code=self.config.currency_code
                 )
+                final_quote.status = QuoteStatus.GUARDADA.value
 
                 self._mostrar_cotizacion_completa(final_quote)
 
@@ -443,12 +456,9 @@ class CotizadorCLI:
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN MANUAL ===[/bold cyan]")
         
-        # 1. Datos del cliente
         customer = self._pedir_datos_cliente()
-
         items: List[QuoteItem] = []
 
-        # 2. Agregar componentes
         while True:
             product = self._obtener_producto_interactivo()
             if not product:
@@ -513,6 +523,7 @@ class CotizadorCLI:
             currency_symbol=self.config.currency_symbol,
             currency_code=self.config.currency_code
         )
+        quote.status = QuoteStatus.GUARDADA.value
 
         self._mostrar_cotizacion_completa(quote)
 
@@ -531,16 +542,24 @@ class CotizadorCLI:
             console.print("[yellow]No hay cotizaciones guardadas aún para duplicar.[/yellow]")
             return
 
-        # List last 10 quotes
         table = Table(title="Cotizaciones Recientes", box=box.ROUNDED)
         table.add_column("ID", style="bold cyan")
+        table.add_column("Estado", justify="center")
         table.add_column("Fecha", style="dim")
         table.add_column("Cliente", style="white")
         table.add_column("Ítems", justify="center")
         table.add_column("Total", justify="right", style="bold green")
 
         for q in quotes[-10:]:
-            table.add_row(q.quote_id, q.date, q.customer.name, str(len(q.items)), format_currency(q.total, q.currency_symbol))
+            st_style = get_status_style(q.status)
+            table.add_row(
+                q.quote_id,
+                f"[{st_style}]{q.status}[/{st_style}]",
+                q.date,
+                q.customer.name,
+                str(len(q.items)),
+                format_currency(q.total, q.currency_symbol)
+            )
         console.print(table)
 
         qid = Prompt.ask("\nIngresa el ID de la cotización que deseas duplicar").strip()
@@ -574,13 +593,22 @@ class CotizadorCLI:
 
         table = Table(title="Cotizaciones Recientes", box=box.ROUNDED)
         table.add_column("ID", style="bold cyan")
+        table.add_column("Estado", justify="center")
         table.add_column("Fecha", style="dim")
         table.add_column("Cliente", style="white")
         table.add_column("Ítems", justify="center")
         table.add_column("Total", justify="right", style="bold green")
 
         for q in quotes[-10:]:
-            table.add_row(q.quote_id, q.date, q.customer.name, str(len(q.items)), format_currency(q.total, q.currency_symbol))
+            st_style = get_status_style(q.status)
+            table.add_row(
+                q.quote_id,
+                f"[{st_style}]{q.status}[/{st_style}]",
+                q.date,
+                q.customer.name,
+                str(len(q.items)),
+                format_currency(q.total, q.currency_symbol)
+            )
         console.print(table)
 
         qid = Prompt.ask("\nIngresa el ID de la cotización que deseas editar").strip()
@@ -613,6 +641,8 @@ class CotizadorCLI:
                 version=original_quote.version,
                 base_quote_id=original_quote.base_quote_id
             )
+            temp_quote.status = original_quote.status
+            temp_quote.status_updated_at = original_quote.status_updated_at
             self._mostrar_cotizacion_completa(temp_quote)
 
             console.print("\n[bold green]ACCIONES DISPONIBLES:[/bold green]")
@@ -718,6 +748,7 @@ class CotizadorCLI:
                     currency_symbol=self.config.currency_symbol,
                     currency_code=self.config.currency_code
                 )
+                versioned_quote.status = QuoteStatus.GUARDADA.value
 
                 self.history_mgr.save_quote(versioned_quote)
 
@@ -756,7 +787,8 @@ class CotizadorCLI:
         console.print(f"[bold]Subtotal componentes:[/bold] [green]{format_currency(subtotal_sum, self.config.currency_symbol)}[/green]")
 
     def _mostrar_cotizacion_completa(self, quote: Quote):
-        table = Table(title=f"COTIZACIÓN: {quote.quote_id} (v{quote.version})", box=box.HEAVY_EDGE)
+        st_style = get_status_style(quote.status)
+        table = Table(title=f"COTIZACIÓN: {quote.quote_id} (v{quote.version}) • Estado: [{st_style}]{quote.status}[/{st_style}]", box=box.HEAVY_EDGE)
         table.add_column("#", justify="center", style="cyan", no_wrap=True)
         table.add_column("Componente", style="white")
         table.add_column("Tienda", style="dim")
@@ -786,7 +818,8 @@ class CotizadorCLI:
             client_summary.add_row("Email:", f"[cyan]{quote.customer.email}[/cyan]")
         if quote.customer.notes:
             client_summary.add_row("Notas:", f"[yellow]{quote.customer.notes}[/yellow]")
-        console.print(Panel(client_summary, title="[bold]Información del Cliente[/bold]", border_style="blue", expand=False))
+        client_summary.add_row("Estado Comercial:", f"[{st_style}]{quote.status}[/{st_style}] (Act: {quote.status_updated_at[:19] if quote.status_updated_at else quote.date})")
+        console.print(Panel(client_summary, title="[bold]Información del Cliente y Estado[/bold]", border_style="blue", expand=False))
 
         # Financial summary card
         summary_table = Table(box=box.SIMPLE, show_header=False)
@@ -807,95 +840,149 @@ class CotizadorCLI:
         console.print(Panel(summary_table, title="[bold]Desglose Financiero[/bold]", border_style="cyan", expand=False))
 
     def ver_historial(self):
-        console.print("\n[bold cyan]=== HISTORIAL Y BÚSQUEDA DE COTIZACIONES ===[/bold cyan]")
-        all_quotes = self.history_mgr.load_all_quotes()
+        while True:
+            console.clear()
+            self.show_banner()
+            console.print("\n[bold cyan]=== HISTORIAL Y BÚSQUEDA DE COTIZACIONES ===[/bold cyan]")
+            all_quotes = self.history_mgr.load_all_quotes()
 
-        if not all_quotes:
-            console.print("[yellow]No hay cotizaciones guardadas aún.[/yellow]")
-            return
+            if not all_quotes:
+                console.print("[yellow]No hay cotizaciones guardadas aún.[/yellow]")
+                return
 
-        search_query = Prompt.ask("Buscar por ID, Cliente, Teléfono, Email o Fecha (Enter para ver todas)", default="").strip()
-        filtered_quotes = self.history_mgr.search_quotes(search_query) if search_query else all_quotes
+            search_query = Prompt.ask("Buscar por ID, Cliente, Teléfono, Email, Notas o Fecha (Enter para ver todas)", default="").strip()
+            
+            # Status filter option
+            console.print("\n[dim]Filtros de estado: [1] TODOS | [2] BORRADOR | [3] GUARDADA | [4] ENVIADA | [5] ACEPTADA | [6] RECHAZADA | [7] VENCIDA[/dim]")
+            st_choice = Prompt.ask("Filtrar por estado", choices=["1", "2", "3", "4", "5", "6", "7"], default="1")
+            status_map = {"1": "TODOS", "2": "BORRADOR", "3": "GUARDADA", "4": "ENVIADA", "5": "ACEPTADA", "6": "RECHAZADA", "7": "VENCIDA"}
+            selected_filter = status_map[st_choice]
 
-        if not filtered_quotes:
-            console.print(f"[yellow]No se encontraron cotizaciones coincidentes con '{search_query}'.[/yellow]")
-            return
+            filtered_quotes = self.history_mgr.search_quotes(query=search_query, status_filter=selected_filter)
 
-        table = Table(title=f"Cotizaciones ({len(filtered_quotes)} encontradas)", box=box.ROUNDED)
-        table.add_column("ID Cotización", style="bold cyan")
-        table.add_column("Ver.", justify="center", style="dim")
-        table.add_column("Fecha", style="dim")
-        table.add_column("Cliente", style="white")
-        table.add_column("Teléfono", style="dim")
-        table.add_column("Ítems", justify="center")
-        table.add_column("Total (GTQ)", justify="right", style="bold green")
+            if not filtered_quotes:
+                console.print(f"[yellow]No se encontraron cotizaciones coincidentes con los filtros.[/yellow]")
+                if not Confirm.ask("¿Deseas realizar otra búsqueda?", default=True):
+                    return
+                continue
 
-        for q in filtered_quotes:
-            table.add_row(
-                q.quote_id,
-                f"v{q.version}",
-                q.date,
-                q.customer.name,
-                q.customer.phone or "-",
-                str(len(q.items)),
-                format_currency(q.total, q.currency_symbol)
-            )
+            table = Table(title=f"Cotizaciones ({len(filtered_quotes)} encontradas)", box=box.ROUNDED)
+            table.add_column("ID Cotización", style="bold cyan")
+            table.add_column("Estado", justify="center")
+            table.add_column("Ver.", justify="center", style="dim")
+            table.add_column("Fecha", style="dim")
+            table.add_column("Cliente", style="white")
+            table.add_column("Teléfono", style="dim")
+            table.add_column("Ítems", justify="center")
+            table.add_column("Total (GTQ)", justify="right", style="bold green")
 
-        console.print(table)
+            for q in filtered_quotes:
+                st_style = get_status_style(q.status)
+                table.add_row(
+                    q.quote_id,
+                    f"[{st_style}]{q.status}[/{st_style}]",
+                    f"v{q.version}",
+                    q.date,
+                    q.customer.name,
+                    q.customer.phone or "-",
+                    str(len(q.items)),
+                    format_currency(q.total, q.currency_symbol)
+                )
 
-        console.print("\n[bold cyan]Opciones de Acción sobre el Historial:[/bold cyan]")
-        console.print("  [bold green][V][/bold green] Ver detalle de una cotización")
-        console.print("  [bold green][D][/bold green] 📄 Duplicar cotización como nueva independiente")
-        console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo")
-        console.print("  [bold green][P][/bold green] 📑 Re-generar / Abrir archivos PDF")
-        console.print("  [bold cyan][0][/bold cyan] ↩️  Regresar al menú principal")
+            console.print(table)
 
-        hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "d", "r", "p", "0"], default="0").lower()
+            console.print("\n[bold cyan]Opciones de Acción sobre el Historial:[/bold cyan]")
+            console.print("  [bold green][V][/bold green] Ver detalle completo")
+            console.print("  [bold green][S][/bold green] 🏷️  Cambiar estado comercial (Borrador, Enviada, Aceptada...)")
+            console.print("  [bold green][D][/bold green] 📄 Duplicar cotización como nueva independiente")
+            console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo")
+            console.print("  [bold green][P][/bold green] 📑 Re-generar / Abrir archivos PDF")
+            console.print("  [bold cyan][B][/bold cyan] 🔍 Nueva búsqueda en historial")
+            console.print("  [bold cyan][0][/bold cyan] ↩️  Regresar al menú principal")
 
-        if hist_opc == "v":
-            qid = Prompt.ask("Ingresa el ID de la cotización").strip()
-            quote = self.history_mgr.get_quote(qid)
-            if quote:
-                self._mostrar_cotizacion_completa(quote)
-            else:
-                console.print("[red]Cotización no encontrada.[/red]")
+            hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "s", "d", "r", "p", "b", "0"], default="0").lower()
 
-        elif hist_opc == "d":
-            qid = Prompt.ask("Ingresa el ID de la cotización que deseas duplicar").strip()
-            orig = self.history_mgr.get_quote(qid)
-            if orig:
-                if Confirm.ask("¿Deseas asignar un cliente diferente?", default=False):
-                    new_cust = self._pedir_datos_cliente(default_customer=orig.customer)
+            if hist_opc == "0":
+                return
+            elif hist_opc == "b":
+                continue
+
+            elif hist_opc == "v":
+                qid = Prompt.ask("Ingresa el ID de la cotización").strip()
+                quote = self.history_mgr.get_quote(qid)
+                if quote:
+                    self._mostrar_cotizacion_completa(quote)
                 else:
-                    new_cust = copy.deepcopy(orig.customer)
-                dup = self.history_mgr.duplicate_quote(orig.quote_id, new_customer=new_cust)
-                exp_res = self.exporter.export_all(dup, self.config.business)
-                console.print(f"[bold green]✔ Cotización duplicada exitosamente como {dup.quote_id}[/bold green]")
-                self._mostrar_panel_documentos(exp_res, dup.quote_id)
-            else:
-                console.print("[red]Cotización no encontrada.[/red]")
+                    console.print("[red]Cotización no encontrada.[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
-        elif hist_opc == "r":
-            qid = Prompt.ask("Ingresa el ID de la cotización").strip()
-            quote = self.history_mgr.get_quote(qid)
-            if quote:
-                with console.status("[bold yellow]Actualizando precios en tiempo real...[/bold yellow]"):
-                    up_q, changes = self.history_mgr.reverify_quote_prices(qid)
-                console.print(f"[bold green]✔ Precios actualizados. Nuevo total: Q {up_q.total:,.2f}[/bold green]")
-                exp_res = self.exporter.export_all(up_q, self.config.business)
-                self._mostrar_panel_documentos(exp_res, up_q.quote_id)
-            else:
-                console.print("[red]Cotización no encontrada.[/red]")
+            elif hist_opc == "s":
+                qid = Prompt.ask("Ingresa el ID de la cotización").strip()
+                quote = self.history_mgr.get_quote(qid)
+                if not quote:
+                    console.print("[red]Cotización no encontrada.[/red]")
+                else:
+                    allowed = quote.get_allowed_transitions()
+                    console.print(f"\n[bold yellow]Estado actual de {quote.quote_id}:[/bold yellow] [{get_status_style(quote.status)}]{quote.status}[/{get_status_style(quote.status)}]")
+                    
+                    if not allowed:
+                        console.print("[red]Esta cotización no tiene transiciones permitidas.[/red]")
+                    else:
+                        console.print("\n[cyan]Transiciones válidas disponibles:[/cyan]")
+                        for idx, s in enumerate(allowed, 1):
+                            console.print(f"  [{idx}] Cambiar a [{get_status_style(s.value)}]{s.value}[/{get_status_style(s.value)}]")
+                        console.print("  [0] Cancelar")
 
-        elif hist_opc == "p":
-            qid = Prompt.ask("Ingresa el ID de la cotización").strip()
-            quote = self.history_mgr.get_quote(qid)
-            if quote:
-                with console.status("[bold green]Exportando archivos...[/bold green]"):
-                    exp_res = self.exporter.export_all(quote, self.config.business)
-                self._mostrar_panel_documentos(exp_res, quote.quote_id)
-            else:
-                console.print("[red]Cotización no encontrada.[/red]")
+                        sel_st = IntPrompt.ask("Selecciona nuevo estado", default=0)
+                        if 1 <= sel_st <= len(allowed):
+                            new_st = allowed[sel_st - 1]
+                            try:
+                                updated_q = self.history_mgr.update_quote_status(quote.quote_id, new_st)
+                                self.exporter.export_all(updated_q, self.config.business)
+                                console.print(f"[bold green]✔ ¡Estado de {updated_q.quote_id} actualizado a {updated_q.status} con éxito![/bold green]")
+                            except InvalidStatusTransitionError as e:
+                                console.print(f"[bold red]❌ Error de transición:[/bold red] {e}")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif hist_opc == "d":
+                qid = Prompt.ask("Ingresa el ID de la cotización que deseas duplicar").strip()
+                orig = self.history_mgr.get_quote(qid)
+                if orig:
+                    if Confirm.ask("¿Deseas asignar un cliente diferente?", default=False):
+                        new_cust = self._pedir_datos_cliente(default_customer=orig.customer)
+                    else:
+                        new_cust = copy.deepcopy(orig.customer)
+                    dup = self.history_mgr.duplicate_quote(orig.quote_id, new_customer=new_cust)
+                    exp_res = self.exporter.export_all(dup, self.config.business)
+                    console.print(f"[bold green]✔ Cotización duplicada exitosamente como {dup.quote_id}[/bold green]")
+                    self._mostrar_panel_documentos(exp_res, dup.quote_id)
+                else:
+                    console.print("[red]Cotización no encontrada.[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif hist_opc == "r":
+                qid = Prompt.ask("Ingresa el ID de la cotización").strip()
+                quote = self.history_mgr.get_quote(qid)
+                if quote:
+                    with console.status("[bold yellow]Actualizando precios en tiempo real...[/bold yellow]"):
+                        up_q, changes = self.history_mgr.reverify_quote_prices(qid)
+                    console.print(f"[bold green]✔ Precios actualizados. Nuevo total: Q {up_q.total:,.2f}[/bold green]")
+                    exp_res = self.exporter.export_all(up_q, self.config.business)
+                    self._mostrar_panel_documentos(exp_res, up_q.quote_id)
+                else:
+                    console.print("[red]Cotización no encontrada.[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif hist_opc == "p":
+                qid = Prompt.ask("Ingresa el ID de la cotización").strip()
+                quote = self.history_mgr.get_quote(qid)
+                if quote:
+                    with console.status("[bold green]Exportando archivos...[/bold green]"):
+                        exp_res = self.exporter.export_all(quote, self.config.business)
+                    self._mostrar_panel_documentos(exp_res, quote.quote_id)
+                else:
+                    console.print("[red]Cotización no encontrada.[/red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
     def reverificar_cotizacion(self):
         console.print("\n[bold cyan]=== RE-VERIFICAR PRECIOS DE COTIZACIÓN ===[/bold cyan]")

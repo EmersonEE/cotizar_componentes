@@ -1,7 +1,29 @@
 import re
+from enum import Enum
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional
+from typing import List, Optional, Set, Dict, Union
 from datetime import datetime
+
+class QuoteStatus(str, Enum):
+    BORRADOR = "BORRADOR"
+    GUARDADA = "GUARDADA"
+    ENVIADA = "ENVIADA"
+    ACEPTADA = "ACEPTADA"
+    RECHAZADA = "RECHAZADA"
+    VENCIDA = "VENCIDA"
+
+class InvalidStatusTransitionError(Exception):
+    """Raised when an invalid quote status transition is attempted."""
+    pass
+
+VALID_STATUS_TRANSITIONS: Dict[QuoteStatus, Set[QuoteStatus]] = {
+    QuoteStatus.BORRADOR: {QuoteStatus.GUARDADA, QuoteStatus.ENVIADA, QuoteStatus.RECHAZADA},
+    QuoteStatus.GUARDADA: {QuoteStatus.BORRADOR, QuoteStatus.ENVIADA, QuoteStatus.ACEPTADA, QuoteStatus.RECHAZADA, QuoteStatus.VENCIDA},
+    QuoteStatus.ENVIADA: {QuoteStatus.ACEPTADA, QuoteStatus.RECHAZADA, QuoteStatus.VENCIDA, QuoteStatus.GUARDADA},
+    QuoteStatus.ACEPTADA: {QuoteStatus.GUARDADA, QuoteStatus.RECHAZADA},
+    QuoteStatus.RECHAZADA: {QuoteStatus.GUARDADA, QuoteStatus.ENVIADA, QuoteStatus.BORRADOR},
+    QuoteStatus.VENCIDA: {QuoteStatus.GUARDADA, QuoteStatus.ENVIADA, QuoteStatus.RECHAZADA},
+}
 
 @dataclass
 class Product:
@@ -72,7 +94,7 @@ class Customer:
     notes: str = ""
 
     def validate(self) -> List[str]:
-        """Validates customer data and returns a list of error/warning messages if any."""
+        """Validates customer data and returns a list of error messages if any."""
         errors = []
         if self.email and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", self.email.strip()):
             errors.append(f"El correo '{self.email}' no tiene un formato válido.")
@@ -161,6 +183,8 @@ class Quote:
     total: float = 0.0
     version: int = 1
     base_quote_id: Optional[str] = None
+    status: str = QuoteStatus.GUARDADA.value
+    status_updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
     currency_symbol: str = "Q"
     currency_code: str = "GTQ"
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -170,11 +194,56 @@ class Quote:
     def subtotal(self) -> float:
         return self.items_subtotal
 
+    def change_status(self, new_status: Union[QuoteStatus, str]) -> None:
+        """
+        Changes the commercial status of the quote, validating valid transitions.
+        Raises InvalidStatusTransitionError if the transition is disallowed.
+        """
+        if isinstance(new_status, QuoteStatus):
+            target_status = new_status
+        else:
+            try:
+                target_status = QuoteStatus(str(new_status).strip().upper())
+            except ValueError:
+                raise InvalidStatusTransitionError(f"Estado desconocido: '{new_status}'")
+
+        try:
+            current_status = QuoteStatus(self.status.upper())
+        except ValueError:
+            current_status = QuoteStatus.GUARDADA
+
+        # If already in the target status, no-op
+        if current_status == target_status:
+            return
+
+        allowed = VALID_STATUS_TRANSITIONS.get(current_status, set())
+        if target_status not in allowed:
+            allowed_names = ", ".join(s.value for s in allowed)
+            raise InvalidStatusTransitionError(
+                f"Transición inválida: No se puede cambiar de '{current_status.value}' a '{target_status.value}'. "
+                f"Transiciones permitidas desde '{current_status.value}': [{allowed_names}]"
+            )
+
+        now_str = datetime.now().isoformat()
+        self.status = target_status.value
+        self.status_updated_at = now_str
+        self.updated_at = now_str
+
+    def get_allowed_transitions(self) -> List[QuoteStatus]:
+        """Returns the list of valid statuses that this quote can transition to."""
+        try:
+            current_status = QuoteStatus(self.status.upper())
+        except ValueError:
+            current_status = QuoteStatus.GUARDADA
+        return sorted(list(VALID_STATUS_TRANSITIONS.get(current_status, set())), key=lambda x: x.value)
+
     def to_dict(self) -> dict:
         return {
             "quote_id": self.quote_id,
             "version": self.version,
             "base_quote_id": self.base_quote_id,
+            "status": self.status,
+            "status_updated_at": self.status_updated_at,
             "date": self.date,
             "valid_until": self.valid_until,
             "customer": self.customer.to_dict(),
@@ -204,10 +273,20 @@ class Quote:
         items_subtotal = float(data.get("items_subtotal", data.get("subtotal", 0.0)))
         total_shipping = float(data.get("total_shipping", 0.0))
 
+        raw_status = str(data.get("status", QuoteStatus.GUARDADA.value)).upper()
+        if raw_status not in [s.value for s in QuoteStatus]:
+            raw_status = QuoteStatus.GUARDADA.value
+
+        created_at = str(data.get("created_at", ""))
+        updated_at = str(data.get("updated_at", ""))
+        status_updated_at = str(data.get("status_updated_at", updated_at or created_at))
+
         return cls(
             quote_id=str(data.get("quote_id", "")),
             version=int(data.get("version", 1)),
             base_quote_id=data.get("base_quote_id"),
+            status=raw_status,
+            status_updated_at=status_updated_at,
             date=str(data.get("date", "")),
             valid_until=str(data.get("valid_until", "")),
             customer=customer,
@@ -220,6 +299,6 @@ class Quote:
             total=float(data.get("total", 0.0)),
             currency_symbol=str(data.get("currency_symbol", "Q")),
             currency_code=str(data.get("currency_code", "GTQ")),
-            created_at=str(data.get("created_at", "")),
-            updated_at=str(data.get("updated_at", ""))
+            created_at=created_at,
+            updated_at=updated_at
         )

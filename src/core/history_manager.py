@@ -4,8 +4,8 @@ import os
 import copy
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional, Tuple, Dict, Any
-from src.models import Quote, QuoteItem, Customer, StoreShippingDetail
+from typing import List, Optional, Tuple, Dict, Any, Union
+from src.models import Quote, QuoteItem, Customer, StoreShippingDetail, QuoteStatus, InvalidStatusTransitionError
 from src.scrapers import scrape_product
 from src.core.calculator import QuoteCalculator
 from src.config import AppConfig
@@ -49,26 +49,47 @@ class HistoryManager:
                 return q
         return None
 
-    def search_quotes(self, query: str) -> List[Quote]:
+    def update_quote_status(self, quote_id: str, new_status: Union[QuoteStatus, str]) -> Quote:
+        """
+        Explicitly updates the commercial status of a quote in the history.
+        Validates transitions and updates status_updated_at.
+        Raises InvalidStatusTransitionError or ValueError if quote not found.
+        """
+        quote = self.get_quote(quote_id)
+        if not quote:
+            raise ValueError(f"No se encontró la cotización con ID: {quote_id}")
+
+        quote.change_status(new_status)
+        self.save_quote(quote)
+        return quote
+
+    def search_quotes(self, query: str = "", status_filter: Optional[str] = None) -> List[Quote]:
         """
         Searches quotes across ID, customer name, customer phone, customer email,
-        customer notes, and creation date.
-        Returns matching quotes (case-insensitive substring match).
+        customer notes, and creation date, optionally filtered by commercial status.
         """
+        quotes = self.load_all_quotes()
+
+        # Apply status filter if provided
+        if status_filter and status_filter.strip() and status_filter.strip().upper() != "TODOS":
+            target_status = status_filter.strip().upper()
+            quotes = [q for q in quotes if q.status.upper() == target_status]
+
         if not query or not query.strip():
-            return self.load_all_quotes()
+            return quotes
 
         q_clean = query.strip().lower()
         results = []
-        for q in self.load_all_quotes():
+        for q in quotes:
             match_id = q_clean in q.quote_id.lower()
             match_name = q_clean in q.customer.name.lower()
             match_phone = q_clean in q.customer.phone.lower()
             match_email = q_clean in q.customer.email.lower()
             match_notes = q_clean in q.customer.notes.lower()
             match_date = q_clean in q.date.lower()
+            match_status = q_clean in q.status.lower()
 
-            if match_id or match_name or match_phone or match_email or match_notes or match_date:
+            if match_id or match_name or match_phone or match_email or match_notes or match_date or match_status:
                 results.append(q)
         return results
 
@@ -76,7 +97,7 @@ class HistoryManager:
         """
         Duplicates an existing quote as a new independent quote.
         - Assigns a fresh sequential quote_id (e.g. 'COT-2026-0005')
-        - Sets version = 1 and base_quote_id = None
+        - Sets version = 1, base_quote_id = None, and status = 'GUARDADA'
         - Sets current date and recalculated validity date
         - Copies items and calculates fresh financial totals and shipping
         - Original quote is 100% untouched.
@@ -113,6 +134,8 @@ class HistoryManager:
             currency_symbol=original.currency_symbol,
             currency_code=original.currency_code
         )
+        # Ensure new quote starts in GUARDADA state
+        duplicated_quote.status = QuoteStatus.GUARDADA.value
 
         self.save_quote(duplicated_quote)
         return duplicated_quote
@@ -218,7 +241,6 @@ class HistoryManager:
                     "status": f"Error: {str(e)}"
                 })
 
-        # Recalculate quote with updated prices & re-evaluated shipping
         updated_quote = QuoteCalculator.build_quote(
             quote_id=quote.quote_id,
             items=updated_items,
@@ -231,6 +253,8 @@ class HistoryManager:
             currency_symbol=quote.currency_symbol,
             currency_code=quote.currency_code
         )
+        updated_quote.status = quote.status
+        updated_quote.status_updated_at = quote.status_updated_at
         
         self.save_quote(updated_quote)
         return updated_quote, changes
