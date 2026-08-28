@@ -180,8 +180,11 @@ class CotizadorCLI:
                 with console.status(f"[bold green]Buscando '{query}' en RyCH, La Electrónica y DIY en paralelo...[/bold green]", spinner="dots"):
                     results = metasearch(query, max_per_store=5)
 
+                # Filter valid prices
+                results = [r for r in results if r.unit_price > 0]
+
                 if not results:
-                    console.print(f"[yellow]No se encontraron resultados para '{query}'.[/yellow]")
+                    console.print(f"[yellow]No se encontraron resultados válidos con precio para '{query}'.[/yellow]")
                     if not Confirm.ask("¿Deseas buscar con otro término?", default=True):
                         return None
                     continue
@@ -199,7 +202,7 @@ class CotizadorCLI:
                         str(i),
                         r.store_name,
                         r.title[:48] + ("..." if len(r.title) > 48 else ""),
-                        format_currency(r.unit_price, self.config.currency_symbol) if r.unit_price > 0 else "Consultar",
+                        format_currency(r.unit_price, self.config.currency_symbol),
                         f"[{stock_style}]{r.stock_status}[/{stock_style}]"
                     )
 
@@ -237,6 +240,9 @@ class CotizadorCLI:
             with console.status("[bold green]Extrayendo datos de la tienda...[/bold green]", spinner="dots"):
                 try:
                     product = scrape_product(url)
+                    if product.unit_price <= 0:
+                        console.print("[bold red]❌ El producto no tiene un precio válido.[/bold red]")
+                        return None
                     return product
                 except StoreNotSupportedError as e:
                     console.print(f"[bold red]❌ Error de Tienda:[/bold red] {e}")
@@ -283,7 +289,7 @@ class CotizadorCLI:
                     pass
 
     def crear_cotizacion_bom(self):
-        """Workflow for creating a quote from a multiline BOM list with 4 comparison options."""
+        """Enhanced BOM flow: all candidates per line, score & confidence, manual selection, REVISAR confirmation, unfound list, and optimal mixed scenario."""
         console.print("\n[bold cyan]=== COTIZADOR POR LISTA RÁPIDA (BOM MULTILÍNEA) ===[/bold cyan]")
         
         customer = self._pedir_datos_cliente()
@@ -329,18 +335,183 @@ class CotizadorCLI:
         with console.status(f"[bold green]Consultando las 3 tiendas en paralelo para los {parse_res.total_items} componentes...[/bold green]", spinner="dots"):
             match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
 
-        scenarios = build_all_bom_scenarios(
-            match_results=match_results,
-            customer=customer,
-            config=self.config,
-            service_fee_percent=fee_percent
-        )
+        # ----------------------------------------------------
+        # 1. Mostrar resumen línea por línea con candidatos
+        # ----------------------------------------------------
+        while True:
+            console.clear()
+            self.show_banner()
+            console.print(f"\n[bold cyan]=== RESULTADOS DE BÚSQUEDA Y ASIGNACIÓN DE CANDIDATOS ===[/bold cyan]")
+            console.print(f"[dim]Cliente: {customer.name} | Ítems en lista: {len(match_results)}[/dim]\n")
 
+            summary_table = Table(box=box.ROUNDED)
+            summary_table.add_column("#", justify="center", style="bold cyan", no_wrap=True)
+            summary_table.add_column("Solicitado en BOM", style="white")
+            summary_table.add_column("Candidato Seleccionado", style="dim")
+            summary_table.add_column("Tienda", style="cyan")
+            summary_table.add_column("P. Unitario", justify="right", style="green")
+            summary_table.add_column("Confianza / Score", justify="center")
+
+            has_review = False
+            unfound_count = 0
+
+            for i, m in enumerate(match_results, 1):
+                if m.selected_candidate:
+                    c = m.selected_candidate
+                    if m.status == "REVISAR":
+                        has_review = True
+                    conf_badge = m.status_badge
+                    if m.is_confirmed and m.status == "REVISAR":
+                        conf_badge += " [green](✔ Confirmado)[/green]"
+                    
+                    summary_table.add_row(
+                        str(i),
+                        f"{m.bom_item.quantity}x {m.bom_item.product_query}",
+                        c.title[:38] + ("..." if len(c.title) > 38 else ""),
+                        c.store_name,
+                        format_currency(c.unit_price, self.config.currency_symbol),
+                        conf_badge
+                    )
+                else:
+                    unfound_count += 1
+                    summary_table.add_row(
+                        str(i),
+                        f"{m.bom_item.quantity}x {m.bom_item.product_query}",
+                        "[red]Ningún candidato válido encontrado[/red]",
+                        "-",
+                        "-",
+                        "[bold red]❌ No encontrado[/bold red]"
+                    )
+
+            console.print(summary_table)
+
+            # Highlight unfound lines if any
+            if unfound_count > 0:
+                console.print(f"\n[bold yellow]⚠️ Componentes no encontrados / no disponibles ({unfound_count}):[/bold yellow]")
+                for idx, m in enumerate(match_results, 1):
+                    if not m.selected_candidate:
+                        console.print(f"  • Línea #{idx}: [red]{m.bom_item.quantity}x {m.bom_item.product_query}[/red]")
+
+            # Highlight REVISAR lines requiring confirmation
+            pending_reviews = [
+                (idx, m) for idx, m in enumerate(match_results, 1)
+                if m.requires_review_confirmation
+            ]
+            if pending_reviews:
+                console.print(f"\n[bold red]⚠️ Coincidencias con confianza REVISAR que requieren confirmación ({len(pending_reviews)}):[/bold red]")
+                for idx, m in pending_reviews:
+                    c = m.selected_candidate
+                    console.print(f"  • Línea #{idx} '{m.bom_item.product_query}' ➔ Asignado: '{c.title}' ({c.store_name} - Q{c.unit_price:.2f}) [Score: {int(m.confidence_score*100)}%]")
+
+            console.print("\n[bold cyan]Acciones Disponibles:[/bold cyan]")
+            console.print("  [bold green][C][/bold green] 🚀 [bold green]Continuar y generar las 4 opciones de cotización[/bold green]")
+            console.print("  [bold yellow][#][/bold yellow] Ver todos los candidatos / cambiar candidato de una línea (ej. escribe '1', '2'...)")
+            console.print("  [bold red][X][/bold red] Cancelar cotización")
+
+            user_action = Prompt.ask("\nSelecciona una acción", default="C").strip().lower()
+
+            if user_action == "x":
+                console.print("[yellow]Cotización cancelada.[/yellow]")
+                return
+
+            elif user_action == "c":
+                # Validate if any unconfirmed REVISAR exists
+                if pending_reviews:
+                    console.print("\n[bold yellow]Hay coincidencias clasificadas como REVISAR pendientes de confirmación.[/bold yellow]")
+                    for idx, m in pending_reviews:
+                        c = m.selected_candidate
+                        if Confirm.ask(f"¿Confirmas que '{c.title}' ({c.store_name}) es el componente correcto para '{m.bom_item.product_query}'?", default=True):
+                            m.is_confirmed = True
+                        else:
+                            m.selected_candidate = None
+                            m.status = "NO_ENCONTRADO"
+                    continue
+                break
+
+            elif user_action.isdigit():
+                line_num = int(user_action)
+                if 1 <= line_num <= len(match_results):
+                    m = match_results[line_num - 1]
+                    console.print(f"\n[bold cyan]Candidatos encontrados para Línea #{line_num}:[/bold cyan] [bold white]{m.bom_item.quantity}x {m.bom_item.product_query}[/bold white]")
+                    
+                    if not m.all_candidates:
+                        console.print("[yellow]No se encontraron candidatos en ninguna de las 3 tiendas para esta línea.[/yellow]")
+                        Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                        continue
+
+                    c_table = Table(box=box.ROUNDED)
+                    c_table.add_column("#", justify="center", style="bold cyan")
+                    c_table.add_column("Tienda", style="cyan")
+                    c_table.add_column("Título / Descripción del Producto", style="white")
+                    c_table.add_column("Precio Unit.", justify="right", style="green")
+                    c_table.add_column("Stock", justify="center")
+                    c_table.add_column("Score", justify="center")
+                    c_table.add_column("Nivel Confianza", justify="center")
+
+                    for c_idx, (cand, score) in enumerate(m.all_candidates, 1):
+                        st_icon = "[green]Disponible[/green]" if cand.in_stock else "[red]Agotado[/red]"
+                        if score >= 0.70:
+                            lvl = "[green]ALTA[/green]"
+                        elif score >= 0.50:
+                            lvl = "[yellow]MEDIA[/yellow]"
+                        else:
+                            lvl = "[red]REVISAR[/red]"
+
+                        c_table.add_row(
+                            str(c_idx),
+                            cand.store_name,
+                            cand.title,
+                            format_currency(cand.unit_price, self.config.currency_symbol),
+                            st_icon,
+                            f"{int(score * 100)}%",
+                            lvl
+                        )
+
+                    console.print(c_table)
+                    console.print("  [bold cyan][0][/bold cyan] Descartar / Dejar como no encontrado")
+
+                    sel_c = IntPrompt.ask(f"Selecciona candidato (1 a {len(m.all_candidates)}, o 0 para descartar)", default=1)
+                    if 1 <= sel_c <= len(m.all_candidates):
+                        chosen_cand, chosen_score = m.all_candidates[sel_c - 1]
+                        m.selected_candidate = chosen_cand
+                        m.confidence_score = chosen_score
+                        if chosen_score >= 0.70 and chosen_cand.in_stock:
+                            m.status = "ALTA"
+                        elif chosen_score >= 0.50:
+                            m.status = "MEDIA"
+                        else:
+                            m.status = "REVISAR"
+                        m.is_confirmed = True
+                        console.print(f"[bold green]✔ Asignado:[/bold green] {chosen_cand.title} ({chosen_cand.store_name})")
+                    elif sel_c == 0:
+                        m.selected_candidate = None
+                        m.status = "NO_ENCONTRADO"
+                        m.is_confirmed = True
+                        console.print("[yellow]Línea marcada como no encontrada.[/yellow]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                else:
+                    console.print("[red]Número de línea fuera de rango.[/red]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+        # ----------------------------------------------------
+        # 2. Construir los 4 escenarios (con Mixto Óptimo)
+        # ----------------------------------------------------
+        with console.status("[bold green]Calculando el escenario mixto óptimo y las 3 tiendas...[/bold green]"):
+            scenarios = build_all_bom_scenarios(
+                match_results=match_results,
+                customer=customer,
+                config=self.config,
+                service_fee_percent=fee_percent
+            )
+
+        # ----------------------------------------------------
+        # 3. Menú interactivo de selección y exportación
+        # ----------------------------------------------------
         while True:
             console.clear()
             self.show_banner()
             console.print(f"\n[bold cyan]=== COMPARATIVA DE LAS 4 OPCIONES DE COTIZACIÓN ===[/bold cyan]")
-            console.print(f"[dim]Cliente: {customer.name} | Tel: {customer.phone or 'N/A'} | Ítems solicitados: {len(parse_res.items)}[/dim]\n")
+            console.print(f"[dim]Cliente: {customer.name} | Tel: {customer.phone or 'N/A'} | Ítems en lista: {len(parse_res.items)}[/dim]\n")
 
             comp_table = Table(box=box.ROUNDED)
             comp_table.add_column("Opción", justify="center", style="bold cyan", no_wrap=True)
@@ -366,7 +537,7 @@ class CotizadorCLI:
 
             console.print(comp_table)
             console.print("\n[bold cyan]Acciones Disponibles:[/bold cyan]")
-            console.print("  [bold green][1][/bold green] Exportar [bold]Opción 1 (Cotización Mixta - Mejor Precio Combinado)[/bold]")
+            console.print("  [bold green][1][/bold green] Exportar [bold]Opción 1 (Cotización Mixta Óptima - Mínimo Costo Total)[/bold]")
             console.print("  [bold green][2][/bold green] Exportar [bold]Opción 2 (Todo en Electrónica RyCH)[/bold]")
             console.print("  [bold green][3][/bold green] Exportar [bold]Opción 3 (Todo en La Electrónica)[/bold]")
             console.print("  [bold green][4][/bold green] Exportar [bold]Opción 4 (Todo en Electrónica DIY)[/bold]")
@@ -386,7 +557,7 @@ class CotizadorCLI:
                 
                 det_table = Table(box=box.SIMPLE_HEAD)
                 det_table.add_column("#", justify="center", style="cyan")
-                det_table.add_column("Solicitado", style="dim")
+                det_table.add_column("Solicitado en BOM", style="dim")
                 det_table.add_column("Componente Asignado", style="white")
                 det_table.add_column("Tienda", style="cyan")
                 det_table.add_column("Cant.", justify="center", style="bold")
@@ -397,7 +568,7 @@ class CotizadorCLI:
                     det_table.add_row(
                         str(it_idx),
                         match_results[it_idx-1].bom_item.product_query[:25] if it_idx <= len(match_results) else "-",
-                        item.product.name[:40],
+                        item.product.name[:38],
                         item.product.store_name,
                         str(item.quantity),
                         format_currency(item.unit_price, selected_sc.quote.currency_symbol),

@@ -20,7 +20,13 @@ from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
 from src.core.bom_parser import parse_bom_text, ParsedBOMItem
-from src.core.bom_searcher import search_bom_items_parallel, calculate_match_score, MatchResult
+from src.core.bom_searcher import (
+    search_bom_items_parallel,
+    calculate_match_score,
+    MatchResult,
+    BOMScenario,
+    build_all_bom_scenarios
+)
 
 # 1. Configuración de página
 st.set_page_config(
@@ -68,6 +74,10 @@ def init_session_state():
         st.session_state.last_search_query = ""
     if "editing_mode" not in st.session_state:
         st.session_state.editing_mode = False
+    if "bom_match_results" not in st.session_state:
+        st.session_state.bom_match_results = None
+    if "bom_scenarios" not in st.session_state:
+        st.session_state.bom_scenarios = None
 
 init_session_state()
 
@@ -85,6 +95,8 @@ def reset_to_new_quote():
     st.session_state.search_results = []
     st.session_state.last_search_query = ""
     st.session_state.editing_mode = False
+    st.session_state.bom_match_results = None
+    st.session_state.bom_scenarios = None
 
 def load_quote_for_editing(quote: Quote):
     st.session_state.active_quote_id = quote.quote_id
@@ -231,7 +243,7 @@ with tab_cotizador:
 
         st.divider()
 
-        # 2. Buscador y Adición de Componentes (Incluye BOM Multilínea)
+        # 2. Buscador y Adición de Componentes (Incluye BOM Multilínea Mejorado)
         st.markdown("#### 🔍 Agregar Componentes")
         modo_adicion = st.radio(
             "Método de adición:",
@@ -240,29 +252,143 @@ with tab_cotizador:
         )
 
         if modo_adicion == "📋 Pegar Lista Rápida (BOM)":
-            st.caption("Pega una lista con cantidades y nombres (ej. formato WhatsApp). Se procesarán todas en paralelo:")
+            st.caption("Pega una lista multilínea (ej. formato WhatsApp). Se buscarán todas en paralelo mostrando candidatos y scores:")
             bom_input = st.text_area(
                 "Lista de Componentes",
                 placeholder="2x ESP32 NodeMCU\n10x Resistencia 220 ohm 1/4W\nSensor de temperatura DHT22\nModulo Relay 5V 2 canales\nPantalla OLED 0.96 I2C",
-                height=140,
+                height=130,
                 label_visibility="collapsed"
             )
-            if st.button("⚡ Procesar Lista y Buscar en Paralelo", type="primary", use_container_width=True) and bom_input.strip():
-                with st.spinner("Interpretando lista y buscando todos los componentes en paralelo..."):
-                    parse_res = parse_bom_text(bom_input)
-                    if parse_res.items:
-                        match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
-                        added = 0
-                        for m in match_results:
-                            if m.best_match:
-                                prod = scrape_product(m.best_match.url)
-                                item = QuoteCalculator.create_quote_item(prod, m.bom_item.quantity)
-                                st.session_state.quote_items.append(item)
-                                added += 1
-                        st.toast(f"✔ ¡{added} componentes agregados exitosamente!", icon="🚀")
-                        st.rerun()
-                    else:
-                        st.error("No se pudo interpretar ningún componente del texto ingresado.")
+            
+            b_c1, b_c2 = st.columns([1.5, 1.0])
+            with b_c1:
+                if st.button("⚡ Procesar Lista y Buscar en Paralelo", type="primary", use_container_width=True) and bom_input.strip():
+                    with st.spinner("Interpretando lista y consultando tiendas en paralelo..."):
+                        parse_res = parse_bom_text(bom_input)
+                        if parse_res.items:
+                            match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+                            st.session_state.bom_match_results = match_results
+                            st.session_state.bom_scenarios = None
+                            st.rerun()
+                        else:
+                            st.error("No se pudo interpretar ningún componente del texto ingresado.")
+
+            with b_c2:
+                if st.session_state.bom_match_results and st.button("🗑️ Descartar Búsqueda BOM", use_container_width=True):
+                    st.session_state.bom_match_results = None
+                    st.session_state.bom_scenarios = None
+                    st.rerun()
+
+            # Revisión interactiva de candidatos por línea
+            if st.session_state.bom_match_results:
+                st.markdown("---")
+                st.markdown("##### 📋 Selección y Confirmación de Candidatos por Línea")
+                
+                unfound_lines = []
+                review_needed = []
+
+                for idx, m in enumerate(st.session_state.bom_match_results):
+                    with st.container():
+                        st.markdown(f"**Línea #{idx+1}:** `{m.bom_item.quantity}x {m.bom_item.product_query}`")
+                        
+                        if m.all_candidates:
+                            options_labels = []
+                            for cand, score in m.all_candidates:
+                                st_tag = "ALTA" if score >= 0.70 else ("MEDIA" if score >= 0.50 else "REVISAR")
+                                stock_tag = "Disponible" if cand.in_stock else "Agotado"
+                                options_labels.append(f"[{cand.store_name}] {cand.title} — Q {cand.unit_price:,.2f} ({stock_tag}) [Score: {int(score*100)}% - {st_tag}]")
+                            
+                            options_labels.append("❌ Ninguno / No disponible")
+
+                            # Default index
+                            default_idx = 0
+                            if m.selected_candidate:
+                                for opt_i, (cand, _) in enumerate(m.all_candidates):
+                                    if cand.url == m.selected_candidate.url:
+                                        default_idx = opt_i
+                                        break
+                            else:
+                                default_idx = len(options_labels) - 1
+
+                            sel_option = st.selectbox(
+                                f"Candidato asignado para línea {idx+1}",
+                                options_labels,
+                                index=default_idx,
+                                key=f"bom_sel_{idx}",
+                                label_visibility="collapsed"
+                            )
+
+                            if sel_option == "❌ Ninguno / No disponible":
+                                m.selected_candidate = None
+                                m.status = "NO_ENCONTRADO"
+                                unfound_lines.append(f"{m.bom_item.quantity}x {m.bom_item.product_query}")
+                            else:
+                                chosen_idx = options_labels.index(sel_option)
+                                chosen_cand, chosen_score = m.all_candidates[chosen_idx]
+                                m.selected_candidate = chosen_cand
+                                m.confidence_score = chosen_score
+                                if chosen_score >= 0.70 and chosen_cand.in_stock:
+                                    m.status = "ALTA"
+                                elif chosen_score >= 0.50:
+                                    m.status = "MEDIA"
+                                else:
+                                    m.status = "REVISAR"
+                                    review_needed.append((idx+1, m))
+
+                                if m.status == "REVISAR":
+                                    st.warning(f"⚠️ Coincidencia clasificada como **REVISAR** (Score: {int(chosen_score*100)}%). Por favor confirma si es el producto correcto:")
+                                    m.is_confirmed = st.checkbox(f"Confirmar componente para '{m.bom_item.product_query}'", value=m.is_confirmed, key=f"conf_rev_{idx}")
+                        else:
+                            st.error("❌ No se encontraron candidatos con precio válido en ninguna tienda.")
+                            m.selected_candidate = None
+                            m.status = "NO_ENCONTRADO"
+                            unfound_lines.append(f"{m.bom_item.quantity}x {m.bom_item.product_query}")
+
+                        st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
+
+                if unfound_lines:
+                    st.warning(f"⚠️ **Componentes no encontrados / descartados ({len(unfound_lines)}):**\n" + "\n".join([f"- {u}" for u in unfound_lines]))
+
+                # Botón para generar escenarios con la selección actual
+                if st.button("🚀 Generar las 4 Opciones de Cotización (Incluye Mixto Óptimo)", type="primary", use_container_width=True):
+                    current_cust = Customer(
+                        name=st.session_state.customer_name.strip() or "Cliente General",
+                        phone=st.session_state.customer_phone.strip(),
+                        email=st.session_state.customer_email.strip(),
+                        notes=st.session_state.customer_notes.strip()
+                    )
+                    scenarios = build_all_bom_scenarios(
+                        match_results=st.session_state.bom_match_results,
+                        customer=current_cust,
+                        config=config,
+                        service_fee_percent=config.service_fee_percent
+                    )
+                    st.session_state.bom_scenarios = scenarios
+                    st.rerun()
+
+            # Visualización de los 4 escenarios de cotización generados
+            if st.session_state.bom_scenarios:
+                st.markdown("---")
+                st.markdown("#### 🎯 Comparativa de las 4 Opciones de Cotización")
+                
+                for sc in st.session_state.bom_scenarios:
+                    with st.container():
+                        sc_c1, sc_c2 = st.columns([2.5, 1.2])
+                        with sc_c1:
+                            st.markdown(f"##### [{sc.scenario_id}] {sc.title}")
+                            st.caption(f"Cobertura: **{sc.coverage_label}** | Componentes: Q {sc.quote.items_subtotal:,.2f} | Envíos: Q {sc.quote.total_shipping:,.2f} | Margen: Q {sc.quote.service_fee_amount:,.2f}")
+                            st.markdown(f"**TOTAL: Q {sc.quote.total:,.2f}**")
+                        with sc_c2:
+                            if st.button(f"➕ Cargar Opción {sc.scenario_id}", key=f"load_sc_{sc.scenario_id}", use_container_width=True, disabled=len(sc.items) == 0):
+                                st.session_state.quote_items = copy.deepcopy(sc.items)
+                                st.session_state.custom_shipping_costs = {
+                                    sd.store_name: sd.shipping_cost for sd in sc.quote.shipping_details
+                                }
+                                st.session_state.bom_match_results = None
+                                st.session_state.bom_scenarios = None
+                                st.toast(f"✔ ¡Opción '{sc.title}' cargada a la cotización activa!", icon="🚀")
+                                st.rerun()
+                        st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
 
         elif modo_adicion == "🔍 Buscar en las 3 tiendas (Metabuscador)":
             search_col1, search_col2 = st.columns([3, 1])
@@ -273,11 +399,12 @@ with tab_cotizador:
 
             if btn_buscar and search_query.strip():
                 with st.spinner(f"Consultando RyCH, La Electrónica y DIY en paralelo para '{search_query}'..."):
-                    st.session_state.search_results = metasearch(search_query.strip(), max_per_store=5)
+                    raw_res = metasearch(search_query.strip(), max_per_store=5)
+                    st.session_state.search_results = [r for r in raw_res if r.unit_price > 0]
                     st.session_state.last_search_query = search_query.strip()
 
             if st.session_state.search_results:
-                st.caption(f"Resultados para **'{st.session_state.last_search_query}'** ({len(st.session_state.search_results)} encontrados):")
+                st.caption(f"Resultados para **'{st.session_state.last_search_query}'** ({len(st.session_state.search_results)} encontrados con precio válido):")
                 
                 for idx, res in enumerate(st.session_state.search_results):
                     with st.container():
@@ -300,7 +427,7 @@ with tab_cotizador:
                                 st.rerun()
                         st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
             elif btn_buscar:
-                st.info("No se encontraron resultados para este término. Intenta con otra palabra clave o pega la URL directa.")
+                st.info("No se encontraron resultados válidos para este término.")
 
         else:
             url_col1, url_col2, url_col3 = st.columns([3, 1, 1])
@@ -315,10 +442,13 @@ with tab_cotizador:
                 with st.spinner("Extrayendo componente de la tienda..."):
                     try:
                         prod = scrape_product(direct_url.strip())
-                        item = QuoteCalculator.create_quote_item(prod, direct_qty)
-                        st.session_state.quote_items.append(item)
-                        st.toast(f"✔ Agregado: {direct_qty}x {prod.name}", icon="✅")
-                        st.rerun()
+                        if prod.unit_price <= 0:
+                            st.error("El producto no tiene un precio válido.")
+                        else:
+                            item = QuoteCalculator.create_quote_item(prod, direct_qty)
+                            st.session_state.quote_items.append(item)
+                            st.toast(f"✔ Agregado: {direct_qty}x {prod.name}", icon="✅")
+                            st.rerun()
                     except Exception as e:
                         st.error(f"Error al extraer: {e}")
 

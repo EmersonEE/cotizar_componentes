@@ -1,7 +1,8 @@
 import re
 import difflib
-from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict
+import itertools
+from dataclasses import dataclass, field
+from typing import List, Optional, Tuple, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.models import Product, QuoteItem, Quote, Customer, BusinessInfo
@@ -21,6 +22,12 @@ class MatchResult:
     all_candidates: List[Tuple[SearchResultItem, float]]  # List of (candidate, score)
     confidence_score: float
     status: str  # "ALTA", "MEDIA", "REVISAR", "NO_ENCONTRADO"
+    selected_candidate: Optional[SearchResultItem] = None
+    is_confirmed: bool = False
+
+    def __post_init__(self):
+        if self.selected_candidate is None:
+            self.selected_candidate = self.best_match
 
     @property
     def status_badge(self) -> str:
@@ -33,6 +40,10 @@ class MatchResult:
         else:
             return "❌ No encontrado"
 
+    @property
+    def requires_review_confirmation(self) -> bool:
+        return self.status == "REVISAR" and not self.is_confirmed
+
     def get_best_match_for_store(self, store_name: str) -> Optional[Tuple[SearchResultItem, float]]:
         """Returns the best matching candidate for a specific store."""
         cands = [
@@ -41,7 +52,6 @@ class MatchResult:
         ]
         if not cands:
             return None
-        # Sort by in_stock (True first), then score descending, then price ascending
         cands.sort(key=lambda x: (x[0].in_stock, x[1], -x[0].unit_price), reverse=True)
         return cands[0]
 
@@ -101,12 +111,11 @@ def calculate_match_score(query: str, title: str, in_stock: bool = True) -> floa
     if q_nums:
         matched_nums = q_nums.intersection(t_nums)
         if not matched_nums:
-            num_factor = 0.20  # Severe penalty if required number is missing
+            num_factor = 0.20  # Severe penalty if required model/value number is missing
         else:
             num_factor = len(matched_nums) / len(q_nums)
 
     seq_ratio = difflib.SequenceMatcher(None, query.lower(), title.lower()).ratio()
-
     base_score = (0.70 * recall + 0.30 * seq_ratio) * num_factor
 
     if not in_stock:
@@ -115,7 +124,7 @@ def calculate_match_score(query: str, title: str, in_stock: bool = True) -> floa
     return round(min(max(base_score, 0.0), 1.0), 3)
 
 def search_single_bom_item(bom_item: ParsedBOMItem) -> MatchResult:
-    """Searches a single BOM item across stores, scores candidates, and selects best match."""
+    """Searches a single BOM item across stores, filters valid prices, scores candidates, and selects best match."""
     if not bom_item.is_valid or not bom_item.product_query.strip():
         return MatchResult(
             bom_item=bom_item,
@@ -130,7 +139,13 @@ def search_single_bom_item(bom_item: ParsedBOMItem) -> MatchResult:
     except Exception:
         candidates = []
 
-    if not candidates:
+    # Filter out results with invalid or zero/negative prices
+    valid_candidates = [
+        c for c in candidates
+        if c.unit_price is not None and c.unit_price > 0.0
+    ]
+
+    if not valid_candidates:
         return MatchResult(
             bom_item=bom_item,
             best_match=None,
@@ -140,27 +155,42 @@ def search_single_bom_item(bom_item: ParsedBOMItem) -> MatchResult:
         )
 
     scored_candidates: List[Tuple[SearchResultItem, float]] = []
-    for cand in candidates:
+    for cand in valid_candidates:
         score = calculate_match_score(bom_item.product_query, cand.title, cand.in_stock)
-        scored_candidates.append((cand, score))
+        # Discard candidate completely if score is virtually zero
+        if score >= 0.15:
+            scored_candidates.append((cand, score))
 
+    if not scored_candidates:
+        return MatchResult(
+            bom_item=bom_item,
+            best_match=None,
+            all_candidates=[],
+            confidence_score=0.0,
+            status="NO_ENCONTRADO"
+        )
+
+    # Sort candidates by score descending, in_stock True first, price ascending
     scored_candidates.sort(key=lambda x: (x[1], x[0].in_stock, -x[0].unit_price), reverse=True)
-
     best_candidate, top_score = scored_candidates[0]
 
-    if top_score >= 0.75 and best_candidate.in_stock:
+    if top_score >= 0.70 and best_candidate.in_stock:
         status = "ALTA"
     elif top_score >= 0.50:
         status = "MEDIA"
-    else:
+    elif top_score >= 0.30:
         status = "REVISAR"
+    else:
+        status = "NO_ENCONTRADO"
+        best_candidate = None
 
     return MatchResult(
         bom_item=bom_item,
         best_match=best_candidate,
         all_candidates=scored_candidates,
-        confidence_score=top_score,
-        status=status
+        confidence_score=top_score if best_candidate else 0.0,
+        status=status,
+        selected_candidate=best_candidate
     )
 
 def search_bom_items_parallel(
@@ -195,6 +225,132 @@ def search_bom_items_parallel(
 
     return [r for r in results if r is not None]
 
+def find_optimal_mixed_assignment(
+    match_results: List[MatchResult],
+    shipping_rules: Dict[str, Dict[str, Any]],
+    service_fee_percent: float
+) -> Tuple[List[QuoteItem], List[str]]:
+    """
+    Finds the exact globally optimal combination of store items for the mixed quote scenario
+    by minimizing: Total = Subtotal Componentes + Servicio + Total Envíos.
+    Preserves the original line order of the BOM items.
+    """
+    items_to_optimize = []
+    missing_queries = []
+    original_indices = []
+
+    for idx, m in enumerate(match_results):
+        # Determine candidate options for this item
+        cand_options = []
+        for store in SUPPORTED_STORES:
+            best_store_cand = m.get_best_match_for_store(store)
+            if best_store_cand:
+                cand, score = best_store_cand
+                if cand.unit_price > 0:
+                    cand_options.append((cand, score))
+
+        # Fallback to selected_candidate or best_match if no store candidate found
+        if not cand_options and m.selected_candidate:
+            cand_options.append((m.selected_candidate, m.confidence_score))
+
+        if cand_options:
+            items_to_optimize.append((idx, m.bom_item, cand_options))
+            original_indices.append(idx)
+        else:
+            missing_queries.append(m.bom_item.product_query)
+
+    if not items_to_optimize:
+        return [], missing_queries
+
+    fee_multiplier = 1.0 + (service_fee_percent / 100.0)
+
+    # Combinatorial search: evaluate all combinations of candidate choices
+    # For each item, candidate options are at most 3 (one per store)
+    choice_lists = [cands for _, _, cands in items_to_optimize]
+    
+    best_cost = float('inf')
+    best_total_score = -1.0
+    best_combination: Optional[List[Tuple[SearchResultItem, float]]] = None
+
+    # Use branch and bound / product iteration
+    # Since len(items_to_optimize) is typical BOM (<= 20) and choices <= 3:
+    # If total combinations <= 50,000, exhaustive cartesian product is instantaneous.
+    total_combinations = 1
+    for cl in choice_lists:
+        total_combinations *= len(cl)
+
+    if total_combinations <= 50000:
+        for combo in itertools.product(*choice_lists):
+            # combo is tuple of (SearchResultItem, score)
+            # Calculate store subtotals
+            store_subtotals: Dict[str, float] = {}
+            total_items_subtotal = 0.0
+            sum_scores = 0.0
+
+            for (_, bom_item, _), (cand, score) in zip(items_to_optimize, combo):
+                sub = round(cand.unit_price * bom_item.quantity, 2)
+                store_subtotals[cand.store_name] = store_subtotals.get(cand.store_name, 0.0) + sub
+                total_items_subtotal += sub
+                sum_scores += score
+
+            # Calculate shipping for this store configuration
+            shipping_details = QuoteCalculator.evaluate_shipping_details(store_subtotals, shipping_rules)
+            total_shipping = sum(sd.shipping_cost for sd in shipping_details)
+
+            grand_total = round((total_items_subtotal * fee_multiplier) + total_shipping, 2)
+
+            if grand_total < best_cost or (grand_total == best_cost and sum_scores > best_total_score):
+                best_cost = grand_total
+                best_total_score = sum_scores
+                best_combination = combo
+    else:
+        # Branch and bound for very large BOMs
+        def search_bb(item_idx, current_subtotals, current_items_subtotal, current_combo, current_score):
+            nonlocal best_cost, best_total_score, best_combination
+            if item_idx == len(items_to_optimize):
+                shipping_details = QuoteCalculator.evaluate_shipping_details(current_subtotals, shipping_rules)
+                total_shipping = sum(sd.shipping_cost for sd in shipping_details)
+                grand_total = round((current_items_subtotal * fee_multiplier) + total_shipping, 2)
+                if grand_total < best_cost or (grand_total == best_cost and current_score > best_total_score):
+                    best_cost = grand_total
+                    best_total_score = current_score
+                    best_combination = list(current_combo)
+                return
+
+            _, bom_item, cands = items_to_optimize[item_idx]
+            for cand, score in cands:
+                sub = round(cand.unit_price * bom_item.quantity, 2)
+                st_name = cand.store_name
+                new_subtotals = current_subtotals.copy()
+                new_subtotals[st_name] = new_subtotals.get(st_name, 0.0) + sub
+                search_bb(
+                    item_idx + 1,
+                    new_subtotals,
+                    current_items_subtotal + sub,
+                    current_combo + [(cand, score)],
+                    current_score + score
+                )
+
+        search_bb(0, {}, 0.0, [], 0.0)
+
+    # Build QuoteItem list in original BOM line order
+    optimal_items: List[QuoteItem] = []
+    if best_combination:
+        for (orig_idx, bom_item, _), (chosen_cand, _) in zip(items_to_optimize, best_combination):
+            prod = Product(
+                name=chosen_cand.title,
+                url=chosen_cand.url,
+                store_name=chosen_cand.store_name,
+                unit_price=chosen_cand.unit_price,
+                in_stock=chosen_cand.in_stock,
+                stock_status=chosen_cand.stock_status,
+                image_url=chosen_cand.image_url
+            )
+            item = QuoteCalculator.create_quote_item(prod, bom_item.quantity)
+            optimal_items.append(item)
+
+    return optimal_items, missing_queries
+
 def build_all_bom_scenarios(
     match_results: List[MatchResult],
     customer: Customer,
@@ -204,34 +360,23 @@ def build_all_bom_scenarios(
 ) -> List[BOMScenario]:
     """
     Builds the 4 quote scenarios from the search results:
-    1. Opción 1: Cotización Mixta (Mejor precio combinado entre las 3 tiendas)
+    1. Opción 1: Cotización Mixta Óptima (Minimiza componentes + envíos + servicio)
     2. Opción 2: Todo en Electrónica RyCH
     3. Opción 3: Todo en La Electrónica
     4. Opción 4: Todo en Electrónica DIY
+    Preserves original line order.
     """
     total_requested = len(match_results)
     scenarios: List[BOMScenario] = []
 
     # ----------------------------------------------------
-    # Escenario 1: Cotización Mixta (Mejor Combinación)
+    # Escenario 1: Cotización Mixta Óptima
     # ----------------------------------------------------
-    mixed_items: List[QuoteItem] = []
-    mixed_missing: List[str] = []
-
-    for m in match_results:
-        if m.best_match:
-            prod = Product(
-                name=m.best_match.title,
-                url=m.best_match.url,
-                store_name=m.best_match.store_name,
-                unit_price=m.best_match.unit_price,
-                in_stock=m.best_match.in_stock,
-                stock_status=m.best_match.stock_status,
-                image_url=m.best_match.image_url
-            )
-            mixed_items.append(QuoteCalculator.create_quote_item(prod, m.bom_item.quantity))
-        else:
-            mixed_missing.append(m.bom_item.product_query)
+    mixed_items, mixed_missing = find_optimal_mixed_assignment(
+        match_results=match_results,
+        shipping_rules=config.shipping_rules,
+        service_fee_percent=service_fee_percent
+    )
 
     store_subtotals_mixed = QuoteCalculator.calculate_store_subtotals(mixed_items) if mixed_items else {}
     shipping_mixed = QuoteCalculator.evaluate_shipping_details(store_subtotals_mixed, config.shipping_rules)
@@ -266,7 +411,7 @@ def build_all_bom_scenarios(
 
         for m in match_results:
             store_match = m.get_best_match_for_store(store_name)
-            if store_match:
+            if store_match and store_match[0].unit_price > 0:
                 cand, score = store_match
                 prod = Product(
                     name=cand.title,
