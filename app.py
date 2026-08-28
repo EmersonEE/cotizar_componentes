@@ -243,11 +243,11 @@ with tab_cotizador:
 
         st.divider()
 
-        # 2. Buscador y Adición de Componentes (Incluye BOM Multilínea Mejorado)
+        # 2. Buscador y Adición de Componentes (Incluye BOM Multilínea Mejorado e Ingreso Manual)
         st.markdown("#### 🔍 Agregar Componentes")
         modo_adicion = st.radio(
             "Método de adición:",
-            ["📋 Pegar Lista Rápida (BOM)", "🔍 Buscar en las 3 tiendas (Metabuscador)", "🔗 Pegar URL directa"],
+            ["📋 Pegar Lista Rápida (BOM)", "🔍 Buscar en las 3 tiendas (Metabuscador)", "🔗 Pegar URL directa", "✍️ Ingreso Manual"],
             horizontal=True
         )
 
@@ -398,10 +398,14 @@ with tab_cotizador:
                 btn_buscar = st.button("Buscar 🚀", use_container_width=True)
 
             if btn_buscar and search_query.strip():
-                with st.spinner(f"Consultando RyCH, La Electrónica y DIY en paralelo para '{search_query}'..."):
-                    raw_res = metasearch(search_query.strip(), max_per_store=5)
-                    st.session_state.search_results = [r for r in raw_res if r.unit_price > 0]
-                    st.session_state.last_search_query = search_query.strip()
+                try:
+                    with st.spinner(f"Consultando RyCH, La Electrónica y DIY en paralelo para '{search_query}'..."):
+                        raw_res = metasearch(search_query.strip(), max_per_store=5)
+                        st.session_state.search_results = [r for r in raw_res if r.unit_price > 0]
+                        st.session_state.last_search_query = search_query.strip()
+                except Exception as e:
+                    st.error(f"❌ Error al consultar tiendas: {e}")
+                    st.session_state.search_results = []
 
             if st.session_state.search_results:
                 st.caption(f"Resultados para **'{st.session_state.last_search_query}'** ({len(st.session_state.search_results)} encontrados con precio válido):")
@@ -420,7 +424,18 @@ with tab_cotizador:
                             qty_val = st.number_input("Cant.", min_value=1, value=1, step=1, key=qty_key, label_visibility="collapsed")
                         with r_col4:
                             if st.button("➕ Agregar", key=f"btn_add_{idx}_{res.url}", use_container_width=True):
-                                prod = scrape_product(res.url)
+                                try:
+                                    prod = scrape_product(res.url)
+                                except Exception:
+                                    prod = Product(
+                                        name=res.title,
+                                        url=res.url,
+                                        store_name=res.store_name,
+                                        unit_price=res.unit_price,
+                                        in_stock=res.in_stock,
+                                        stock_status=res.stock_status,
+                                        image_url=res.image_url
+                                    )
                                 item = QuoteCalculator.create_quote_item(prod, qty_val)
                                 st.session_state.quote_items.append(item)
                                 st.toast(f"✔ Agregado: {qty_val}x {prod.name}", icon="✅")
@@ -429,7 +444,7 @@ with tab_cotizador:
             elif btn_buscar:
                 st.info("No se encontraron resultados válidos para este término.")
 
-        else:
+        elif modo_adicion == "🔗 Pegar URL directa":
             url_col1, url_col2, url_col3 = st.columns([3, 1, 1])
             with url_col1:
                 direct_url = st.text_input("URL del producto", placeholder="https://...", label_visibility="collapsed")
@@ -443,14 +458,53 @@ with tab_cotizador:
                     try:
                         prod = scrape_product(direct_url.strip())
                         if prod.unit_price <= 0:
-                            st.error("El producto no tiene un precio válido.")
+                            st.error("El producto no tiene un precio válido en la tienda.")
                         else:
                             item = QuoteCalculator.create_quote_item(prod, direct_qty)
                             st.session_state.quote_items.append(item)
                             st.toast(f"✔ Agregado: {direct_qty}x {prod.name}", icon="✅")
                             st.rerun()
                     except Exception as e:
-                        st.error(f"Error al extraer: {e}")
+                        st.error(f"❌ Error al extraer producto: {e}")
+
+        elif modo_adicion == "✍️ Ingreso Manual":
+            st.caption("Ingresa manualmente los datos del componente cuando una tienda esté caída o el producto no esté en la web:")
+            m_col1, m_col2 = st.columns([2, 1])
+            with m_col1:
+                man_name = st.text_input("Nombre / Descripción del Componente", placeholder="Ej. Transformador 12V 2A", key="man_name")
+                man_url = st.text_input("URL de referencia (opcional)", placeholder="https://...", key="man_url")
+            with m_col2:
+                man_store = st.selectbox("Tienda / Proveedor", ["Electrónica RyCH", "La Electrónica", "Electrónica DIY", "Otro Proveedor"], key="man_store")
+                man_sku = st.text_input("SKU / Código (opcional)", placeholder="Ej. TR-12V2A", key="man_sku")
+
+            m_row2_1, m_row2_2, m_row2_3, m_row2_4 = st.columns([1.2, 1, 1.2, 1.4])
+            with m_row2_1:
+                man_price = st.number_input("Precio Unitario (Q)", min_value=0.01, value=10.0, step=1.0, key="man_price")
+            with m_row2_2:
+                man_qty = st.number_input("Cantidad", min_value=1, value=1, step=1, key="man_qty")
+            with m_row2_3:
+                man_stock = st.selectbox("Disponibilidad", ["Disponible", "Agotado"], key="man_stock")
+            with m_row2_4:
+                st.write("")
+                st.write("")
+                if st.button("➕ Agregar Manual", type="primary", use_container_width=True):
+                    if not man_name.strip():
+                        st.error("El nombre del componente es obligatorio.")
+                    else:
+                        man_prod = Product(
+                            name=man_name.strip(),
+                            url=man_url.strip(),
+                            store_name=man_store,
+                            unit_price=float(man_price),
+                            in_stock=(man_stock == "Disponible"),
+                            stock_status=man_stock,
+                            sku=man_sku.strip() or None,
+                            is_manual=True
+                        )
+                        item = QuoteCalculator.create_quote_item(man_prod, int(man_qty))
+                        st.session_state.quote_items.append(item)
+                        st.toast(f"✔ Agregado manualmente: {man_qty}x {man_name}", icon="✍️")
+                        st.rerun()
 
         st.divider()
 
@@ -464,8 +518,10 @@ with tab_cotizador:
             for i, item in enumerate(st.session_state.quote_items):
                 i_col1, i_col2, i_col3, i_col4, i_col5 = st.columns([2.8, 1.0, 0.9, 1.1, 0.5])
                 with i_col1:
-                    st.markdown(f"**{i+1}. {item.product.name}**")
-                    st.caption(f"Tienda: {item.product.store_name}")
+                    manual_tag = " <span class='badge-store-la'>⚠️ Manual</span>" if item.product.is_manual else ""
+                    sku_text = f" | SKU: `{item.product.sku}`" if item.product.sku else ""
+                    st.markdown(f"**{i+1}. {item.product.name}**{manual_tag}", unsafe_allow_html=True)
+                    st.caption(f"Tienda: {item.product.store_name}{sku_text}")
                 with i_col2:
                     st.markdown(f"Q {item.unit_price:,.2f}")
                 with i_col3:

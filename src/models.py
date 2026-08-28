@@ -36,6 +36,7 @@ class Product:
     stock_status: str = "Disponible"
     image_url: Optional[str] = None
     sku: Optional[str] = None
+    is_manual: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -53,7 +54,8 @@ class Product:
             in_stock=bool(data.get("in_stock", True)),
             stock_status=str(data.get("stock_status", "Disponible")),
             image_url=data.get("image_url"),
-            sku=data.get("sku")
+            sku=data.get("sku"),
+            is_manual=bool(data.get("is_manual", False))
         )
 
 @dataclass

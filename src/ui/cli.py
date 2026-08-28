@@ -162,14 +162,64 @@ class CotizadorCLI:
 
         return QuoteCalculator.evaluate_shipping_details(store_subtotals, shipping_rules, custom_costs)
 
+    def _ingresar_producto_manual(self, default_name: str = "", default_url: str = "", default_store: str = "Electrónica RyCH") -> Optional[Product]:
+        """Allows user to manually input component details when scraping fails or store is offline."""
+        console.print("\n[bold cyan]✍️ INGRESO MANUAL DE COMPONENTE[/bold cyan]")
+        console.print("[dim]Ingresa los datos manualmente para continuar la cotización sin bloqueos.[/dim]\n")
+
+        name = Prompt.ask("Nombre / Descripción del componente", default=default_name).strip()
+        if not name:
+            console.print("[red]El nombre del componente es obligatorio.[/red]")
+            return None
+
+        console.print("\n[cyan]Selecciona la tienda de origen:[/cyan]")
+        console.print("  [1] Electrónica RyCH")
+        console.print("  [2] La Electrónica")
+        console.print("  [3] Electrónica DIY")
+        console.print("  [4] Otra Tienda / Proveedor")
+        store_opt = Prompt.ask("Opción de tienda", choices=["1", "2", "3", "4"], default="1")
+        store_map = {"1": "Electrónica RyCH", "2": "La Electrónica", "3": "Electrónica DIY"}
+        if store_opt in store_map:
+            store_name = store_map[store_opt]
+        else:
+            store_name = Prompt.ask("Nombre de la tienda/proveedor", default="Proveedor Local").strip() or "Proveedor Local"
+
+        url = Prompt.ask("URL de referencia (opcional, Enter para omitir)", default=default_url).strip()
+        sku = Prompt.ask("SKU / Código de producto (opcional, Enter para omitir)", default="").strip() or None
+
+        while True:
+            price = FloatPrompt.ask("Precio unitario en Quetzales (Q)")
+            if price > 0:
+                break
+            console.print("[red]El precio debe ser un número positivo mayor a 0.[/red]")
+
+        console.print("\n[cyan]Disponibilidad / Estado de Stock:[/cyan]")
+        console.print("  [1] Disponible (En stock)")
+        console.print("  [2] Agotado / Sobre pedido")
+        stk_choice = Prompt.ask("Selecciona estado", choices=["1", "2"], default="1")
+        in_stock = (stk_choice == "1")
+        stock_status = "Disponible" if in_stock else "Agotado"
+
+        return Product(
+            name=name,
+            url=url,
+            store_name=store_name,
+            unit_price=round(price, 2),
+            in_stock=in_stock,
+            stock_status=stock_status,
+            sku=sku,
+            is_manual=True
+        )
+
     def _obtener_producto_interactivo(self) -> Optional[Product]:
-        """Allows user to search by name in the 3 stores or paste a direct URL."""
+        """Allows user to search by name in the 3 stores, paste a direct URL, or enter manually."""
         console.print("\n[bold yellow]¿Cómo deseas agregar el componente?[/bold yellow]")
         console.print("  [bold cyan]1.[/bold cyan] 🔍 Buscar por nombre / valor en las 3 tiendas (Metabuscador)")
         console.print("  [bold cyan]2.[/bold cyan] 🔗 Pegar URL directa")
-        console.print("  [bold cyan]3.[/bold cyan] ↩️  Cancelar")
+        console.print("  [bold cyan]3.[/bold cyan] ✍️  Ingreso Manual (si la tienda falló o no está en línea)")
+        console.print("  [bold cyan]4.[/bold cyan] ↩️  Cancelar")
 
-        modo = Prompt.ask("Selecciona método", choices=["1", "2", "3"], default="1")
+        modo = Prompt.ask("Selecciona método", choices=["1", "2", "3", "4"], default="1")
 
         if modo == "1":
             while True:
@@ -177,14 +227,22 @@ class CotizadorCLI:
                 if not query:
                     return None
 
-                with console.status(f"[bold green]Buscando '{query}' en RyCH, La Electrónica y DIY en paralelo...[/bold green]", spinner="dots"):
-                    results = metasearch(query, max_per_store=5)
+                try:
+                    with console.status(f"[bold green]Buscando '{query}' en RyCH, La Electrónica y DIY en paralelo...[/bold green]", spinner="dots"):
+                        results = metasearch(query, max_per_store=5)
+                except Exception as e:
+                    console.print(f"[bold red]❌ Error de conexión con las tiendas:[/bold red] {e}")
+                    if Confirm.ask("¿Deseas ingresar este producto de forma manual?", default=True):
+                        return self._ingresar_producto_manual(default_name=query)
+                    return None
 
                 # Filter valid prices
                 results = [r for r in results if r.unit_price > 0]
 
                 if not results:
-                    console.print(f"[yellow]No se encontraron resultados válidos con precio para '{query}'.[/yellow]")
+                    console.print(f"[yellow]No se encontraron resultados con precio válido para '{query}'.[/yellow]")
+                    if Confirm.ask("¿Deseas ingresar este producto manualmente?", default=False):
+                        return self._ingresar_producto_manual(default_name=query)
                     if not Confirm.ask("¿Deseas buscar con otro término?", default=True):
                         return None
                     continue
@@ -220,7 +278,8 @@ class CotizadorCLI:
                         try:
                             prod = scrape_product(chosen.url)
                             return prod
-                        except Exception:
+                        except Exception as e:
+                            console.print(f"[yellow]⚠️ No se pudo extraer la ficha técnica en vivo ({e}). Usando datos del buscador.[/yellow]")
                             return Product(
                                 name=chosen.title,
                                 url=chosen.url,
@@ -241,15 +300,24 @@ class CotizadorCLI:
                 try:
                     product = scrape_product(url)
                     if product.unit_price <= 0:
-                        console.print("[bold red]❌ El producto no tiene un precio válido.[/bold red]")
+                        console.print("[bold red]❌ El producto no tiene un precio válido en la tienda.[/bold red]")
+                        if Confirm.ask("¿Deseas ingresar los datos manualmente?", default=True):
+                            return self._ingresar_producto_manual(default_url=url)
                         return None
                     return product
                 except StoreNotSupportedError as e:
                     console.print(f"[bold red]❌ Error de Tienda:[/bold red] {e}")
+                    if Confirm.ask("¿Deseas ingresar este producto de forma manual?", default=True):
+                        return self._ingresar_producto_manual(default_url=url)
                     return None
                 except Exception as e:
-                    console.print(f"[bold red]❌ Error al extraer producto:[/bold red] {e}")
+                    console.print(f"[bold red]❌ Error al extraer producto de la tienda:[/bold red] {e}")
+                    if Confirm.ask("¿Deseas ingresar este producto manualmente para no detener la cotización?", default=True):
+                        return self._ingresar_producto_manual(default_url=url)
                     return None
+
+        elif modo == "3":
+            return self._ingresar_producto_manual()
 
         return None
 

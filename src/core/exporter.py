@@ -53,7 +53,7 @@ class QuoteExporter:
                 writer.writerow(["NOTAS CLIENTE", quote.customer.notes])
             writer.writerow([])
             # Items table
-            writer.writerow(["#", "Componente", "Tienda", "Cantidad", "Precio Unitario (GTQ)", "Subtotal (GTQ)", "URL Origen", "Stock"])
+            writer.writerow(["#", "Componente", "Tienda", "Cantidad", "Precio Unitario (GTQ)", "Subtotal (GTQ)", "URL Origen", "Stock", "SKU", "Manual"])
             for idx, item in enumerate(quote.items, start=1):
                 writer.writerow([
                     idx,
@@ -63,7 +63,9 @@ class QuoteExporter:
                     f"{item.unit_price:.2f}",
                     f"{item.subtotal:.2f}",
                     item.product.url,
-                    item.product.stock_status
+                    item.product.stock_status,
+                    item.product.sku or "",
+                    "SÍ" if item.product.is_manual else "NO"
                 ])
             writer.writerow([])
             # Financial summary

@@ -163,6 +163,27 @@ class HistoryManager:
             old_in_stock = item.product.in_stock
             url = item.product.url
 
+            # Skip automatic revalidation for manual products or items without valid web URL
+            if item.product.is_manual or not url or not url.strip().startswith("http"):
+                updated_items.append(copy.deepcopy(item))
+                item_changes.append({
+                    "product_name": item.product.name,
+                    "store": item.product.store_name,
+                    "url": url,
+                    "quantity": item.quantity,
+                    "old_price": old_price,
+                    "new_price": old_price,
+                    "price_diff": 0.0,
+                    "old_subtotal": old_subtotal,
+                    "new_subtotal": old_subtotal,
+                    "subtotal_diff": 0.0,
+                    "old_in_stock": old_in_stock,
+                    "new_in_stock": old_in_stock,
+                    "stock_status": item.product.stock_status,
+                    "status_label": "Ingreso Manual (Conservado)"
+                })
+                continue
+
             try:
                 scraped_prod = scrape_product(url)
                 new_price = scraped_prod.unit_price
@@ -202,8 +223,7 @@ class HistoryManager:
                     })
 
             except Exception as e:
-                # If error, retain original item values and flag the error
-                updated_items.append(item)
+                updated_items.append(copy.deepcopy(item))
                 item_changes.append({
                     "product_name": item.product.name,
                     "store": item.product.store_name,
@@ -217,8 +237,8 @@ class HistoryManager:
                     "subtotal_diff": 0.0,
                     "old_in_stock": old_in_stock,
                     "new_in_stock": old_in_stock,
-                    "stock_status": "Error al consultar",
-                    "status_label": f"Error: {str(e)}"
+                    "stock_status": "Tienda no disponible",
+                    "status_label": f"Tienda no disponible ({str(e)})"
                 })
 
         # Preserve custom shipping costs from original quote
