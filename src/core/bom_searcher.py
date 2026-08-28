@@ -84,18 +84,38 @@ class BOMScenario:
         else:
             return f"⚠️ Parcial ({self.total_found}/{self.total_requested})"
 
+def clean_for_matching(text: str) -> str:
+    """Normalizes text for robust electronic component matching."""
+    s = text.lower().strip()
+    # Strip leading quantities (e.g. '2x ', '50x ', '10 ')
+    s = re.sub(r'^(?:\d+\s*[xX×\*\-]\s*|\d+\s+)', '', s).strip()
+    # Display synonyms & resolutions
+    s = re.sub(r'\b(?:128x64|12864|128\*64)\b', '0.96', s)
+    s = re.sub(r'\b(?:pantallas?|displays?|screens?)\b', 'display', s)
+    s = re.sub(r'0\.96[\"\'\s]*(?:pulgadas?|pulg|inch)?', '0.96', s)
+    s = re.sub(r'1\.3[\"\'\s]*(?:pulgadas?|pulg|inch)?', '1.3', s)
+    # Cable Dupont formats
+    s = re.sub(r'\b(?:macho[\s\-_]*a?[\s\-_]*hembra|m[\s\-_]*h|m/h)\b', 'macho_hembra', s)
+    s = re.sub(r'\b(?:macho[\s\-_]*a?[\s\-_]*macho|m[\s\-_]*m|m/m)\b', 'macho_macho', s)
+    s = re.sub(r'\b(?:hembra[\s\-_]*a?[\s\-_]*hembra|h[\s\-_]*h|h/h)\b', 'hembra_hembra', s)
+    # General clean
+    s = re.sub(r"[/_\-\+,\.]", " ", s)
+    return s
+
 def calculate_match_score(query: str, title: str, in_stock: bool = True) -> float:
     """
     Computes a normalized similarity score in [0.0, 1.0] between the search query
     and a candidate product title.
     """
+    q_clean = clean_for_matching(query)
+    t_clean = clean_for_matching(title)
+
     def tokenize(s: str) -> set:
-        clean = re.sub(r"[/_\-\+,\.]", " ", s.lower())
-        tokens = re.findall(r"[a-z]+|[0-9]+(?:\.[0-9]+)?", clean)
+        tokens = re.findall(r"[a-z]+|[0-9]+(?:\.[0-9]+)?", s)
         return set(tokens)
 
-    q_tokens = tokenize(query)
-    t_tokens = tokenize(title)
+    q_tokens = tokenize(q_clean)
+    t_tokens = tokenize(t_clean)
 
     if not q_tokens or not t_tokens:
         return 0.0
@@ -103,7 +123,7 @@ def calculate_match_score(query: str, title: str, in_stock: bool = True) -> floa
     overlap = q_tokens.intersection(t_tokens)
     recall = len(overlap) / len(q_tokens)
 
-    # Validate numbers strictly (e.g. '220', '22', '5', '0.96', '358')
+    # Validate numbers strictly (e.g. '220', '22', '5', '0.96', '358', '830', '05', '04', '90')
     q_nums = {t for t in q_tokens if re.match(r"^\d+(?:\.\d+)?$", t)}
     t_nums = {t for t in t_tokens if re.match(r"^\d+(?:\.\d+)?$", t)}
 
@@ -111,15 +131,15 @@ def calculate_match_score(query: str, title: str, in_stock: bool = True) -> floa
     if q_nums:
         matched_nums = q_nums.intersection(t_nums)
         if not matched_nums:
-            num_factor = 0.20  # Severe penalty if required model/value number is missing
+            num_factor = 0.40  # Moderate penalty if key number differs
         else:
             num_factor = len(matched_nums) / len(q_nums)
 
-    seq_ratio = difflib.SequenceMatcher(None, query.lower(), title.lower()).ratio()
+    seq_ratio = difflib.SequenceMatcher(None, q_clean, t_clean).ratio()
     base_score = (0.70 * recall + 0.30 * seq_ratio) * num_factor
 
     if not in_stock:
-        base_score *= 0.65
+        base_score *= 0.85
 
     return round(min(max(base_score, 0.0), 1.0), 3)
 
@@ -157,8 +177,7 @@ def search_single_bom_item(bom_item: ParsedBOMItem) -> MatchResult:
     scored_candidates: List[Tuple[SearchResultItem, float]] = []
     for cand in valid_candidates:
         score = calculate_match_score(bom_item.product_query, cand.title, cand.in_stock)
-        # Discard candidate completely if score is virtually zero
-        if score >= 0.15:
+        if score >= 0.10:
             scored_candidates.append((cand, score))
 
     if not scored_candidates:
@@ -174,11 +193,11 @@ def search_single_bom_item(bom_item: ParsedBOMItem) -> MatchResult:
     scored_candidates.sort(key=lambda x: (x[1], x[0].in_stock, -x[0].unit_price), reverse=True)
     best_candidate, top_score = scored_candidates[0]
 
-    if top_score >= 0.70 and best_candidate.in_stock:
+    if top_score >= 0.65 and best_candidate.in_stock:
         status = "ALTA"
-    elif top_score >= 0.50:
+    elif top_score >= 0.45:
         status = "MEDIA"
-    elif top_score >= 0.30:
+    elif top_score >= 0.25:
         status = "REVISAR"
     else:
         status = "NO_ENCONTRADO"
