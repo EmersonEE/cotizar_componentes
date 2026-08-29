@@ -1255,5 +1255,663 @@
     "sale_notes": "",
     "created_at": "2026-08-29T12:45:41.239153",
     "updated_at": "2026-08-29T12:45:41.239153"
+  },
+  {
+    "quote_id": "COT-2026-0006",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-08-29T12:58:11.691792",
+    "date": "29/08/2026",
+    "valid_until": "03/09/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "A000009G caja acrilico transparente compatible con arduino uno R3",
+          "url": "https://electronicarych.com/shop/a000009g-a000009g-caja-acrilico-transparente-compatible-con-arduino-uno-r3-11502?search=arduino+uno+r3",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11502/image_512/%5BA000009G%5D%20A000009G%20caja%20acrilico%20transparente%20compatible%20con%20arduino%20uno%20R3?unique=266f197",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 15.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "MD-ESP32C3 Modulo ESP32-C3 Mini 4 MB de memoria Flash integrada",
+          "url": "https://electronicarych.com/shop/md-esp32c3-md-esp32c3-modulo-esp32-c3-mini-4-mb-de-memoria-flash-integrada-15828?search=esp32+38+pines",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 65.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/15828/image_512/%5BMD-ESP32C3%5D%20MD-ESP32C3%20Modulo%20ESP32-C3%20Mini%204%20MB%20de%20memoria%20Flash%20integrada?unique=bdeabf4",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 65.0,
+        "subtotal": 130.0
+      },
+      {
+        "product": {
+          "name": "Board de desarrollo STM32F103C8T6 - tipo C",
+          "url": "https://laelectronica.com.gt/products/board-de-desarrollo-stm32f103c8t6-tipo-c",
+          "store_name": "La Electrónica",
+          "unit_price": 59.0,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/STM32F103C8T6-3.jpg?v=1770083433",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 59.0,
+        "subtotal": 59.0
+      },
+      {
+        "product": {
+          "name": "Protoboard 830",
+          "url": "https://www.electronicadiy.com/products/protoboard-830",
+          "store_name": "Electrónica DIY",
+          "unit_price": 33.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/830_puntos.jpg?v=1768522051",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 33.0,
+        "subtotal": 165.0
+      },
+      {
+        "product": {
+          "name": "CB-10MH Cable de Expansion Dupont Macho Hembra 10cm 4 Unidades",
+          "url": "https://electronicarych.com/shop/cb-10mh-cb-10mh-cable-de-expansion-dupont-macho-hembra-10cm-4-unidades-7619?search=Cable+dupont",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 2.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7619/image_512/%5BCB-10MH%5D%20CB-10MH%20Cable%20de%20Expansion%20Dupont%20Macho%20Hembra%2010cm%204%20Unidades?unique=83909c0",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 2.75,
+        "subtotal": 8.25
+      },
+      {
+        "product": {
+          "name": "CB20MF4 Cable Dupont 20cm Macho Hembra 4 unidades",
+          "url": "https://electronicarych.com/shop/cb20mf4-cb20mf4-cable-dupont-20cm-macho-hembra-4-unidades-7611?search=dupont+macho+hembra",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7611/image_512/%5BCB20MF4%5D%20CB20MF4%20Cable%20Dupont%2020cm%20Macho%20Hembra%204%20unidades?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 3.5,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Conector dupont de 3 pines",
+          "url": "https://laelectronica.com.gt/products/conector-dupont-de-3-pines",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Conector-DuPont-de-3-Pines_5b3e4f7f-3113-411a-97da-eefdb424f496.jpg?v=1770068304",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 1.0,
+        "subtotal": 1.0
+      },
+      {
+        "product": {
+          "name": "Resistencias por unidad Ohms 1/4W",
+          "url": "https://www.electronicadiy.com/products/resistencias-por-unidad-1-4w",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/resistencias.png?v=1777909852",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 50,
+        "unit_price": 0.5,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "R0805-1K Resistencia 1K ohm 1/8W SMD",
+          "url": "https://electronicarych.com/shop/r0805-1k-r0805-1k-resistencia-1k-ohm-1-8w-smd-8753?search=resistencia+1k",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/8753/image_512/%5BR0805-1K%5D%20R0805-1K%20Resistencia%201K%20ohm%201-8W%20SMD?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 30,
+        "unit_price": 0.75,
+        "subtotal": 22.5
+      },
+      {
+        "product": {
+          "name": "Resistencias por unidad Kilo-Ohms 1/4W",
+          "url": "https://www.electronicadiy.com/products/copia-de-resistencias-por-unidad-kilo-ohms-1-4w",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/resistencias.png?v=1777909852",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 0.5,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "PT-10KL potenciometro 10K ohm log",
+          "url": "https://electronicarych.com/shop/pt-10kl-pt-10kl-potenciometro-10k-ohm-log-8989?search=potenciometro+10k",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/8989/image_512/%5BPT-10KL%5D%20PT-10KL%20potenciometro%2010K%20ohm%20log?unique=80e6321",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 5.0,
+        "subtotal": 50.0
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 1.0,
+        "subtotal": 20.0
+      },
+      {
+        "product": {
+          "name": "LED verde de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-verde-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Verde--Producto_05e3907d-a18f-4db3-aa16-46e919c6d575.jpg?v=1770083376",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 1.0,
+        "subtotal": 20.0
+      },
+      {
+        "product": {
+          "name": "LED Difuso por unidad 3mm",
+          "url": "https://www.electronicadiy.com/products/led-difuso-por-unidad-3mm",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_c553e29ce8174aaab210b30e8d57ec5d_mv2.jpg?v=1592916364",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 0.5,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "1 Metro de tira LED Neopixel WS2812B",
+          "url": "https://www.electronicadiy.com/products/1-metro-de-tira-led-neopixel-ws2812b",
+          "store_name": "Electrónica DIY",
+          "unit_price": 95.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_b406c09843e4416e84a19ba8a00fdbcb_mv2.png?v=1592916214",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 95.0,
+        "subtotal": 190.0
+      },
+      {
+        "product": {
+          "name": "Display 128X64 OLED con I2C",
+          "url": "https://www.electronicadiy.com/products/display-128x64-oled-con-i2c?_pos=2&_sid=962448540&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 55.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_4bb25aadcae5487e9edb048c7a4f904b_mv2_512x342.jpg?v=1592916315",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 55.0,
+        "subtotal": 220.0
+      },
+      {
+        "product": {
+          "name": "Sensor ultrasónico HC-SR04",
+          "url": "https://www.electronicadiy.com/products/sensor-ultrasonico-hc-sr04",
+          "store_name": "Electrónica DIY",
+          "unit_price": 24.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/ultrasonico04.jpg?v=1710882567",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 24.0,
+        "subtotal": 72.0
+      },
+      {
+        "product": {
+          "name": "Sensor de Humedad y Temperatura DHT11",
+          "url": "https://laelectronica.com.gt/products/sensor-de-humedad-y-temperatura-dht11",
+          "store_name": "La Electrónica",
+          "unit_price": 39.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/modulodht11_dd75287c-79c6-443f-9a1f-f13da2f27648.jpg?v=1770068481",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 39.0,
+        "subtotal": 117.0
+      },
+      {
+        "product": {
+          "name": "MD-SPP-C Módulo bluetooth serial sustituye a HC-06 y HC-05",
+          "url": "https://electronicarych.com/shop/md-spp-c-md-spp-c-modulo-bluetooth-serial-sustituye-a-hc-06-y-hc-05-12084?search=hc-05",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 50.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/12084/image_512/%5BMD-SPP-C%5D%20MD-SPP-C%20M%C3%B3dulo%20bluetooth%20serial%20sustituye%20a%20HC-06%20y%20HC-05?unique=f4db2de",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 50.0,
+        "subtotal": 150.0
+      },
+      {
+        "product": {
+          "name": "Módulo Inalámbrico Wifi ESP8266 Esp-01",
+          "url": "https://www.electronicadiy.com/products/modulo-inalambrico-wifi-esp8266-esp-01",
+          "store_name": "Electrónica DIY",
+          "unit_price": 35.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_8d4a0c0a15a8485681bedc0247f99ef6_mv2.jpg?v=1592918892",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 35.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "Micro servo SG90 1.6kg torque",
+          "url": "https://www.electronicadiy.com/products/micro-servo-sg90-1-6kg-torque",
+          "store_name": "Electrónica DIY",
+          "unit_price": 27.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_3c0bc392fdcf4cdd9c3b0ee0b4bb826f_mv2.jpg?v=1777744696",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 27.0,
+        "subtotal": 135.0
+      },
+      {
+        "product": {
+          "name": "Puente H L298N",
+          "url": "https://laelectronica.com.gt/products/puente-h-l298n",
+          "store_name": "La Electrónica",
+          "unit_price": 29.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/multiwatt15v_e6024a38-a687-4246-b09f-800901a29473.jpg?v=1770065620",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 29.0,
+        "subtotal": 87.0
+      },
+      {
+        "product": {
+          "name": "Motor DC de 3V a 6V",
+          "url": "https://laelectronica.com.gt/products/motor-dc-de-3v-a-6v",
+          "store_name": "La Electrónica",
+          "unit_price": 12.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/motor12v1_6bbf4faf-6db6-4453-8191-aab99b0c0a70.jpg?v=1770067361",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 12.0,
+        "subtotal": 48.0
+      },
+      {
+        "product": {
+          "name": "Motor de pasos Nema 17 de 40mm",
+          "url": "https://laelectronica.com.gt/products/motor-de-pasos-nema-17-de-500-rpm",
+          "store_name": "La Electrónica",
+          "unit_price": 175.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Motor-Stepper-Nema-17-De-500-RPM.jpg?v=1770083478",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 175.0,
+        "subtotal": 350.0
+      },
+      {
+        "product": {
+          "name": "Driver A4988 (CNC o Impresora 3D)",
+          "url": "https://www.electronicadiy.com/products/driver-a4988-cnc-o-impresora-3d?_pos=1&_sid=692470bc6&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 30.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_8b2c7583af8e426cb3fce2b90cc1beae_mv2_512x512.jpg?v=1592916318",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 30.0,
+        "subtotal": 60.0
+      },
+      {
+        "product": {
+          "name": "Transistor 2N3906 PNP SMD",
+          "url": "https://www.electronicadiy.com/products/transistor-2n3906-npn-smd",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/transistor2A.jpg?v=1610055594",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 0.75,
+        "subtotal": 7.5
+      },
+      {
+        "product": {
+          "name": "Transistor  IRFZ44 55V 49A",
+          "url": "https://www.electronicadiy.com/products/transistor-irfz44-55v-49a?_pos=1&_sid=9c779e987&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/tip122_9e54a05d-9429-4e21-894c-5166e32f86df_512x512.jpg?v=1610133185",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 7.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "Diodo rectificador 1N4007",
+          "url": "https://laelectronica.com.gt/products/diodo-rectificador-1n4007",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodos-Rectificadores-y-Schottky-Categoria-y-Producto_bc14c20e-ea44-40ad-b93e-dc93e5858fbf.jpg?v=1770068811",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 0.75,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Relé  5V DC DPDT de 8 Pines",
+          "url": "https://www.electronicadiy.com/products/rele-5v-dc-dpdt-de-8-pines",
+          "store_name": "Electrónica DIY",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/relay_2_1.png?v=1785430886",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 16.0,
+        "subtotal": 80.0
+      },
+      {
+        "product": {
+          "name": "Buzzer pasivo o activo",
+          "url": "https://www.electronicadiy.com/products/buzzer-sin-modulo",
+          "store_name": "Electrónica DIY",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_8129443672fd4f58921aa59af9e23ece_mv2.jpg?v=1592916258",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 3.5,
+        "subtotal": 17.5
+      },
+      {
+        "product": {
+          "name": "Fuente de alimentación 12V 2A  AC-DC",
+          "url": "https://www.electronicadiy.com/products/fuente-de-alimentacion-12v-2a-ac-dc",
+          "store_name": "Electrónica DIY",
+          "unit_price": 36.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/fuente_12v.jpg?v=1753805545",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 36.5,
+        "subtotal": 73.0
+      },
+      {
+        "product": {
+          "name": "Conector hembra para Arduino (jack hembra 5.5mm)",
+          "url": "https://www.electronicadiy.com/products/conector-hembra-para-arduino-jack-hembra-2-1mm?_pos=4&_sid=5417360b2&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_77d89540ef9245ff8a44389a37f0e975_mv2_512x545.jpg?v=1592916292",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 5.0,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "Pulsador de PCB NA de 4 pines de 6 x 6 x 12 mm",
+          "url": "https://laelectronica.com.gt/products/pulsador-de-pcb-na-de-4-pines-de-6-x-6-x-12-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/SZ0005-6x6x12-1.jpg?v=1770083558",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 1.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Switch de Palanca SMTS-102 SPDT",
+          "url": "https://www.electronicadiy.com/products/compuerta-cd4011be?_pos=1&_sid=419d1a859&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 6.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/mts3-min_512x683.jpg?v=1610056181",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 6.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "74B32 cautin tipo pistola 120V 60W Miyako",
+          "url": "https://electronicarych.com/shop/74b32-74b32-cautin-tipo-pistola-120v-60w-miyako-13484?search=cautin+60w",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 45.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/13484/image_512/%5B74B32%5D%2074B32%20cautin%20tipo%20pistola%20120V%2060W%20Miyako?unique=28edb6d",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 45.0,
+        "subtotal": 45.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 457.75,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 727.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q200 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 1255.0,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      }
+    ],
+    "items_subtotal": 2439.75,
+    "subtotal": 2439.75,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 243.98,
+    "total_shipping": 0.0,
+    "total": 2683.73,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-08-29T12:58:11.691751",
+    "updated_at": "2026-08-29T12:58:11.691751"
   }
 ]

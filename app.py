@@ -23,7 +23,11 @@ from src.scrapers.search import SearchResultItem
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
-from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid
+from src.core.bom_parser import (
+    parse_bom_text,
+    parse_bom_text_hybrid,
+    is_suspicious_regex_fallback,
+)
 from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
@@ -318,6 +322,13 @@ with tab_cotizador:
                 if st.button("⚡ Procesar Lista y Buscar en Paralelo", type="primary", use_container_width=True) and bom_input.strip():
                     with st.spinner("Interpretando lista (IA / Regex) y consultando tiendas en paralelo..."):
                         parse_res = parse_bom_text_hybrid(bom_input, config=config, force_ai=use_ai_extraction) if use_ai_extraction else parse_bom_text(bom_input)
+                        if is_suspicious_regex_fallback(bom_input, parse_res):
+                            st.warning(
+                                "⚠️ El texto parece un mensaje libre y la extracción con IA falló (posible timeout). "
+                                "El resultado básico interpretó todo el texto como un solo componente. "
+                                "Asegúrate de que el checkbox de IA esté activo y vuelve a intentarlo, "
+                                "o sube el 'Timeout de extracción IA' en Configuración."
+                            )
                         if parse_res.items:
                             match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
                             st.session_state.bom_match_results = match_results
@@ -1197,6 +1208,12 @@ with tab_config:
         new_enable_ai = st.toggle("Habilitar Asistente IA Local", value=bool(config.enable_ai))
         new_ollama_url = st.text_input("URL del Servidor Ollama", value=config.ollama_url)
         new_ollama_model = st.text_input("Modelo de IA", value=config.ollama_model)
+        new_ai_timeout = st.number_input(
+            "Timeout de extracción IA (segundos)",
+            min_value=15.0, max_value=300.0,
+            value=float(config.ai_timeout), step=5.0,
+            help="Mensajes largos (30+ componentes) tardan más; si ves 'Failed to extract BOM with AI: timed out', súbelo.",
+        )
 
         st.markdown("#### Umbrales de Envío Gratis")
         new_la_thresh = st.number_input("La Electrónica: Mínimo envío gratis (Q)", value=float(config.shipping_rules["La Electrónica"]["free_threshold"]))
@@ -1223,6 +1240,7 @@ with tab_config:
         config.enable_ai = new_enable_ai
         config.ollama_url = new_ollama_url
         config.ollama_model = new_ollama_model
+        config.ai_timeout = float(new_ai_timeout)
         config.shipping_rules["La Electrónica"]["free_threshold"] = new_la_thresh
         config.shipping_rules["La Electrónica"]["default_cost"] = new_la_cost
         config.shipping_rules["Electrónica DIY"]["free_threshold"] = new_diy_thresh

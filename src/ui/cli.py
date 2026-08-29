@@ -23,7 +23,11 @@ from src.scrapers.search import SearchResultItem
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
-from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid
+from src.core.bom_parser import (
+    parse_bom_text,
+    parse_bom_text_hybrid,
+    is_suspicious_regex_fallback,
+)
 from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
@@ -462,11 +466,26 @@ class CotizadorCLI:
         if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
             if Confirm.ask(f"\n¿Deseas interpretar el texto con IA Local (Ollama: {self.config.ollama_model})? (Recomendado para mensajes de WhatsApp o notas libres)", default=True):
                 with console.status(f"[bold magenta]Extrayendo componentes con IA Local ({self.config.ollama_model})...[/bold magenta]", spinner="dots"):
-                    parse_res = parse_bom_text_hybrid(raw_text, config=self.config, force_ai=True)
+                    parse_res = parse_bom_text_hybrid(raw_text, config=self.config, force_ai=True,
+                                                      timeout=self.config.ai_timeout)
             else:
                 parse_res = parse_bom_text(raw_text)
         else:
             parse_res = parse_bom_text(raw_text)
+
+        # Si la IA falló (p.ej. timeout) y el fallback regex es sospechoso (párrafo
+        # conversacional interpretado como 1 solo componente), avisar y ofrecer reintento.
+        if is_suspicious_regex_fallback(raw_text, parse_res):
+            console.print("\n[bold yellow]⚠️ El texto parece un mensaje libre y la extracción con IA falló (posible timeout).[/bold yellow]")
+            console.print(f"[dim]El parser básico interpretó {parse_res.total_items} ítem(s), probablemente con todo el texto pegado como un solo componente.[/dim]")
+            if Confirm.ask(f"¿Reintentar la extracción con IA Local con más tiempo (hasta {self.config.ai_timeout * 2:.0f}s)?", default=True):
+                with console.status(f"[bold magenta]Reintentando extracción con IA ({self.config.ai_timeout * 2:.0f}s de margen)...[/bold magenta]", spinner="dots"):
+                    parse_res = parse_bom_text_hybrid(raw_text, config=self.config, force_ai=True,
+                                                      timeout=self.config.ai_timeout * 2)
+                if getattr(parse_res, "source", "") == "ai_ollama":
+                    console.print("[bold green]✔ Reintento exitoso con IA.[/bold green]")
+                else:
+                    console.print("[red]✘ La IA volvió a fallar. Puedes continuar con el resultado básico o cancelar.[/red]")
 
         if not parse_res.items:
             console.print("[bold red]❌ No se pudo interpretar ningún componente del texto ingresado.[/bold red]")
