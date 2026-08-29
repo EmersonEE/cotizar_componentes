@@ -18,6 +18,7 @@ from src.models import (
 from src.config import AppConfig
 from src.stores import STORE_NAMES
 from src.scrapers import scrape_product, metasearch, StoreNotSupportedError
+from src.scrapers.search import SearchResultItem
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
@@ -623,47 +624,136 @@ class CotizadorCLI:
                 line_num = int(user_action)
                 if 1 <= line_num <= len(match_results):
                     m = match_results[line_num - 1]
-                    console.print(f"\n[bold cyan]Candidatos encontrados para Línea #{line_num}:[/bold cyan] [bold white]{m.bom_item.quantity}x {m.bom_item.product_query}[/bold white]")
+                    console.print(f"\n[bold cyan]Candidatos / Asignación para Línea #{line_num}:[/bold cyan] [bold white]{m.bom_item.quantity}x {m.bom_item.product_query}[/bold white]")
                     
-                    if not m.all_candidates:
-                        console.print("[yellow]No se encontraron candidatos en ninguna de las 3 tiendas para esta línea.[/yellow]")
-                        Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    if m.all_candidates:
+                        c_table = Table(box=box.ROUNDED)
+                        c_table.add_column("#", justify="center", style="bold cyan")
+                        c_table.add_column("Tienda", style="cyan")
+                        c_table.add_column("Título / Descripción del Producto", style="white")
+                        c_table.add_column("Precio Unit.", justify="right", style="green")
+                        c_table.add_column("Stock", justify="center")
+                        c_table.add_column("Score", justify="center")
+                        c_table.add_column("Nivel Confianza", justify="center")
+
+                        for c_idx, (cand, score) in enumerate(m.all_candidates, 1):
+                            st_icon = "[green]Disponible[/green]" if cand.in_stock else "[red]Agotado[/red]"
+                            if score >= 0.70:
+                                lvl = "[green]ALTA[/green]"
+                            elif score >= 0.50:
+                                lvl = "[yellow]MEDIA[/yellow]"
+                            else:
+                                lvl = "[red]REVISAR[/red]"
+
+                            c_table.add_row(
+                                str(c_idx),
+                                cand.store_name,
+                                cand.title,
+                                format_currency(cand.unit_price, self.config.currency_symbol),
+                                st_icon,
+                                f"{int(score * 100)}%",
+                                lvl
+                            )
+                        console.print(c_table)
+                    else:
+                        console.print("[yellow]No se encontraron candidatos automáticos en ninguna tienda para esta línea.[/yellow]")
+
+                    console.print("\n[bold cyan]Opciones Disponibles para esta Línea:[/bold cyan]")
+                    if m.all_candidates:
+                        console.print(f"  [bold green][1..{len(m.all_candidates)}][/bold green] Seleccionar uno de los candidatos automáticos de la lista")
+                    console.print("  [bold cyan][B][/bold cyan] 🔍 Buscar con otro término personalizado en las 3 tiendas")
+                    console.print("  [bold cyan][U][/bold cyan] 🔗 Pegar link / URL directa de cualquier tienda (Scraping automático)")
+                    console.print("  [bold cyan][M][/bold cyan] ✍️  Ingresar componente manualmente (Nombre, Tienda, Precio)")
+                    console.print("  [bold cyan][0][/bold cyan] Descartar / Marcar como no encontrado")
+                    console.print("  [bold cyan][X][/bold cyan] ↩️  Regresar sin cambios")
+
+                    valid_choices = ["b", "u", "m", "0", "x"] + [str(i) for i in range(1, len(m.all_candidates) + 1)]
+                    line_opc = Prompt.ask("\nSelecciona opción para esta línea", choices=valid_choices, default="1" if m.all_candidates else "b").lower()
+
+                    if line_opc == "x":
                         continue
+                    elif line_opc == "0":
+                        m.selected_candidate = None
+                        m.status = "NO_ENCONTRADO"
+                        m.is_confirmed = True
+                        console.print("[yellow]Línea marcada como no encontrada.[/yellow]")
+                        Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    elif line_opc == "b":
+                        custom_q = Prompt.ask("Ingresa el nuevo término de búsqueda", default=m.bom_item.product_query).strip()
+                        if custom_q:
+                            with console.status(f"[bold yellow]Buscando '{custom_q}' en las 3 tiendas...[/bold yellow]"):
+                                custom_results = metasearch(custom_q, max_per_store=5)
+                                custom_results = [r for r in custom_results if r.unit_price > 0]
+                            if not custom_results:
+                                console.print(f"[yellow]No se encontraron productos para '{custom_q}'.[/yellow]")
+                            else:
+                                b_table = Table(title=f"Resultados para '{custom_q}'", box=box.ROUNDED)
+                                b_table.add_column("#", justify="center", style="bold cyan")
+                                b_table.add_column("Tienda", style="cyan")
+                                b_table.add_column("Producto", style="white")
+                                b_table.add_column("Precio Unit.", justify="right", style="bold green")
+                                b_table.add_column("Stock", justify="center")
 
-                    c_table = Table(box=box.ROUNDED)
-                    c_table.add_column("#", justify="center", style="bold cyan")
-                    c_table.add_column("Tienda", style="cyan")
-                    c_table.add_column("Título / Descripción del Producto", style="white")
-                    c_table.add_column("Precio Unit.", justify="right", style="green")
-                    c_table.add_column("Stock", justify="center")
-                    c_table.add_column("Score", justify="center")
-                    c_table.add_column("Nivel Confianza", justify="center")
+                                for b_idx, b_item in enumerate(custom_results, 1):
+                                    st_icon = "[green]Disponible[/green]" if b_item.in_stock else "[red]Agotado[/red]"
+                                    b_table.add_row(str(b_idx), b_item.store_name, b_item.title, format_currency(b_item.unit_price, self.config.currency_symbol), st_icon)
+                                console.print(b_table)
 
-                    for c_idx, (cand, score) in enumerate(m.all_candidates, 1):
-                        st_icon = "[green]Disponible[/green]" if cand.in_stock else "[red]Agotado[/red]"
-                        if score >= 0.70:
-                            lvl = "[green]ALTA[/green]"
-                        elif score >= 0.50:
-                            lvl = "[yellow]MEDIA[/yellow]"
-                        else:
-                            lvl = "[red]REVISAR[/red]"
-
-                        c_table.add_row(
-                            str(c_idx),
-                            cand.store_name,
-                            cand.title,
-                            format_currency(cand.unit_price, self.config.currency_symbol),
-                            st_icon,
-                            f"{int(score * 100)}%",
-                            lvl
-                        )
-
-                    console.print(c_table)
-                    console.print("  [bold cyan][0][/bold cyan] Descartar / Dejar como no encontrado")
-
-                    sel_c = IntPrompt.ask(f"Selecciona candidato (1 a {len(m.all_candidates)}, o 0 para descartar)", default=1)
-                    if 1 <= sel_c <= len(m.all_candidates):
-                        chosen_cand, chosen_score = m.all_candidates[sel_c - 1]
+                                b_sel = IntPrompt.ask(f"Selecciona producto a asignar (1 a {len(custom_results)}, 0 para cancelar)", default=1)
+                                if 1 <= b_sel <= len(custom_results):
+                                    chosen_b = custom_results[b_sel - 1]
+                                    m.selected_candidate = chosen_b
+                                    m.all_candidates.insert(0, (chosen_b, 1.0))
+                                    m.confidence_score = 1.0
+                                    m.status = "ALTA" if chosen_b.in_stock else "REVISAR"
+                                    m.is_confirmed = True
+                                    console.print(f"[bold green]✔ Producto asignado a Línea #{line_num}:[/bold green] {chosen_b.title} ({chosen_b.store_name}) - Q {chosen_b.unit_price:.2f}")
+                            Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    elif line_opc == "u":
+                        target_url = Prompt.ask("Pega la URL del producto (ej. https://laelectronica.com.gt/products/...)").strip()
+                        if target_url:
+                            with console.status("[bold yellow]Extrayendo información de la tienda...[/bold yellow]"):
+                                try:
+                                    scraped_p = scrape_product(target_url)
+                                    new_cand = SearchResultItem(
+                                        store_name=scraped_p.store_name,
+                                        title=scraped_p.name,
+                                        url=scraped_p.url,
+                                        unit_price=scraped_p.unit_price,
+                                        in_stock=scraped_p.in_stock,
+                                        stock_status=scraped_p.stock_status,
+                                        image_url=scraped_p.image_url
+                                    )
+                                    m.selected_candidate = new_cand
+                                    m.all_candidates.insert(0, (new_cand, 1.0))
+                                    m.confidence_score = 1.0
+                                    m.status = "ALTA" if new_cand.in_stock else "REVISAR"
+                                    m.is_confirmed = True
+                                    console.print(f"[bold green]✔ URL asignada a Línea #{line_num}:[/bold green] {new_cand.title} ({new_cand.store_name}) - Q {new_cand.unit_price:.2f}")
+                                except Exception as e:
+                                    console.print(f"[bold red]❌ Error al extraer URL:[/bold red] {e}")
+                            Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    elif line_opc == "m":
+                        m_prod = self._ingresar_producto_manual(default_name=m.bom_item.product_query)
+                        if m_prod:
+                            new_cand = SearchResultItem(
+                                store_name=m_prod.store_name,
+                                title=m_prod.name,
+                                url=m_prod.url or "",
+                                unit_price=m_prod.unit_price,
+                                in_stock=m_prod.in_stock,
+                                stock_status=m_prod.stock_status
+                            )
+                            m.selected_candidate = new_cand
+                            m.all_candidates.insert(0, (new_cand, 1.0))
+                            m.confidence_score = 1.0
+                            m.status = "ALTA"
+                            m.is_confirmed = True
+                            console.print(f"[bold green]✔ Componente manual asignado a Línea #{line_num}:[/bold green] {new_cand.title} ({new_cand.store_name}) - Q {new_cand.unit_price:.2f}")
+                            Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    elif line_opc.isdigit() and 1 <= int(line_opc) <= len(m.all_candidates):
+                        sel_idx = int(line_opc) - 1
+                        chosen_cand, chosen_score = m.all_candidates[sel_idx]
                         m.selected_candidate = chosen_cand
                         m.confidence_score = chosen_score
                         if chosen_score >= 0.70 and chosen_cand.in_stock:
@@ -674,12 +764,7 @@ class CotizadorCLI:
                             m.status = "REVISAR"
                         m.is_confirmed = True
                         console.print(f"[bold green]✔ Asignado:[/bold green] {chosen_cand.title} ({chosen_cand.store_name})")
-                    elif sel_c == 0:
-                        m.selected_candidate = None
-                        m.status = "NO_ENCONTRADO"
-                        m.is_confirmed = True
-                        console.print("[yellow]Línea marcada como no encontrada.[/yellow]")
-                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                        Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
                 else:
                     console.print("[red]Número de línea fuera de rango.[/red]")
                     Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")

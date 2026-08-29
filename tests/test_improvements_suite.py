@@ -210,3 +210,49 @@ def test_f5_packing_list_generation(tmp_path):
     assert packing_list["total_purchase_cost"] == 155.0
     assert packing_list["total_client_price"] == 169.0
     assert packing_list["estimated_profit"] == 14.0
+
+
+def test_bom_manual_candidate_override():
+    """Test assigning a manual candidate or direct URL to an unfound BOM line."""
+    from src.core.bom_parser import ParsedBOMItem
+    from src.core.bom_searcher import MatchResult, SearchResultItem, build_all_bom_scenarios
+    from src.config import AppConfig
+
+    # Initially not found item
+    bom_item = ParsedBOMItem(raw_line="1x Caja organizadora pequeña", quantity=1, product_query="Caja organizadora pequeña")
+    m = MatchResult(bom_item=bom_item, best_match=None, all_candidates=[], confidence_score=0.0, status="NO_ENCONTRADO")
+    assert m.selected_candidate is None
+    assert m.status == "NO_ENCONTRADO"
+
+    # Assign manual replacement item
+    manual_cand = SearchResultItem(
+        store_name="La Electrónica",
+        title="Caja Plástica Organizadora 10 Divisiones",
+        url="https://laelectronica.com.gt/products/caja-10",
+        unit_price=25.0,
+        in_stock=True,
+        stock_status="Disponible"
+    )
+    m.selected_candidate = manual_cand
+    m.all_candidates.insert(0, (manual_cand, 1.0))
+    m.confidence_score = 1.0
+    m.status = "ALTA"
+    m.is_confirmed = True
+
+    assert m.selected_candidate.title == "Caja Plástica Organizadora 10 Divisiones"
+    assert m.selected_candidate.unit_price == 25.0
+
+    # Build scenarios with this manually assigned match
+    cfg = AppConfig.load()
+    scenarios = build_all_bom_scenarios(
+        match_results=[m],
+        customer=Customer(name="Test Manual"),
+        config=cfg,
+        service_fee_percent=10.0
+    )
+    assert len(scenarios) == 4
+    mixed = scenarios[0]
+    assert mixed.total_found == 1
+    assert len(mixed.items) == 1
+    assert mixed.items[0].product.name == "Caja Plástica Organizadora 10 Divisiones"
+    assert mixed.items[0].unit_price == 25.0

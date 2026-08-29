@@ -19,6 +19,7 @@ from src.models import (
 from src.config import AppConfig
 from src.stores import STORE_NAMES
 from src.scrapers import scrape_product, metasearch
+from src.scrapers.search import SearchResultItem
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
@@ -434,6 +435,87 @@ with tab_cotizador:
                                                         st.warning(f"No se encontraron unidades en stock para '{alt['nombre']}'.")
                                                 except Exception as e:
                                                     st.error(f"Error al buscar alternativa: {e}")
+
+                        # Asignación manual / Link directo / Búsqueda personalizada
+                        with st.expander(f"🔧 Asignar manualmente (Link URL / Búsqueda / Manual) — Línea #{idx+1}"):
+                            tab_man_search, tab_man_url, tab_man_direct = st.tabs(["🔍 Buscar otro término", "🔗 Pegar URL directa", "✍️ Ingreso Manual"])
+                            
+                            with tab_man_search:
+                                custom_q = st.text_input("Término de búsqueda personalizado", value=m.bom_item.product_query, key=f"bom_man_q_{idx}")
+                                if st.button(f"🔍 Buscar '{custom_q}'", key=f"btn_search_man_{idx}"):
+                                    with st.spinner("Buscando en las 3 tiendas..."):
+                                        found_c = metasearch(custom_q, max_per_store=5)
+                                        valid_c = [c for c in found_c if c.unit_price > 0]
+                                        st.session_state[f"bom_custom_search_res_{idx}"] = valid_c
+
+                                if f"bom_custom_search_res_{idx}" in st.session_state and st.session_state[f"bom_custom_search_res_{idx}"]:
+                                    res_list = st.session_state[f"bom_custom_search_res_{idx}"]
+                                    st.caption(f"Se encontraron {len(res_list)} productos:")
+                                    for r_i, r_item in enumerate(res_list):
+                                        r_col1, r_col2 = st.columns([3, 1])
+                                        with r_col1:
+                                            st_tag_stk = "Disponible" if r_item.in_stock else "Agotado"
+                                            st.markdown(f"**[{r_item.store_name}]** [{r_item.title}]({r_item.url}) — **Q {r_item.unit_price:,.2f}** ({st_tag_stk})")
+                                        with r_col2:
+                                            if st.button("Asignar", key=f"btn_assign_srch_{idx}_{r_i}"):
+                                                m.selected_candidate = r_item
+                                                m.all_candidates.insert(0, (r_item, 1.0))
+                                                m.confidence_score = 1.0
+                                                m.status = "ALTA" if r_item.in_stock else "REVISAR"
+                                                m.is_confirmed = True
+                                                st.toast(f"✔ Asignado: {r_item.title}", icon="✔")
+                                                st.rerun()
+
+                            with tab_man_url:
+                                url_input = st.text_input("Pega la URL del producto de la tienda", key=f"bom_man_url_{idx}", placeholder="https://laelectronica.com.gt/products/...")
+                                if st.button("Extraer y Asignar URL", key=f"btn_assign_url_{idx}"):
+                                    if url_input:
+                                        with st.spinner("Extrayendo producto desde la URL..."):
+                                            try:
+                                                scraped_p = scrape_product(url_input)
+                                                new_cand = SearchResultItem(
+                                                    store_name=scraped_p.store_name,
+                                                    title=scraped_p.name,
+                                                    url=scraped_p.url,
+                                                    unit_price=scraped_p.unit_price,
+                                                    in_stock=scraped_p.in_stock,
+                                                    stock_status=scraped_p.stock_status,
+                                                    image_url=scraped_p.image_url
+                                                )
+                                                m.selected_candidate = new_cand
+                                                m.all_candidates.insert(0, (new_cand, 1.0))
+                                                m.confidence_score = 1.0
+                                                m.status = "ALTA" if new_cand.in_stock else "REVISAR"
+                                                m.is_confirmed = True
+                                                st.toast(f"✔ URL asignada: {new_cand.title} (Q {new_cand.unit_price:.2f})", icon="🔗")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Error al extraer la URL: {e}")
+
+                            with tab_man_direct:
+                                m_col1, m_col2 = st.columns([2, 1])
+                                with m_col1:
+                                    man_name_in = st.text_input("Nombre del producto", value=m.bom_item.product_query, key=f"bom_man_name_{idx}")
+                                    man_store_in = st.selectbox("Tienda", STORE_NAMES + ["Otra Tienda / Proveedor"], key=f"bom_man_store_{idx}")
+                                with m_col2:
+                                    man_price_in = st.number_input("Precio unitario (Q)", min_value=0.01, value=10.0, step=1.0, key=f"bom_man_price_{idx}")
+                                    man_sku_in = st.text_input("SKU (opcional)", key=f"bom_man_sku_{idx}")
+                                if st.button("Asignar Producto Manual", key=f"btn_assign_direct_{idx}"):
+                                    new_cand = SearchResultItem(
+                                        store_name=man_store_in,
+                                        title=man_name_in,
+                                        url="",
+                                        unit_price=round(float(man_price_in), 2),
+                                        in_stock=True,
+                                        stock_status="Disponible"
+                                    )
+                                    m.selected_candidate = new_cand
+                                    m.all_candidates.insert(0, (new_cand, 1.0))
+                                    m.confidence_score = 1.0
+                                    m.status = "ALTA"
+                                    m.is_confirmed = True
+                                    st.toast(f"✔ Producto manual asignado: {new_cand.title} (Q {new_cand.unit_price:.2f})", icon="✍️")
+                                    st.rerun()
 
                         st.markdown("<hr style='margin: 4px 0; border: none; border-top: 1px dashed #e2e8f0;'>", unsafe_allow_html=True)
 
