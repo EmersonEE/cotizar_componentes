@@ -60,18 +60,33 @@ def _extract_price(text: str) -> float:
     except Exception:
         return 0.0
 
-def robust_fetch_html(url: str, timeout: float = 6.0) -> str:
-    """Fetches raw HTML with resilient headers avoiding Cloudflare/Shopify 429 blocks."""
-    try:
-        with throttled_http_request():
-            with httpx.Client(timeout=timeout, headers=DEFAULT_HEADERS, follow_redirects=True, verify=True) as client:
-                resp = client.get(url)
-                if resp.status_code == 200:
-                    return resp.text
-                return ""
-    except Exception as e:
-        logger.debug("robust_fetch_html falló para %s: %s", url, e)
-        return ""
+def robust_fetch_html(url: str, timeout: float = 6.0, is_json: bool = False, max_retries: int = 2) -> str:
+    """Fetches raw HTML/JSON with domain throttling and exponential backoff for 429."""
+    headers = dict(DEFAULT_HEADERS)
+    if is_json:
+        headers["Accept"] = "application/json"
+
+    for attempt in range(max_retries + 1):
+        try:
+            with throttled_http_request(url):
+                with httpx.Client(timeout=timeout, headers=headers, follow_redirects=True, verify=True) as client:
+                    resp = client.get(url)
+                    if resp.status_code == 200:
+                        return resp.text
+                    elif resp.status_code == 429:
+                        if attempt < max_retries:
+                            backoff = (attempt + 1) * 1.0
+                            logger.info("Rate limit 429 en %s, esperando %.1fs antes de reintentar...", url, backoff)
+                            time.sleep(backoff)
+                            continue
+                    return ""
+        except Exception as e:
+            if attempt < max_retries:
+                time.sleep(0.5)
+                continue
+            logger.debug("robust_fetch_html falló para %s: %s", url, e)
+            return ""
+    return ""
 
 def clean_search_term_tiers(raw_query: str) -> List[str]:
     """Generates tiered query variations from full query to core electronic keywords."""
@@ -96,12 +111,19 @@ def clean_search_term_tiers(raw_query: str) -> List[str]:
     tiers = []
     if filtered:
         tiers.append(filtered)
+
+    # Arduino Uno R3
+    if 'arduino' in text and 'uno' in text:
+        tiers.insert(0, 'arduino uno r3')
+        tiers.append('arduino uno')
+        tiers.append('board uno r3')
         
     # OLED Screen
     if 'oled' in text:
-        if '0.96' in text or '128' in text:
-            tiers.insert(0, 'oled 0.96 i2c' if 'i2c' in text else 'oled 0.96')
-            tiers.append('oled 0.96')
+        if '0.96' in text or '128' in text or 'i2c' in text:
+            tiers.insert(0, 'display oled i2c' if 'i2c' in text else 'oled 0.96')
+            tiers.insert(0, 'oled 0.96')
+            tiers.append('display 128x64 oled')
             tiers.append('display oled')
         tiers.append('oled')
         
@@ -116,7 +138,7 @@ def clean_search_term_tiers(raw_query: str) -> List[str]:
         tiers.append('bluetooth hc-05')
 
     # Servo SG90
-    if 'sg90' in text or 'servo' in text:
+    if 'sg90' in text or re.search(r'\bservos?\b', text):
         tiers.insert(0, 'sg90')
         tiers.append('servomotor sg90')
         
@@ -135,6 +157,38 @@ def clean_search_term_tiers(raw_query: str) -> List[str]:
     if '12v' in text and '2a' in text:
         tiers.insert(0, 'fuente 12v 2a')
         tiers.append('fuente 12v')
+
+    # Resistencia 220
+    if 'resistencia' in text and '220' in text:
+        tiers.insert(0, 'resistencia 220')
+        tiers.append('resistencia 220 ohm')
+        tiers.append('220 ohm')
+
+    # Resistencia 1k / 1000 ohm
+    if 'resistencia' in text and ('1000' in text or '1k' in text or '1 kilo' in text):
+        tiers.insert(0, 'resistencia 1k')
+        tiers.append('resistencia 1000')
+        tiers.append('resistencia 10k')
+
+    # LEDs (solo si NO es pantalla OLED)
+    if re.search(r'\bleds?\b', text) and 'oled' not in text:
+        if 'rojo' in text:
+            tiers.insert(0, 'led rojo 5mm' if '5' in text else 'led rojo')
+            tiers.append('led rojo')
+        elif 'azul' in text:
+            tiers.insert(0, 'led azul 3mm' if '3' in text else 'led azul')
+            tiers.append('led azul')
+
+    # Cautin
+    if 'cautin' in text or 'soldador' in text:
+        tiers.insert(0, 'cautin 60w' if '60' in text else 'cautin')
+        tiers.append('cautin')
+
+    # Caja organizadora
+    if 'caja' in text or 'organizador' in text:
+        tiers.insert(0, 'caja organizadora')
+        tiers.append('organizador')
+        tiers.append('caja')
 
     # Deduplicate while preserving priority order
     seen = set()
@@ -227,11 +281,43 @@ def search_electronica_rych(query: str, limit: int = 8, timeout: float = 6.0) ->
     return all_results[:limit]
 
 def search_la_electronica_single_term(query: str, limit: int = 8, timeout: float = 6.0) -> List[SearchResultItem]:
-    """Searches La Electrónica for a specific search term."""
+    """Searches La Electrónica for a specific search term using Shopify predictive search API with HTML fallback."""
     results: List[SearchResultItem] = []
     encoded_query = urllib.parse.quote_plus(query.strip())
-    search_url = f"https://laelectronica.com.gt/search?q={encoded_query}&type=product"
 
+    # 1. Shopify Predictive Search JSON API (ultra-rápido, directo, evita 429)
+    suggest_url = f"https://laelectronica.com.gt/search/suggest.json?q={encoded_query}&resources[type]=product&resources[limit]={limit}"
+    raw_json = robust_fetch_html(suggest_url, timeout=timeout, is_json=True)
+    if raw_json:
+        try:
+            import json
+            data = json.loads(raw_json)
+            products = data.get("resources", {}).get("results", {}).get("products", [])
+            for p in products:
+                title = p.get("title", "").strip()
+                price_str = str(p.get("price", "0"))
+                price_val = _extract_price(price_str)
+                in_stock = bool(p.get("available", True))
+                rel_url = p.get("url", "")
+                full_url = urllib.parse.urljoin("https://laelectronica.com.gt", rel_url).split("?")[0]
+                img = p.get("image")
+                if price_val > 0 and title:
+                    results.append(SearchResultItem(
+                        store_name="La Electrónica",
+                        title=title,
+                        url=full_url,
+                        unit_price=round(price_val, 2),
+                        in_stock=in_stock,
+                        stock_status="Disponible" if in_stock else "Agotado",
+                        image_url=img
+                    ))
+            if results:
+                return results[:limit]
+        except Exception:
+            pass
+
+    # 2. Fallback a scraping HTML si suggest.json no retornó nada
+    search_url = f"https://laelectronica.com.gt/search?q={encoded_query}&type=product"
     html = robust_fetch_html(search_url, timeout=timeout)
     if not html:
         return results
@@ -304,11 +390,43 @@ def search_la_electronica(query: str, limit: int = 8, timeout: float = 6.0) -> L
     return all_results[:limit]
 
 def search_electronica_diy_single_term(query: str, limit: int = 8, timeout: float = 6.0) -> List[SearchResultItem]:
-    """Searches Electrónica DIY for a specific search term."""
+    """Searches Electrónica DIY for a specific search term using Shopify predictive search API with HTML fallback."""
     results: List[SearchResultItem] = []
     encoded_query = urllib.parse.quote_plus(query.strip())
-    search_url = f"https://www.electronicadiy.com/search?q={encoded_query}"
 
+    # 1. Shopify Predictive Search JSON API
+    suggest_url = f"https://www.electronicadiy.com/search/suggest.json?q={encoded_query}&resources[type]=product&resources[limit]={limit}"
+    raw_json = robust_fetch_html(suggest_url, timeout=timeout, is_json=True)
+    if raw_json:
+        try:
+            import json
+            data = json.loads(raw_json)
+            products = data.get("resources", {}).get("results", {}).get("products", [])
+            for p in products:
+                title = p.get("title", "").strip()
+                price_str = str(p.get("price", "0"))
+                price_val = _extract_price(price_str)
+                in_stock = bool(p.get("available", True))
+                rel_url = p.get("url", "")
+                full_url = urllib.parse.urljoin("https://www.electronicadiy.com", rel_url).split("?")[0]
+                img = p.get("image")
+                if price_val > 0 and title:
+                    results.append(SearchResultItem(
+                        store_name="Electrónica DIY",
+                        title=title,
+                        url=full_url,
+                        unit_price=round(price_val, 2),
+                        in_stock=in_stock,
+                        stock_status="Disponible" if in_stock else "Agotado",
+                        image_url=img
+                    ))
+            if results:
+                return results[:limit]
+        except Exception:
+            pass
+
+    # 2. Fallback a HTML search
+    search_url = f"https://www.electronicadiy.com/search?q={encoded_query}"
     html = robust_fetch_html(search_url, timeout=timeout)
     if not html:
         return results

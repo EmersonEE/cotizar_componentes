@@ -108,6 +108,13 @@ def clean_for_matching(text: str) -> str:
     s = re.sub(r'\b(?:macho[\s\-_]*a?[\s\-_]*hembra|m[\s\-_]*h|m/h)\b', 'macho_hembra', s)
     s = re.sub(r'\b(?:macho[\s\-_]*a?[\s\-_]*macho|m[\s\-_]*m|m/m)\b', 'macho_macho', s)
     s = re.sub(r'\b(?:hembra[\s\-_]*a?[\s\-_]*hembra|h[\s\-_]*h|h/h)\b', 'hembra_hembra', s)
+    # Resistors & power
+    s = re.sub(r'\b(?:1000\s*ohm|1\s*kilo\s*ohm|1k\s*ohm|1\s*k\b)', '1k', s)
+    s = re.sub(r'\b(?:10000\s*ohm|10\s*kilo\s*ohm|10k\s*ohm|10\s*k\b)', '10k', s)
+    s = re.sub(r'\b(?:1/4\s*w|1/4w|un\s*cuarto(?:\s*de\s*watt)?)\b', '1_4w', s)
+    s = re.sub(r'\b(?:1/2\s*w|1/2w|medio\s*watt)\b', '1_2w', s)
+    s = re.sub(r'\b5\s*mm\b', '5mm', s)
+    s = re.sub(r'\b3\s*mm\b', '3mm', s)
     # General clean
     s = re.sub(r"[/_\-\+,\.]", " ", s)
     return s
@@ -147,6 +154,13 @@ def calculate_match_score(query: str, title: str, in_stock: bool = True) -> floa
 
     seq_ratio = difflib.SequenceMatcher(None, q_clean, t_clean).ratio()
     base_score = (0.70 * recall + 0.30 * seq_ratio) * num_factor
+
+    # Accessory penalty: if candidate title mentions an accessory keyword not requested in query
+    accessory_keywords = {"caja", "case", "carcasa", "base", "soporte", "estuche", "punta"}
+    q_has_acc = bool(q_tokens.intersection(accessory_keywords))
+    t_has_acc = bool(t_tokens.intersection(accessory_keywords))
+    if t_has_acc and not q_has_acc:
+        base_score *= 0.30
 
     if not in_stock:
         base_score *= 0.85
