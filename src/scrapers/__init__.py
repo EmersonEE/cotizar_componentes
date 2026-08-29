@@ -1,6 +1,6 @@
-from typing import List, Optional
-from urllib.parse import urlparse
+from typing import List
 from src.models import Product
+from src.stores import STORES
 from src.scrapers.base import BaseScraper, ScraperError, StoreNotSupportedError, ProductNotFoundError
 from src.scrapers.la_electronica import LaElectronicaScraper
 from src.scrapers.electronica_diy import ElectronicaDIYScraper
@@ -19,10 +19,11 @@ AVAILABLE_SCRAPERS: List[BaseScraper] = [
     ElectronicaRyCHScraper(),
 ]
 
+# Derivado del registro central de tiendas (T10): dominio principal + alias
 SUPPORTED_DOMAINS = [
-    "laelectronica.com.gt",
-    "electronicadiy.com",
-    "electronicarych.com",
+    domain
+    for store in STORES
+    for domain in (store.domain, *store.domain_aliases)
 ]
 
 def get_scraper_for_url(url: str) -> BaseScraper:

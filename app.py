@@ -1,8 +1,9 @@
 import sys
 import copy
+import tempfile
 import urllib.parse
 from pathlib import Path
-from typing import List, Dict, Optional
+from datetime import datetime
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -10,24 +11,27 @@ import streamlit.components.v1 as components
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from src.logging_setup import setup_logging
+
 from src.models import (
-    Product, QuoteItem, Quote, Customer, StoreShippingDetail,
-    QuoteStatus, InvalidStatusTransitionError
+    Product, QuoteItem, Quote, Customer, QuoteStatus, InvalidStatusTransitionError
 )
 from src.config import AppConfig
-from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError
-from src.core.calculator import QuoteCalculator, format_currency
+from src.stores import STORE_NAMES
+from src.scrapers import scrape_product, metasearch
+from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
-from src.core.exporter import QuoteExporter, ExportResult
-from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid, ParsedBOMItem
-from src.core.ai_service import extract_bom_with_ai, suggest_alternatives_with_ai, check_ollama_status
+from src.core.exporter import QuoteExporter
+from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid
+from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
-    MatchResult,
-    BOMScenario,
     build_all_bom_scenarios
 )
+from src.services.quote_flow import QuoteFlowService
+
+setup_logging()
 
 # 1. Configuración de página
 st.set_page_config(
@@ -46,6 +50,14 @@ def get_services():
     return config, history_mgr, exporter
 
 config, history_mgr, exporter = get_services()
+
+
+@st.cache_data(show_spinner=False)
+def _render_pdf_bytes(html: str) -> bytes:
+    """Renderiza HTML a PDF con WeasyPrint, cacheado por contenido (T2: evita
+    regenerar PDFs costosos en cada rerun de la app)."""
+    from weasyprint import HTML
+    return HTML(string=html).write_pdf()
 
 # 3. Inicialización del Estado de Sesión
 def init_session_state():
@@ -79,6 +91,8 @@ def init_session_state():
         st.session_state.bom_match_results = None
     if "bom_scenarios" not in st.session_state:
         st.session_state.bom_scenarios = None
+    if "service_fee_percent" not in st.session_state:
+        st.session_state.service_fee_percent = config.service_fee_percent
 
 init_session_state()
 
@@ -98,6 +112,7 @@ def reset_to_new_quote():
     st.session_state.editing_mode = False
     st.session_state.bom_match_results = None
     st.session_state.bom_scenarios = None
+    st.session_state.service_fee_percent = config.service_fee_percent
 
 def load_quote_for_editing(quote: Quote):
     st.session_state.active_quote_id = quote.quote_id
@@ -110,8 +125,11 @@ def load_quote_for_editing(quote: Quote):
     st.session_state.customer_notes = quote.customer.notes
     st.session_state.quote_items = copy.deepcopy(quote.items)
     st.session_state.custom_shipping_costs = {
-        sd.store_name: sd.shipping_cost for sd in quote.shipping_details
+        sd.store_name: sd.shipping_cost
+        for sd in quote.shipping_details
+        if sd.shipping_was_custom
     }
+    st.session_state.service_fee_percent = quote.service_fee_percent
     st.session_state.editing_mode = True
 
 def generate_whatsapp_link(quote: Quote) -> str:
@@ -159,7 +177,7 @@ def get_current_quote() -> Quote:
         items=display_items,
         customer=customer,
         shipping_details=shipping_details,
-        service_fee_percent=config.service_fee_percent,
+        service_fee_percent=st.session_state.service_fee_percent,
         validity_days=config.validity_days,
         version=st.session_state.version,
         base_quote_id=st.session_state.base_quote_id,
@@ -409,7 +427,7 @@ with tab_cotizador:
                         match_results=st.session_state.bom_match_results,
                         customer=current_cust,
                         config=config,
-                        service_fee_percent=config.service_fee_percent
+                        service_fee_percent=st.session_state.service_fee_percent
                     )
                     st.session_state.bom_scenarios = scenarios
                     st.rerun()
@@ -430,7 +448,9 @@ with tab_cotizador:
                             if st.button(f"➕ Cargar Opción {sc.scenario_id}", key=f"load_sc_{sc.scenario_id}", use_container_width=True, disabled=len(sc.items) == 0):
                                 st.session_state.quote_items = copy.deepcopy(sc.items)
                                 st.session_state.custom_shipping_costs = {
-                                    sd.store_name: sd.shipping_cost for sd in sc.quote.shipping_details
+                                    sd.store_name: sd.shipping_cost
+                                    for sd in sc.quote.shipping_details
+                                    if sd.shipping_was_custom
                                 }
                                 st.session_state.bom_match_results = None
                                 st.session_state.bom_scenarios = None
@@ -464,6 +484,13 @@ with tab_cotizador:
                         with r_col1:
                             store_class = "badge-store-rych" if "RyCH" in res.store_name else ("badge-store-diy" if "DIY" in res.store_name else "badge-store-la")
                             st.markdown(f"<span class='{store_class}'>{res.store_name}</span> **{res.title}**", unsafe_allow_html=True)
+                            # F4: precio histórico de referencia para este producto
+                            try:
+                                hist = history_mgr.get_price_history(url=res.url, limit=1)
+                                if hist:
+                                    st.caption(f"🕓 Últ. cotizado: **Q {hist[0]['unit_price']:,.2f}** ({hist[0]['date']})")
+                            except Exception:
+                                pass
                         with r_col2:
                             st.markdown(f"**Q {res.unit_price:,.2f}**")
                             st.caption("Disponible" if res.in_stock else "🔴 Agotado")
@@ -530,7 +557,7 @@ with tab_cotizador:
                 man_name = st.text_input("Nombre / Descripción del Componente", placeholder="Ej. Transformador 12V 2A", key="man_name")
                 man_url = st.text_input("URL de referencia (opcional)", placeholder="https://...", key="man_url")
             with m_col2:
-                man_store = st.selectbox("Tienda / Proveedor", ["Electrónica RyCH", "La Electrónica", "Electrónica DIY", "Otro Proveedor"], key="man_store")
+                man_store = st.selectbox("Tienda / Proveedor", STORE_NAMES + ["Otro Proveedor"], key="man_store")
                 man_sku = st.text_input("SKU / Código (opcional)", placeholder="Ej. TR-12V2A", key="man_sku")
 
             m_row2_1, m_row2_2, m_row2_3, m_row2_4 = st.columns([1.2, 1, 1.2, 1.4])
@@ -578,6 +605,13 @@ with tab_cotizador:
                     sku_text = f" | SKU: `{item.product.sku}`" if item.product.sku else ""
                     st.markdown(f"**{i+1}. {item.product.name}**{manual_tag}", unsafe_allow_html=True)
                     st.caption(f"Tienda: {item.product.store_name}{sku_text}")
+                    # F4: precio histórico de referencia (última vez cotizado)
+                    try:
+                        hist = history_mgr.get_price_history(url=item.product.url, sku=item.product.sku, limit=1)
+                        if hist:
+                            st.caption(f"🕓 Últ. cotizado: **Q {hist[0]['unit_price']:,.2f}** ({hist[0]['date']}, {hist[0]['quote_id']})")
+                    except Exception:
+                        pass
                 with i_col2:
                     st.markdown(f"Q {item.unit_price:,.2f}")
                 with i_col3:
@@ -590,6 +624,21 @@ with tab_cotizador:
                 with i_col5:
                     if st.button("🗑️", key=f"del_item_{i}", help="Eliminar componente"):
                         items_to_delete.append(i)
+
+                # F5: editar precio unitario y SKU de un componente ya agregado
+                with st.expander("✏️ Editar precio / SKU", key=f"edit_item_{i}"):
+                    new_price = st.number_input(
+                        "Precio unitario (Q)", min_value=0.01,
+                        value=float(item.unit_price), step=1.0, key=f"edit_price_{i}",
+                    )
+                    new_sku = st.text_input("SKU (opcional)", value=item.product.sku or "", key=f"edit_sku_{i}")
+                    if st.button("Aplicar cambios", key=f"apply_edit_{i}"):
+                        prod = copy.deepcopy(item.product)
+                        prod.unit_price = round(float(new_price), 2)
+                        prod.sku = new_sku.strip() or None
+                        st.session_state.quote_items[i] = QuoteCalculator.create_quote_item(prod, item.quantity)
+                        st.toast("✔ Precio/SKU actualizado", icon="✏️")
+                        st.rerun()
 
             if items_to_delete:
                 for idx in reversed(items_to_delete):
@@ -634,7 +683,17 @@ with tab_cotizador:
 
         # 5. Resumen Financiero y Botones de Guardado
         current_quote = get_current_quote()
-        
+
+        # F5: margen configurable por cotización (no solo el global de config.json)
+        st.number_input(
+            "Margen de servicio (%) para esta cotización",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(st.session_state.service_fee_percent),
+            step=0.5,
+            key="service_fee_percent",
+        )
+
         sum_c1, sum_c2 = st.columns([1, 1])
         with sum_c1:
             st.metric("Subtotal Componentes", f"Q {current_quote.items_subtotal:,.2f}")
@@ -663,7 +722,7 @@ with tab_cotizador:
                             notes=st.session_state.customer_notes.strip()
                         ),
                         shipping_details=current_quote.shipping_details,
-                        service_fee_percent=config.service_fee_percent,
+                        service_fee_percent=st.session_state.service_fee_percent,
                         validity_days=config.validity_days,
                         version=new_v,
                         base_quote_id=base_id
@@ -673,13 +732,16 @@ with tab_cotizador:
                     quote_to_save = current_quote
                     quote_to_save.status = QuoteStatus.GUARDADA.value
 
-                history_mgr.save_quote(quote_to_save)
-                exporter.export_all(quote_to_save, config.business)
-                st.success(f"✔ ¡Cotización `{quote_to_save.quote_id}` guardada con éxito!")
+                # T9: guardado + dedupe + exportación centralizados en el servicio compartido
+                flow = QuoteFlowService(config, history_mgr, exporter)
+                res = flow.save_and_export(quote_to_save)
+                if res.merged_count:
+                    st.toast(f"🧮 Se fusionaron {res.merged_count} componentes repetidos (misma URL/SKU)", icon="🧮")
+                st.success(f"✔ ¡Cotización `{res.quote.quote_id}` guardada con éxito!")
                 st.session_state.editing_mode = False
-                st.session_state.active_quote_id = quote_to_save.quote_id
-                st.session_state.version = quote_to_save.version
-                st.session_state.status = quote_to_save.status
+                st.session_state.active_quote_id = res.quote.quote_id
+                st.session_state.version = res.quote.version
+                st.session_state.status = res.quote.status
                 st.rerun()
 
         with act_c2:
@@ -711,9 +773,8 @@ with tab_cotizador:
 
         with d_row1_c1:
             try:
-                from weasyprint import HTML
                 html_client = exporter.render_html_string(current_quote, config.business, is_internal=False)
-                pdf_client_bytes = HTML(string=html_client).write_pdf()
+                pdf_client_bytes = _render_pdf_bytes(html_client)
                 st.download_button(
                     label="📑 Descargar PDF (Cliente)",
                     data=pdf_client_bytes,
@@ -728,7 +789,7 @@ with tab_cotizador:
         with d_row1_c2:
             try:
                 html_intern = exporter.render_html_string(current_quote, config.business, is_internal=True)
-                pdf_intern_bytes = HTML(string=html_intern).write_pdf()
+                pdf_intern_bytes = _render_pdf_bytes(html_intern)
                 st.download_button(
                     label="🔗 Descargar PDF (Interno)",
                     data=pdf_intern_bytes,
@@ -767,6 +828,41 @@ with tab_historial:
     with f_col2:
         filtro_estado = st.selectbox("Filtrar por Estado Comercial", ["TODOS", "BORRADOR", "GUARDADA", "ENVIADA", "ACEPTADA", "RECHAZADA", "VENCIDA"])
 
+    # F7: exportar / importar historial (backup manual)
+    exp_col1, exp_col2, exp_col3 = st.columns([1, 1, 2])
+    with exp_col1:
+        if st.button("💾 Exportar JSON", use_container_width=True):
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            export_path = Path(tempfile.gettempdir()) / f"historial_{stamp}.json"
+            history_mgr.export_history(export_path)
+            st.session_state["export_json_path"] = str(export_path)
+    if st.session_state.get("export_json_path") and Path(st.session_state["export_json_path"]).exists():
+        with exp_col1:
+            p = Path(st.session_state["export_json_path"])
+            st.download_button("⬇️ Descargar JSON", data=p.read_bytes(), file_name=p.name, mime="application/json")
+    with exp_col2:
+        if st.button("💾 Exportar CSV", use_container_width=True):
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            export_path = Path(tempfile.gettempdir()) / f"historial_{stamp}.csv"
+            history_mgr.export_history_csv(export_path)
+            st.session_state["export_csv_path"] = str(export_path)
+    if st.session_state.get("export_csv_path") and Path(st.session_state["export_csv_path"]).exists():
+        with exp_col2:
+            p = Path(st.session_state["export_csv_path"])
+            st.download_button("⬇️ Descargar CSV", data=p.read_bytes(), file_name=p.name, mime="text/csv")
+    with exp_col3:
+        import_file = st.file_uploader("📥 Importar historial (archivo JSON exportado)", type=["json"], key="import_history")
+        if import_file is not None and st.button("Importar", use_container_width=True):
+            with tempfile.NamedTemporaryFile("wb", suffix=".json", delete=False) as tmp:
+                tmp.write(import_file.getvalue())
+                tmp_path = tmp.name
+            try:
+                added = history_mgr.import_history(Path(tmp_path))
+                st.success(f"✔ Importación completada: {added} cotización(es) agregada(s).")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error al importar: {e}")
+
     filtered_quotes = history_mgr.search_quotes(query=filtro_txt, status_filter=filtro_estado)
 
     if not filtered_quotes:
@@ -777,13 +873,14 @@ with tab_historial:
     else:
         st.caption(f"Mostrando {len(filtered_quotes)} cotizaciones registradas:")
         for q in reversed(filtered_quotes):
-            st_class = f"status-badge-{q.status.lower()}"
+            eff_status = history_mgr.effective_status(q)
+            st_class = f"status-badge-{eff_status.lower()}"
             header_title = f"📄 **{q.quote_id}** (v{q.version}) — {q.customer.name} — **Q {q.total:,.2f}** ({q.date})"
             
             with st.expander(header_title):
                 h_col1, h_col2 = st.columns([2, 1])
                 with h_col1:
-                    st.markdown(f"**Estado Comercial:** <span class='{st_class}'>{q.status}</span> &nbsp;&nbsp; *(Actualizado: {q.status_updated_at[:19] if q.status_updated_at else q.date})*", unsafe_allow_html=True)
+                    st.markdown(f"**Estado Comercial:** <span class='{st_class}'>{eff_status}</span> &nbsp;&nbsp; *(Actualizado: {q.status_updated_at[:19] if q.status_updated_at else q.date})*", unsafe_allow_html=True)
                     st.markdown(f"**Cliente:** {q.customer.name} | **Tel:** {q.customer.phone or 'N/A'}")
                     if q.customer.email:
                         st.markdown(f"**Email:** `{q.customer.email}`")
@@ -795,6 +892,22 @@ with tab_historial:
                         st.caption(f"• {it.quantity}x [{it.product.name}]({it.product.url}) ({it.product.store_name}) = Q {it.subtotal:,.2f}")
                     
                     st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen ({q.service_fee_percent}%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
+
+                    # F6: seguimiento de venta (factura/entrega) para cotizaciones aceptadas
+                    if eff_status == "ACEPTADA":
+                        st.markdown("##### 📦 Seguimiento de Venta")
+                        sale_notes = st.text_area(
+                            "Factura / entrega",
+                            value=q.sale_notes,
+                            key=f"sale_notes_{q.quote_id}",
+                            height=70,
+                        )
+                        if st.button("💾 Guardar notas de venta", key=f"save_sale_{q.quote_id}"):
+                            q.sale_notes = sale_notes
+                            history_mgr.save_quote(q, force_overwrite=True)
+                            exporter.export_all(q, config.business)
+                            st.toast("✔ Notas de venta guardadas", icon="📦")
+                            st.rerun()
 
                 with h_col2:
                     # Commercial status transition controls
@@ -837,6 +950,30 @@ with tab_historial:
                                 }
                             except Exception as e:
                                 st.error(f"Error: {e}")
+
+                    st.divider()
+
+                    # F2: eliminación definitiva con confirmación explícita
+                    del_key = f"confirm_delete_{q.quote_id}"
+                    if st.button("🗑️ Eliminar Cotización", key=f"del_{q.quote_id}", use_container_width=True):
+                        st.session_state[del_key] = True
+                    if st.session_state.get(del_key):
+                        st.warning(f"⚠️ ¿Eliminar **definitivamente** `{q.quote_id}` (y sus versiones)? Esta acción no se puede deshacer.")
+                        dc1, dc2 = st.columns(2)
+                        with dc1:
+                            if st.button("✔ Sí, eliminar", key=f"del_yes_{q.quote_id}", use_container_width=True):
+                                removed = history_mgr.delete_quote(q.quote_id)
+                                st.session_state.pop(del_key, None)
+                                st.session_state.pop(reverify_key, None)
+                                if removed:
+                                    st.toast(f"🗑️ Cotización {q.quote_id} eliminada ({removed} registro(s))", icon="🗑️")
+                                else:
+                                    st.error("No se encontró la cotización en el historial.")
+                                st.rerun()
+                        with dc2:
+                            if st.button("Cancelar", key=f"del_no_{q.quote_id}", use_container_width=True):
+                                st.session_state.pop(del_key, None)
+                                st.rerun()
 
                 # Display Reverification Preview if active
                 reverify_key = f"reverify_preview_{q.quote_id}"

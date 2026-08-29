@@ -1,11 +1,14 @@
 import csv
-import os
+import shutil
+import logging
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Iterator
 from jinja2 import Environment, FileSystemLoader
 from src.models import Quote, BusinessInfo
 from src.config import AppConfig
+
+logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output"
@@ -126,14 +129,13 @@ class QuoteExporter:
             if not is_internal:
                 default_pdf = self.pdf_dir / f"{quote.quote_id}.pdf"
                 try:
-                    import shutil
                     shutil.copy2(pdf_path, default_pdf)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning("No se pudo crear el alias PDF '%s': %s", default_pdf.name, e)
 
             return pdf_path
         except Exception as e:
-            print(f"[Aviso] No se pudo generar PDF automáticamente con WeasyPrint: {e}")
+            logger.warning("No se pudo generar PDF automáticamente con WeasyPrint: %s", e)
             return None
 
     def export_all(self, quote: Quote, business: Optional[BusinessInfo] = None) -> ExportResult:

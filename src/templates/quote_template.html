@@ -428,6 +428,9 @@
     <table class="header-table">
       <tr>
         <td style="width: 55%;">
+          {% if business.logo_url %}
+          <img src="{{ business.logo_url }}" alt="Logo {{ business.name }}" style="max-height: 64px; max-width: 180px; margin-bottom: 8px; object-fit: contain;">
+          {% endif %}
           <div class="business-title">{{ business.name }}</div>
           <div class="business-subtitle">Integración & Venta de Componentes Electrónicos</div>
           <div class="business-meta">
@@ -588,8 +591,11 @@
     <div class="terms-box">
       <div class="terms-title">Términos y Condiciones</div>
       <ul class="terms-list">
-        <li><strong>Vigencia:</strong> Esta cotización es válida por <strong>5 días</strong> a partir de su emisión (vence el {{ quote.valid_until }}).</li>
+        <li><strong>Vigencia:</strong> Esta cotización es válida por <strong>{{ quote.validity_days }} días</strong> a partir de su emisión (vence el {{ quote.valid_until }}).</li>
         <li>Precios expresados en Quetzales (GTQ).</li>
+        {% if business.payment_terms %}
+        <li><strong>Forma de pago:</strong> {{ business.payment_terms }}</li>
+        {% endif %}
       </ul>
     </div>
 

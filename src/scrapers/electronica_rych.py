@@ -1,9 +1,8 @@
 import json
-import re
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from src.models import Product
-from src.scrapers.base import BaseScraper, ScraperError, ProductNotFoundError
+from src.scrapers.base import BaseScraper, ScraperError
 
 class ElectronicaRyCHScraper(BaseScraper):
     STORE_NAME = "Electrónica RyCH"

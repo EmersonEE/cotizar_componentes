@@ -1,144 +1,145 @@
 import sys
 import os
-import time
+import unittest
+from unittest.mock import patch
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.core.bom_parser import parse_bom_text, parse_bom_line
-from src.core.bom_searcher import calculate_match_score, search_bom_items_parallel
-
-def test_bom_parser_formats():
-    print("--- 1. PROBANDO PARSER DE TEXTO BOM ---")
-    sample_text = """
-    2x ESP32 NodeMCU
-    10x Resistencia 220 ohm 1/4W
-    Sensor de temperatura DHT22
-    Modulo Relay 5V 2 canales
-    Pantalla OLED 0.96 I2C
-    5 pcs Arduino Uno R3
-    - 4x LM358
-    * 100 × Resistencia 10k 1/4W
-    Protoboard 830 puntos
-    LED Rojo 5mm (x50)
-    // Línea de comentario
-    # Otra nota
-    """
-
-    res = parse_bom_text(sample_text)
-    print(f"  [OK] Ítems extraídos: {res.total_items} | Cantidad total acumulada: {res.total_quantity}")
-    assert res.total_items == 10, f"Debe extraer 10 ítems válidos, obtuvo {res.total_items}"
-
-    expected_samples = [
-        (2, "ESP32 NodeMCU"),
-        (10, "Resistencia 220 ohm 1/4W"),
-        (1, "Sensor de temperatura DHT22"),
-        (1, "Modulo Relay 5V 2 canales"),
-        (1, "Pantalla OLED 0.96 I2C"),
-        (5, "Arduino Uno R3"),
-        (4, "LM358"),
-        (100, "Resistencia 10k 1/4W"),
-        (1, "Protoboard 830 puntos"),
-        (50, "LED Rojo 5mm"),
-    ]
-
-    for item, (exp_qty, exp_name) in zip(res.items, expected_samples):
-        assert item.quantity == exp_qty, f"Error en cantidad: esperado {exp_qty}, obtuvo {item.quantity}"
-        assert item.product_query == exp_name, f"Error en nombre: esperado '{exp_name}', obtuvo '{item.product_query}'"
-        print(f"   ✔ Cant: {item.quantity:>3} | Nombre: {item.product_query}")
-
-    print("  [OK] Todos los formatos de BOM fueron interpretados con precisión.")
-
-def test_match_scoring():
-    print("\n--- 2. PROBANDO SCORING Y UMBRALES DE CONFIANZA ---")
-    
-    # Positive matches
-    s1 = calculate_match_score("Sensor de temperatura DHT22", "MD-DHT22 Sensor de Temperatura y Humedad Digital", True)
-    assert s1 >= 0.75, f"Score de DHT22 debe ser >= 0.75, obtuvo {s1}"
-    print(f"  [OK] DHT22 vs MD-DHT22: Score {s1:.3f} (🟢 Alta Confianza)")
-
-    # Negative / Different number match
-    s2 = calculate_match_score("Sensor de temperatura DHT22", "MD-DHT11 Sensor de Temperatura y Humedad", True)
-    assert s2 < 0.40, f"Score de DHT22 vs DHT11 debe ser < 0.40 por número diferente, obtuvo {s2}"
-    print(f"  [OK] DHT22 vs DHT11: Score {s2:.3f} (🔴 Descartado por número incorrecto)")
-
-    # Resistor values
-    s3 = calculate_match_score("Resistencia 220 ohm 1/4W", "Resistencia 220 Ohm a 1/4 W", True)
-    s4 = calculate_match_score("Resistencia 220 ohm 1/4W", "Resistencia 10k Ohm a 1/4 W", True)
-    assert s3 > s4, "Resistencia 220 debe puntuar mucho más alto que 10k"
-    print(f"  [OK] Resistencia 220 vs 220: {s3:.3f} | Resistencia 220 vs 10k: {s4:.3f}")
-
-def test_parallel_bom_search():
-    print("\n--- 3. PROBANDO BÚSQUEDA CONCURRENTE MULTILÍNEA ---")
-    bom_input = """
-    2x ESP32 NodeMCU
-    10x Resistencia 220 ohm 1/4W
-    Sensor de temperatura DHT22
-    Modulo Relay 5V 2 canales
-    Pantalla OLED 0.96 I2C
-    """
-    parse_res = parse_bom_text(bom_input)
-    
-    t0 = time.time()
-    match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
-    elapsed = time.time() - t0
-    
-    print(f"  [OK] Búsqueda paralela de {len(match_results)} componentes completada en: {elapsed:.2f}s")
-    assert len(match_results) == len(parse_res.items), "Debe devolver resultado para cada ítem"
-
-    for idx, m in enumerate(match_results, 1):
-        if m.best_match:
-            print(f"   [{idx}] {m.bom_item.quantity:>2}x {m.bom_item.product_query:<28} ➔ {m.best_match.store_name:<16} | {m.best_match.title[:36]:<36} | Q {m.best_match.unit_price:>6.2f} | {m.status_badge}")
-        else:
-            print(f"   [{idx}] {m.bom_item.quantity:>2}x {m.bom_item.product_query:<28} ➔ {m.status_badge}")
-
-    print("\n--- TODOS LOS TESTS DEL MOTOR BOM PASARON EXITOSAMENTE ---")
-
-if __name__ == "__main__":
-    test_bom_parser_formats()
-    test_match_scoring()
-    test_parallel_bom_search()
-
-from src.core.bom_searcher import build_all_bom_scenarios
+from src.core.bom_searcher import (
+    calculate_match_score,
+    search_bom_items_parallel,
+    build_all_bom_scenarios,
+)
 from src.models import Customer
 from src.config import AppConfig
+from src.scrapers.search import SearchResultItem
 
-def test_four_scenarios_generation():
-    print("\n--- 4. PROBANDO GENERACIÓN DE LAS 4 COTIZACIONES POR ESCENARIO ---")
-    config = AppConfig.load()
-    customer = Customer(name="Ing. Emerson Test", phone="49964191")
 
-    bom_input = """
-    2x ESP32 NodeMCU
-    10x Resistencia 220 ohm 1/4W
-    Sensor de temperatura DHT22
-    Modulo Relay 5V 2 canales
-    Pantalla OLED 0.96 I2C
-    """
-    parse_res = parse_bom_text(bom_input)
-    match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+class TestBOMParserOffline(unittest.TestCase):
 
-    scenarios = build_all_bom_scenarios(
-        match_results=match_results,
-        customer=customer,
-        config=config,
-        service_fee_percent=10.0
-    )
+    def test_bom_parser_formats(self):
+        sample_text = """
+        2x ESP32 NodeMCU
+        10x Resistencia 220 ohm 1/4W
+        Sensor de temperatura DHT22
+        Modulo Relay 5V 2 canales
+        Pantalla OLED 0.96 I2C
+        5 pcs Arduino Uno R3
+        - 4x LM358
+        * 100 × Resistencia 10k 1/4W
+        Protoboard 830 puntos
+        LED Rojo 5mm (x50)
+        // Línea de comentario
+        # Otra nota
+        """
 
-    assert len(scenarios) == 4, f"Debe generar exactamente 4 escenarios, obtuvo {len(scenarios)}"
-    
-    expected_titles = [
-        "Cotización Mixta (Mejor Precio Combinado)",
-        "Todo en Electrónica RyCH",
-        "Todo en La Electrónica",
-        "Todo en Electrónica DIY"
-    ]
+        res = parse_bom_text(sample_text)
+        self.assertEqual(res.total_items, 10)
+        self.assertEqual(res.total_quantity, 2 + 10 + 1 + 1 + 1 + 5 + 4 + 100 + 1 + 50)
 
-    for idx, (sc, exp_title) in enumerate(zip(scenarios, expected_titles), 1):
-        assert sc.title == exp_title, f"Título esperado '{exp_title}', obtuvo '{sc.title}'"
-        assert sc.scenario_id == idx
-        q = sc.quote
-        print(f"  [Opción {idx}] {sc.title:<42} | Cobertura: {sc.coverage_label:<18} | Subtotal: Q {q.items_subtotal:>6.2f} | Envíos: Q {q.total_shipping:>5.2f} | Margen: Q {q.service_fee_amount:>5.2f} | TOTAL: Q {q.total:>6.2f}")
+        expected = [
+            (2, "ESP32 NodeMCU"),
+            (10, "Resistencia 220 ohm 1/4W"),
+            (1, "Sensor de temperatura DHT22"),
+            (1, "Modulo Relay 5V 2 canales"),
+            (1, "Pantalla OLED 0.96 I2C"),
+            (5, "Arduino Uno R3"),
+            (4, "LM358"),
+            (100, "Resistencia 10k 1/4W"),
+            (1, "Protoboard 830 puntos"),
+            (50, "LED Rojo 5mm"),
+        ]
+        for item, (exp_qty, exp_name) in zip(res.items, expected):
+            self.assertEqual(item.quantity, exp_qty)
+            self.assertEqual(item.product_query, exp_name)
 
-    print("\n--- TODOS LOS TESTS DE ESCENARIOS PASARON EXITOSAMENTE ---")
+    def test_parse_bom_line_edge_cases(self):
+        self.assertIsNone(parse_bom_line(""))
+        self.assertIsNone(parse_bom_line("# comentario"))
+        self.assertIsNone(parse_bom_line("// comentario"))
+        item = parse_bom_line("5x ESP32")
+        self.assertEqual(item.quantity, 5)
+        self.assertEqual(item.product_query, "ESP32")
+
+
+class TestMatchScoringOffline(unittest.TestCase):
+
+    def test_positive_and_negative_matches(self):
+        s1 = calculate_match_score("Sensor de temperatura DHT22", "MD-DHT22 Sensor de Temperatura y Humedad Digital", True)
+        self.assertGreaterEqual(s1, 0.75)
+
+        s2 = calculate_match_score("Sensor de temperatura DHT22", "MD-DHT11 Sensor de Temperatura y Humedad", True)
+        self.assertLess(s2, 0.40)
+
+    def test_resistor_values(self):
+        s3 = calculate_match_score("Resistencia 220 ohm 1/4W", "Resistencia 220 Ohm a 1/4 W", True)
+        s4 = calculate_match_score("Resistencia 220 ohm 1/4W", "Resistencia 10k Ohm a 1/4 W", True)
+        self.assertGreater(s3, s4)
+
+
+class TestBOMSearchAndScenariosOffline(unittest.TestCase):
+
+    def _mock_metasearch(self):
+        def fake_metasearch(query, max_per_store=5, timeout=6.0, global_timeout=30.0):
+            q = query.lower()
+            return [
+                SearchResultItem(store_name="Electrónica RyCH", title=f"RYCH {query}",
+                                 url=f"https://rych.com/{q}", unit_price=50.0, in_stock=True, stock_status="Disponible"),
+                SearchResultItem(store_name="La Electrónica", title=f"LA {query}",
+                                 url=f"https://la.com/{q}", unit_price=55.0, in_stock=True, stock_status="Disponible"),
+                SearchResultItem(store_name="Electrónica DIY", title=f"DIY {query}",
+                                 url=f"https://diy.com/{q}", unit_price=60.0, in_stock=True, stock_status="Disponible"),
+            ]
+        return fake_metasearch
+
+    @patch("src.core.bom_searcher.metasearch")
+    def test_parallel_search_returns_result_per_item(self, mock_meta):
+        mock_meta.side_effect = self._mock_metasearch()
+        bom_input = """
+        2x ESP32 NodeMCU
+        Sensor de temperatura DHT22
+        Pantalla OLED 0.96 I2C
+        """
+        parse_res = parse_bom_text(bom_input)
+        match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+        self.assertEqual(len(match_results), len(parse_res.items))
+        for m in match_results:
+            self.assertIsNotNone(m.best_match)
+            self.assertEqual(m.status, "ALTA")
+
+    @patch("src.core.bom_searcher.metasearch")
+    def test_four_scenarios_generation(self, mock_meta):
+        mock_meta.side_effect = self._mock_metasearch()
+        config = AppConfig()
+        config.shipping_rules = {
+            "Electrónica RyCH": {"is_pickup_only": True, "free_threshold": None, "default_cost": 0.0},
+            "La Electrónica": {"is_pickup_only": False, "free_threshold": 150.0, "default_cost": 35.0},
+            "Electrónica DIY": {"is_pickup_only": False, "free_threshold": 250.0, "default_cost": 35.0},
+        }
+        customer = Customer(name="Cliente Test")
+
+        bom_input = """
+        2x ESP32 NodeMCU
+        10x Resistencia 220 ohm 1/4W
+        """
+        parse_res = parse_bom_text(bom_input)
+        match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
+        scenarios = build_all_bom_scenarios(match_results, customer, config, service_fee_percent=10.0)
+
+        self.assertEqual(len(scenarios), 4)
+        # El orden de escenarios sigue al registro central de tiendas (src/stores.py)
+        expected_titles = [
+            "Cotización Mixta (Mejor Precio Combinado)",
+            "Todo en La Electrónica",
+            "Todo en Electrónica DIY",
+            "Todo en Electrónica RyCH",
+        ]
+        for idx, (sc, exp_title) in enumerate(zip(scenarios, expected_titles), 1):
+            self.assertEqual(sc.title, exp_title)
+            self.assertEqual(sc.scenario_id, idx)
+            self.assertTrue(len(sc.items) >= 2)
+
 
 if __name__ == "__main__":
-    test_four_scenarios_generation()
+    unittest.main()

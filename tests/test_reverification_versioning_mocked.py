@@ -1,17 +1,15 @@
 import sys
 import os
-import copy
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.models import (
-    Product, QuoteItem, Quote, Customer, BusinessInfo, StoreShippingDetail,
-    QuoteStatus
+    Product, Customer, StoreShippingDetail
 )
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
@@ -45,8 +43,8 @@ class TestReverificationVersioningMocked(unittest.TestCase):
         ] # Total items subtotal = 210.0
 
         shipping = [
-            StoreShippingDetail("Electrónica DIY", 160.0, 250.0, False, 35.0, "Q 35.00", False),
-            StoreShippingDetail("La Electrónica", 50.0, 150.0, False, 35.0, "Q 35.00", False)
+            StoreShippingDetail("Electrónica DIY", 160.0, 250.0, False, 35.0, "Q 35.00", False, True),
+            StoreShippingDetail("La Electrónica", 50.0, 150.0, False, 35.0, "Q 35.00", False, True)
         ] # Total shipping = 70.0
 
         original = QuoteCalculator.build_quote(
@@ -126,7 +124,7 @@ class TestReverificationVersioningMocked(unittest.TestCase):
         mock_scrape.return_value = Product("Relay 5V", "https://example.com/relay", "Electrónica RyCH", 25.0)
 
         candidate_q, _, _ = self.history_mgr.check_quote_price_updates("COT-2026-0005")
-        saved_v2 = self.history_mgr.save_reverified_version(candidate_q)
+        self.history_mgr.save_reverified_version(candidate_q)
 
         all_quotes = self.history_mgr.load_all_quotes()
         self.assertEqual(len(all_quotes), 2)
@@ -147,7 +145,7 @@ class TestReverificationVersioningMocked(unittest.TestCase):
         """Validates that customized shipping fees set on original quote are preserved."""
         p = Product("Cable", "https://example.com/cable", "La Electrónica", 30.0)
         custom_shipping = [
-            StoreShippingDetail("La Electrónica", 30.0, 150.0, False, 50.0, "Q 50.00 (Especial)", False)
+            StoreShippingDetail("La Electrónica", 30.0, 150.0, False, 50.0, "Q 50.00 (Especial)", False, True)
         ]
         orig = QuoteCalculator.build_quote(
             quote_id="COT-2026-0008",

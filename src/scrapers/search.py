@@ -1,13 +1,19 @@
 import re
+import time
+import threading
 import unicodedata
 import urllib.request
 import urllib.parse
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
-from typing import List, Optional, Set
+from dataclasses import dataclass, asdict
+from typing import List, Optional, Set, Dict, Tuple
 from bs4 import BeautifulSoup
 
 from src.scrapers.base import BaseScraper
+from src.scrapers.throttle import throttled_http_request
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class SearchResultItem:
@@ -28,13 +34,41 @@ DEFAULT_HEADERS = {
     "Accept-Language": "es-GT,es-ES;q=0.9,es;q=0.8,en;q=0.5",
 }
 
+# Coincide el primer token tipo precio (incluye separadores de miles y decimales):
+# "85.00", "1,250.00", "1.250,00", "12,50", "85"
+_PRICE_TOKEN_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+# F10: caché TTL para metasearch (evita golpear las tiendas repetidamente)
+CACHE_TTL_SECONDS = 300.0
+_CACHE: Dict[str, Tuple[float, List[SearchResultItem]]] = {}
+_CACHE_LOCK = threading.Lock()
+
+
+def _extract_price(text: str) -> float:
+    """
+    Extracts the first price-like token from card text using BaseScraper.clean_price,
+    so thousands separators are handled correctly (fixes 'Q 1,250.00' -> 1250.0).
+    Returns 0.0 when no valid price is found.
+    """
+    if not text or not text.strip():
+        return 0.0
+    m = _PRICE_TOKEN_RE.search(text)
+    if not m:
+        return 0.0
+    try:
+        return round(BaseScraper.clean_price(m.group(0)), 2)
+    except Exception:
+        return 0.0
+
 def robust_fetch_html(url: str, timeout: float = 6.0) -> str:
     """Fetches raw HTML with resilient headers avoiding Cloudflare/Shopify 429 blocks."""
     req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.read().decode('utf-8', errors='ignore')
-    except Exception:
+        with throttled_http_request():
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode('utf-8', errors='ignore')
+    except Exception as e:
+        logger.debug("robust_fetch_html falló para %s: %s", url, e)
         return ""
 
 def clean_search_term_tiers(raw_query: str) -> List[str]:
@@ -153,14 +187,7 @@ def search_electronica_rych_single_term(query: str, limit: int = 8, timeout: flo
             continue
 
         price_el = p.select_one(".oe_currency_value, span[itemprop='price'], .oe_price, .product_price")
-        price_val = 0.0
-        if price_el:
-            try:
-                nums = re.findall(r"(\d+(?:\.\d+)?)", price_el.get_text())
-                if nums:
-                    price_val = float(nums[0])
-            except Exception:
-                pass
+        price_val = _extract_price(price_el.get_text(strip=True)) if price_el else 0.0
 
         img_el = p.select_one("img[itemprop='image'], img")
         image_url = None
@@ -366,22 +393,63 @@ def search_electronica_diy(query: str, limit: int = 8, timeout: float = 6.0) -> 
 
     return all_results[:limit]
 
-def metasearch(query: str, max_per_store: int = 5, timeout: float = 6.0) -> List[SearchResultItem]:
-    """Executes parallel search across the 3 supported stores."""
+def metasearch(query: str, max_per_store: int = 5, timeout: float = 6.0, global_timeout: float = 30.0) -> List[SearchResultItem]:
+    """Executes parallel search across the 3 supported stores.
+
+    global_timeout bounds the TOTAL wall-clock time of the metabúsqueda
+    (incluye todos los tiers por tienda), evitando cuelgues cuando una tienda
+    responde lento o no hay resultados.
+
+    Los resultados se cachean por (query, max_per_store) durante CACHE_TTL_SECONDS
+    (F10): consultas repetidas no vuelven a golpear las tiendas.
+    """
+    cache_key = f"{query.strip().lower()}:{max_per_store}"
+
+    with _CACHE_LOCK:
+        hit = _CACHE.get(cache_key)
+        if hit is not None and (time.monotonic() - hit[0]) < CACHE_TTL_SECONDS:
+            return [SearchResultItem(**asdict(r)) for r in hit[1]]
+
+    results = _metasearch_uncached(query, max_per_store, timeout, global_timeout)
+
+    with _CACHE_LOCK:
+        _CACHE[cache_key] = (time.monotonic(), [SearchResultItem(**asdict(r)) for r in results])
+        # Limitar el crecimiento: eliminar entradas vencidas si el caché crece mucho
+        if len(_CACHE) > 200:
+            now = time.monotonic()
+            expired = [k for k, (ts, _) in _CACHE.items() if now - ts >= CACHE_TTL_SECONDS]
+            for k in expired:
+                _CACHE.pop(k, None)
+
+    return results
+
+
+def _metasearch_uncached(query: str, max_per_store: int, timeout: float, global_timeout: float) -> List[SearchResultItem]:
+    """Ejecución real de la metabúsqueda (sin caché)."""
     combined_results: List[SearchResultItem] = []
-    
+
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(search_electronica_rych, query, max_per_store, timeout): "Electrónica RyCH",
             executor.submit(search_la_electronica, query, max_per_store, timeout): "La Electrónica",
             executor.submit(search_electronica_diy, query, max_per_store, timeout): "Electrónica DIY"
         }
-        
-        for future in as_completed(futures):
-            try:
-                store_items = future.result()
-                combined_results.extend(store_items)
-            except Exception:
-                pass
-                
+
+        deadline = time.monotonic() + max(0.0, global_timeout)
+        try:
+            remaining = max(0.1, deadline - time.monotonic())
+            for future in as_completed(futures, timeout=remaining):
+                try:
+                    store_items = future.result()
+                    combined_results.extend(store_items)
+                except Exception as e:
+                    logger.warning("Metabúsqueda: falló la tienda '%s': %s", futures[future], e)
+                if time.monotonic() >= deadline:
+                    break
+        except TimeoutError:
+            logger.warning("Metabúsqueda para '%s' excedió el timeout global (%.1fs).", query, global_timeout)
+
+        for future in futures:
+            future.cancel()
+
     return combined_results

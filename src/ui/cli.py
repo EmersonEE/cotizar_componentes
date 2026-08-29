@@ -16,19 +16,19 @@ from src.models import (
     QuoteStatus, InvalidStatusTransitionError
 )
 from src.config import AppConfig
-from src.scrapers import scrape_product, metasearch, SearchResultItem, StoreNotSupportedError, ScraperError
+from src.stores import STORE_NAMES
+from src.scrapers import scrape_product, metasearch, StoreNotSupportedError
 from src.core.calculator import QuoteCalculator, format_currency
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
-from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid, ParsedBOMItem
-from src.core.ai_service import extract_bom_with_ai, suggest_alternatives_with_ai, check_ollama_status
+from src.core.bom_parser import parse_bom_text, parse_bom_text_hybrid
+from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_status
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
-    MatchResult,
-    BOMScenario,
     build_all_bom_scenarios
 )
+from src.services.quote_flow import QuoteFlowService
 
 console = Console()
 
@@ -74,9 +74,10 @@ class CotizadorCLI:
             console.print("  [bold cyan]5.[/bold cyan] 🔍 Buscar y Ver Historial de Cotizaciones")
             console.print("  [bold cyan]6.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
             console.print("  [bold cyan]7.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
-            console.print("  [bold cyan]8.[/bold cyan] 🚪 Salir")
+            console.print("  [bold cyan]8.[/bold cyan] 🗑️  Eliminar Cotización (Definitivo)")
+            console.print("  [bold cyan]9.[/bold cyan] 🚪 Salir")
 
-            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7", "8"], default="1")
+            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default="1")
 
             if choice == "1":
                 self.crear_cotizacion_bom()
@@ -93,6 +94,8 @@ class CotizadorCLI:
             elif choice == "7":
                 self.configuracion_menu()
             elif choice == "8":
+                self.eliminar_cotizacion()
+            elif choice == "9":
                 console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
                 sys.exit(0)
 
@@ -174,12 +177,13 @@ class CotizadorCLI:
             return None
 
         console.print("\n[cyan]Selecciona la tienda de origen:[/cyan]")
-        console.print("  [1] Electrónica RyCH")
-        console.print("  [2] La Electrónica")
-        console.print("  [3] Electrónica DIY")
-        console.print("  [4] Otra Tienda / Proveedor")
-        store_opt = Prompt.ask("Opción de tienda", choices=["1", "2", "3", "4"], default="1")
-        store_map = {"1": "Electrónica RyCH", "2": "La Electrónica", "3": "Electrónica DIY"}
+        store_map = {}
+        for i, sname in enumerate(STORE_NAMES, 1):
+            store_map[str(i)] = sname
+            console.print(f"  [{i}] {sname}")
+        console.print(f"  [{len(STORE_NAMES) + 1}] Otra Tienda / Proveedor")
+        store_choices = list(store_map.keys()) + [str(len(STORE_NAMES) + 1)]
+        store_opt = Prompt.ask("Opción de tienda", choices=store_choices, default="1")
         if store_opt in store_map:
             store_name = store_map[store_opt]
         else:
@@ -211,6 +215,19 @@ class CotizadorCLI:
             sku=sku,
             is_manual=True
         )
+
+    def _mostrar_historial_precio(self, product: Product):
+        """F4: muestra el último precio cotizado para este producto (URL o SKU) si existe."""
+        try:
+            hist = self.history_mgr.get_price_history(url=product.url, sku=product.sku, limit=1)
+            if hist:
+                h = hist[0]
+                console.print(
+                    f"[dim]🕓 Última vez cotizado: {format_currency(h['unit_price'], self.config.currency_symbol)} "
+                    f"({h['date']}, {h['quote_id']})[/dim]"
+                )
+        except Exception:
+            pass
 
     def _obtener_producto_interactivo(self) -> Optional[Product]:
         """Allows user to search by name in the 3 stores, paste a direct URL, or enter manually."""
@@ -303,10 +320,11 @@ class CotizadorCLI:
                     with console.status(f"[bold green]Cargando detalles de {chosen.title}...[/bold green]"):
                         try:
                             prod = scrape_product(chosen.url)
+                            self._mostrar_historial_precio(prod)
                             return prod
                         except Exception as e:
                             console.print(f"[yellow]⚠️ No se pudo extraer la ficha técnica en vivo ({e}). Usando datos del buscador.[/yellow]")
-                            return Product(
+                            fallback = Product(
                                 name=chosen.title,
                                 url=chosen.url,
                                 store_name=chosen.store_name,
@@ -315,6 +333,8 @@ class CotizadorCLI:
                                 stock_status=chosen.stock_status,
                                 image_url=chosen.image_url
                             )
+                            self._mostrar_historial_precio(fallback)
+                            return fallback
                 else:
                     console.print("[red]Selección fuera de rango.[/red]")
 
@@ -330,6 +350,7 @@ class CotizadorCLI:
                         if Confirm.ask("¿Deseas ingresar los datos manualmente?", default=True):
                             return self._ingresar_producto_manual(default_url=url)
                         return None
+                    self._mostrar_historial_precio(product)
                     return product
                 except StoreNotSupportedError as e:
                     console.print(f"[bold red]❌ Error de Tienda:[/bold red] {e}")
@@ -445,7 +466,7 @@ class CotizadorCLI:
         while True:
             console.clear()
             self.show_banner()
-            console.print(f"\n[bold cyan]=== RESULTADOS DE BÚSQUEDA Y ASIGNACIÓN DE CANDIDATOS ===[/bold cyan]")
+            console.print("\n[bold cyan]=== RESULTADOS DE BÚSQUEDA Y ASIGNACIÓN DE CANDIDATOS ===[/bold cyan]")
             console.print(f"[dim]Cliente: {customer.name} | Ítems en lista: {len(match_results)}[/dim]\n")
 
             summary_table = Table(box=box.ROUNDED)
@@ -456,14 +477,11 @@ class CotizadorCLI:
             summary_table.add_column("P. Unitario", justify="right", style="green")
             summary_table.add_column("Confianza / Score", justify="center")
 
-            has_review = False
             unfound_count = 0
 
             for i, m in enumerate(match_results, 1):
                 if m.selected_candidate:
                     c = m.selected_candidate
-                    if m.status == "REVISAR":
-                        has_review = True
                     conf_badge = m.status_badge
                     if m.is_confirmed and m.status == "REVISAR":
                         conf_badge += " [green](✔ Confirmado)[/green]"
@@ -665,7 +683,7 @@ class CotizadorCLI:
         while True:
             console.clear()
             self.show_banner()
-            console.print(f"\n[bold cyan]=== COMPARATIVA DE LAS 4 OPCIONES DE COTIZACIÓN ===[/bold cyan]")
+            console.print("\n[bold cyan]=== COMPARATIVA DE LAS 4 OPCIONES DE COTIZACIÓN ===[/bold cyan]")
             console.print(f"[dim]Cliente: {customer.name} | Tel: {customer.phone or 'N/A'} | Ítems en lista: {len(parse_res.items)}[/dim]\n")
 
             comp_table = Table(box=box.ROUNDED)
@@ -750,30 +768,23 @@ class CotizadorCLI:
                     continue
 
                 console.print(f"\n[bold green]Has seleccionado:[/bold green] [bold cyan]{chosen_scenario.title}[/bold cyan]")
-                
-                final_quote_id = self.history_mgr.get_next_quote_id(self.config.quote_prefix)
-                final_shipping = chosen_scenario.quote.shipping_details
-                
-                final_quote = QuoteCalculator.build_quote(
-                    quote_id=final_quote_id,
+
+                flow = QuoteFlowService(self.config, self.history_mgr, self.exporter)
+                final_quote = flow.finalize_scenario_quote(
                     items=chosen_scenario.items,
                     customer=customer,
-                    shipping_details=final_shipping,
                     service_fee_percent=fee_percent,
-                    validity_days=self.config.validity_days,
-                    currency_symbol=self.config.currency_symbol,
-                    currency_code=self.config.currency_code
+                    shipping_details=chosen_scenario.quote.shipping_details,
                 )
-                final_quote.status = QuoteStatus.GUARDADA.value
 
                 self._mostrar_cotizacion_completa(final_quote)
 
                 if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (Cliente + Interno)?", default=True):
-                    self.history_mgr.save_quote(final_quote)
                     with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
-                        exp_res = self.exporter.export_all(final_quote, self.config.business)
-
-                    self._mostrar_panel_documentos(exp_res, final_quote.quote_id)
+                        res = flow.save_and_export(final_quote)
+                    if res.merged_count:
+                        console.print(f"[yellow]🧮 Se fusionaron {res.merged_count} componente(s) repetido(s).[/yellow]")
+                    self._mostrar_panel_documentos(res.export, res.quote.quote_id)
                 break
             else:
                 console.print("[red]Opción no válida. Ingresa 1, 2, 3, 4, o v1-v4 para ver el detalle.[/red]")
@@ -838,27 +849,22 @@ class CotizadorCLI:
 
         shipping_details = self._solicitar_envios_interactivo(items)
 
-        quote_id = self.history_mgr.get_next_quote_id(self.config.quote_prefix)
-        quote = QuoteCalculator.build_quote(
-            quote_id=quote_id,
+        flow = QuoteFlowService(self.config, self.history_mgr, self.exporter)
+        quote = flow.finalize_scenario_quote(
             items=items,
             customer=customer,
-            shipping_details=shipping_details,
             service_fee_percent=fee_percent,
-            validity_days=self.config.validity_days,
-            currency_symbol=self.config.currency_symbol,
-            currency_code=self.config.currency_code
+            shipping_details=shipping_details,
         )
-        quote.status = QuoteStatus.GUARDADA.value
 
         self._mostrar_cotizacion_completa(quote)
 
         if Confirm.ask("\n¿Deseas guardar la cotización y generar los documentos (Cliente + Interno)?", default=True):
-            self.history_mgr.save_quote(quote)
             with console.status("[bold green]Generando archivos PDF, HTML y CSV...[/bold green]", spinner="dots"):
-                exp_res = self.exporter.export_all(quote, self.config.business)
-
-            self._mostrar_panel_documentos(exp_res, quote.quote_id)
+                res = flow.save_and_export(quote)
+            if res.merged_count:
+                console.print(f"[yellow]🧮 Se fusionaron {res.merged_count} componente(s) repetido(s).[/yellow]")
+            self._mostrar_panel_documentos(res.export, res.quote.quote_id)
 
     def duplicar_cotizacion(self):
         """Duplicates an existing quote as a new independent quote."""
@@ -877,10 +883,11 @@ class CotizadorCLI:
         table.add_column("Total", justify="right", style="bold green")
 
         for q in quotes[-10:]:
-            st_style = get_status_style(q.status)
+            st_eff = self.history_mgr.effective_status(q)
+            st_style = get_status_style(st_eff)
             table.add_row(
                 q.quote_id,
-                f"[{st_style}]{q.status}[/{st_style}]",
+                f"[{st_style}]{st_eff}[/{st_style}]",
                 q.date,
                 q.customer.name,
                 str(len(q.items)),
@@ -926,10 +933,11 @@ class CotizadorCLI:
         table.add_column("Total", justify="right", style="bold green")
 
         for q in quotes[-10:]:
-            st_style = get_status_style(q.status)
+            st_eff = self.history_mgr.effective_status(q)
+            st_style = get_status_style(st_eff)
             table.add_row(
                 q.quote_id,
-                f"[{st_style}]{q.status}[/{st_style}]",
+                f"[{st_style}]{st_eff}[/{st_style}]",
                 q.date,
                 q.customer.name,
                 str(len(q.items)),
@@ -946,7 +954,9 @@ class CotizadorCLI:
         working_items: List[QuoteItem] = copy.deepcopy(original_quote.items)
         working_customer: Customer = copy.deepcopy(original_quote.customer)
         custom_shipping_costs: Dict[str, float] = {
-            sd.store_name: sd.shipping_cost for sd in original_quote.shipping_details
+            sd.store_name: sd.shipping_cost
+            for sd in original_quote.shipping_details
+            if sd.shipping_was_custom
         }
         fee_percent = original_quote.service_fee_percent
 
@@ -1076,12 +1086,12 @@ class CotizadorCLI:
                 )
                 versioned_quote.status = QuoteStatus.GUARDADA.value
 
-                self.history_mgr.save_quote(versioned_quote)
-
+                flow = QuoteFlowService(self.config, self.history_mgr, self.exporter)
                 with console.status("[bold green]Generando archivos de la nueva versión (Cliente e Interno)...[/bold green]"):
-                    exp_res = self.exporter.export_all(versioned_quote, self.config.business)
-
-                self._mostrar_panel_documentos(exp_res, versioned_quote.quote_id)
+                    res = flow.save_and_export(versioned_quote)
+                if res.merged_count:
+                    console.print(f"[yellow]🧮 Se fusionaron {res.merged_count} componente(s) repetido(s).[/yellow]")
+                self._mostrar_panel_documentos(res.export, res.quote.quote_id)
                 break
 
             elif opc == "8":
@@ -1187,7 +1197,7 @@ class CotizadorCLI:
             filtered_quotes = self.history_mgr.search_quotes(query=search_query, status_filter=selected_filter)
 
             if not filtered_quotes:
-                console.print(f"[yellow]No se encontraron cotizaciones coincidentes con los filtros.[/yellow]")
+                console.print("[yellow]No se encontraron cotizaciones coincidentes con los filtros.[/yellow]")
                 if not Confirm.ask("¿Deseas realizar otra búsqueda?", default=True):
                     return
                 continue
@@ -1203,10 +1213,11 @@ class CotizadorCLI:
             table.add_column("Total (GTQ)", justify="right", style="bold green")
 
             for q in filtered_quotes:
-                st_style = get_status_style(q.status)
+                st_eff = self.history_mgr.effective_status(q)
+                st_style = get_status_style(st_eff)
                 table.add_row(
                     q.quote_id,
-                    f"[{st_style}]{q.status}[/{st_style}]",
+                    f"[{st_style}]{st_eff}[/{st_style}]",
                     f"v{q.version}",
                     q.date,
                     q.customer.name,
@@ -1223,15 +1234,37 @@ class CotizadorCLI:
             console.print("  [bold green][D][/bold green] 📄 Duplicar cotización como nueva independiente")
             console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo (Crear nueva versión)")
             console.print("  [bold green][P][/bold green] 📑 Re-generar / Abrir archivos PDF")
+            console.print("  [bold green][E][/bold green] 💾 Exportar historial (JSON/CSV)")
+            console.print("  [bold green][I][/bold green] 📥 Importar historial (JSON)")
             console.print("  [bold cyan][B][/bold cyan] 🔍 Nueva búsqueda en historial")
             console.print("  [bold cyan][0][/bold cyan] ↩️  Regresar al menú principal")
 
-            hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "s", "d", "r", "p", "b", "0"], default="0").lower()
+            hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "s", "d", "r", "p", "e", "i", "b", "0"], default="0").lower()
 
             if hist_opc == "0":
                 return
             elif hist_opc == "b":
                 continue
+
+            elif hist_opc == "e":
+                export_dir = self.history_mgr.file_path.parent
+                json_path = export_dir / "historial_export.json"
+                csv_path = export_dir / "historial_export.csv"
+                self.history_mgr.export_history(json_path)
+                self.history_mgr.export_history_csv(csv_path)
+                console.print(f"[bold green]✔ Historial exportado:[/bold green]\n  📄 {json_path}\n  📊 {csv_path}")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif hist_opc == "i":
+                import_path = Prompt.ask("Ruta del archivo JSON a importar").strip()
+                if not import_path:
+                    continue
+                try:
+                    added = self.history_mgr.import_history(Path(import_path))
+                    console.print(f"[bold green]✔ Importación completada: {added} cotización(es) agregada(s).[/bold green]")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Error al importar:[/bold red] {e}")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif hist_opc == "v":
                 qid = Prompt.ask("Ingresa el ID de la cotización").strip()
@@ -1264,6 +1297,15 @@ class CotizadorCLI:
                             new_st = allowed[sel_st - 1]
                             try:
                                 updated_q = self.history_mgr.update_quote_status(quote.quote_id, new_st)
+                                # F6: al aceptar la venta se pueden registrar notas de factura/entrega
+                                if new_st == QuoteStatus.ACEPTADA:
+                                    notes = Prompt.ask(
+                                        "📦 Notas de venta (factura/entrega, opcional)",
+                                        default=updated_q.sale_notes,
+                                    )
+                                    if notes != updated_q.sale_notes:
+                                        updated_q.sale_notes = notes
+                                        self.history_mgr.save_quote(updated_q, force_overwrite=True)
                                 self.exporter.export_all(updated_q, self.config.business)
                                 console.print(f"[bold green]✔ ¡Estado de {updated_q.quote_id} actualizado a {updated_q.status} con éxito![/bold green]")
                             except InvalidStatusTransitionError as e:
@@ -1398,6 +1440,51 @@ class CotizadorCLI:
             self._mostrar_panel_documentos(exp_res, saved_v.quote_id)
         else:
             console.print("\n[yellow]Revalidación cancelada. El historial no ha sufrido ninguna modificación.[/yellow]")
+
+    def eliminar_cotizacion(self):
+        """Elimina DEFINITIVAMENTE una cotización (y sus versiones) del historial."""
+        console.print("\n[bold red]=== ELIMINAR COTIZACIÓN (DEFINITIVO) ===[/bold red]")
+        quotes = self.history_mgr.load_all_quotes()
+        if not quotes:
+            console.print("[yellow]No hay cotizaciones guardadas para eliminar.[/yellow]")
+            return
+
+        table = Table(title="Cotizaciones Registradas", box=box.ROUNDED)
+        table.add_column("ID", style="bold cyan")
+        table.add_column("Estado", justify="center")
+        table.add_column("Fecha", style="dim")
+        table.add_column("Cliente", style="white")
+        table.add_column("Total", justify="right", style="bold green")
+
+        for q in quotes[-15:]:
+            st_eff = self.history_mgr.effective_status(q)
+            st_style = get_status_style(st_eff)
+            table.add_row(
+                q.quote_id,
+                f"[{st_style}]{st_eff}[/{st_style}]",
+                q.date,
+                q.customer.name,
+                format_currency(q.total, q.currency_symbol)
+            )
+        console.print(table)
+
+        qid = Prompt.ask("\nIngresa el ID de la cotización a eliminar").strip()
+        target = self.history_mgr.get_quote(qid)
+        if not target:
+            console.print(f"[bold red]No se encontró ninguna cotización con ID '{qid}'.[/bold red]")
+            return
+
+        console.print(f"\n[bold yellow]Cotización seleccionada:[/bold yellow] {target.quote_id} "
+                      f"({target.customer.name}) con {len(target.items)} componentes.")
+        console.print("[dim]Se eliminarán también todas sus versiones (_vN) del historial.[/dim]")
+        console.print("[dim]Los archivos PDF/HTML/CSV ya generados en la carpeta output/ no se tocan.[/dim]")
+
+        if Confirm.ask(f"¿Eliminar DEFINITIVAMENTE {target.quote_id}? Esta acción no se puede deshacer.", default=False):
+            removed = self.history_mgr.delete_quote(target.quote_id)
+            if removed:
+                console.print(f"[bold green]✔ {removed} registro(s) eliminados del historial.[/bold green]")
+            else:
+                console.print("[yellow]No se eliminó nada (la cotización ya no existe).[/yellow]")
 
     def configuracion_menu(self):
         console.print("\n[bold cyan]=== CONFIGURACIÓN DE PARÁMETROS ===[/bold cyan]")

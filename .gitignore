@@ -10,3 +10,6 @@ output/quotes_csv/*.csv
 output/quotes_html/*.html
 output/quotes_pdf/*.pdf
 !output/**/.gitkeep
+data/history.json.bak
+data/history.json.lock
+data/historial_export.*

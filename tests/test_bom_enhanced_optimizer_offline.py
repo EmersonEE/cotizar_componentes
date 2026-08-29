@@ -1,14 +1,13 @@
 import sys
 import os
 import unittest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.models import Customer, Product, QuoteItem
+from src.models import Customer
 from src.config import AppConfig
-from src.core.bom_parser import parse_bom_text, ParsedBOMItem
+from src.core.bom_parser import ParsedBOMItem
 from src.scrapers.search import SearchResultItem
 from src.core.bom_searcher import (
     calculate_match_score,

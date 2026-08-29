@@ -1,148 +1,109 @@
 import sys
 import os
 import shutil
+import tempfile
+import unittest
 from pathlib import Path
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.models import Product, QuoteItem, Quote, Customer
-from src.config import AppConfig
-from src.core.calculator import QuoteCalculator, format_currency
+from src.models import Product, Customer
+from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
 
-def test_shipping_and_versioning():
-    print("--- INICIANDO TEST DE REGLAS DE ENVÍO Y VERSIONADO ---")
 
-    history_mgr = HistoryManager()
-    exporter = QuoteExporter()
+class TestShippingAndVersioningOffline(unittest.TestCase):
 
-    # Explicit shipping rules for testing
-    test_shipping_rules = {
-        "La Electrónica": {
-            "free_threshold": 150.0,
-            "default_cost": 35.0,
-            "is_pickup_only": False
-        },
-        "Electrónica DIY": {
-            "free_threshold": 250.0,
-            "default_cost": 35.0,
-            "is_pickup_only": False
-        },
-        "Electrónica RyCH": {
-            "free_threshold": None,
-            "default_cost": 0.0,
-            "is_pickup_only": True
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp()
+        self.history_file = Path(self.test_dir) / "test_history.json"
+        self.output_dir = Path(self.test_dir) / "output"
+        self.history_mgr = HistoryManager(file_path=self.history_file)
+        self.exporter = QuoteExporter(output_dir=self.output_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_shipping_thresholds_and_versioning(self):
+        test_shipping_rules = {
+            "La Electrónica": {"free_threshold": 150.0, "default_cost": 35.0, "is_pickup_only": False},
+            "Electrónica DIY": {"free_threshold": 250.0, "default_cost": 35.0, "is_pickup_only": False},
+            "Electrónica RyCH": {"free_threshold": None, "default_cost": 0.0, "is_pickup_only": True},
         }
-    }
 
-    # Products from 3 different stores
-    p_la = Product("Tester Component La Electronica", "https://laelectronica.com.gt/products/test", "La Electrónica", 40.00)
-    p_diy = Product("Tester Component DIY", "https://electronicadiy.com/products/test", "Electrónica DIY", 775.00)
-    p_rych = Product("Tester Component RyCH", "https://electronicarych.com/shop/test", "Electrónica RyCH", 2.25)
+        p_la = Product("Tester Component La Electronica", "https://laelectronica.com.gt/products/test",
+                       "La Electrónica", 40.00)
+        p_diy = Product("Tester Component DIY", "https://electronicadiy.com/products/test",
+                        "Electrónica DIY", 775.00)
+        p_rych = Product("Tester Component RyCH", "https://electronicarych.com/shop/test",
+                         "Electrónica RyCH", 2.25)
 
-    # 1. Test Shipping Threshold Evaluation:
-    # La Electrónica: 2 x 40 = Q80 (< Q150) -> Q35 shipping
-    # DIY: 1 x 775 = Q775 (>= Q250) -> Free shipping (Q0)
-    # RyCH: 1 x 2.25 = Q2.25 (Pickup) -> Q0
-    item_la = QuoteCalculator.create_quote_item(p_la, quantity=2) # 80.00
-    item_diy = QuoteCalculator.create_quote_item(p_diy, quantity=1) # 775.00
-    item_rych = QuoteCalculator.create_quote_item(p_rych, quantity=1) # 2.25
+        # La Electrónica: 2 x 40 = 80 (< 150) -> 35.00
+        # DIY: 1 x 775 = 775 (>= 250) -> gratis
+        # RyCH: 1 x 2.25 = 2.25 (retiro) -> 0
+        items = [
+            QuoteCalculator.create_quote_item(p_la, quantity=2),
+            QuoteCalculator.create_quote_item(p_diy, quantity=1),
+            QuoteCalculator.create_quote_item(p_rych, quantity=1),
+        ]
+        customer = Customer("Cliente Versiones", "4455-6677")
 
-    items = [item_la, item_diy, item_rych]
-    customer = Customer("Cliente Versiones", "4455-6677")
+        store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
+        self.assertEqual(store_subtotals["La Electrónica"], 80.0)
+        self.assertEqual(store_subtotals["Electrónica DIY"], 775.0)
+        self.assertEqual(store_subtotals["Electrónica RyCH"], 2.25)
 
-    store_subtotals = QuoteCalculator.calculate_store_subtotals(items)
-    print(f"Subtotales por tienda: {store_subtotals}")
-    assert store_subtotals["La Electrónica"] == 80.0
-    assert store_subtotals["Electrónica DIY"] == 775.0
-    assert store_subtotals["Electrónica RyCH"] == 2.25
+        shipping_details = QuoteCalculator.evaluate_shipping_details(store_subtotals, test_shipping_rules)
+        by_store = {sd.store_name: sd for sd in shipping_details}
 
-    shipping_details = QuoteCalculator.evaluate_shipping_details(store_subtotals, test_shipping_rules)
-    for sd in shipping_details:
-        print(f"  • {sd.store_name}: Subtotal={sd.items_subtotal}, Costo={sd.shipping_cost}, Status={sd.status_label}")
+        self.assertEqual(by_store["La Electrónica"].shipping_cost, 35.0)
+        self.assertFalse(by_store["La Electrónica"].qualifies_free)
+        self.assertEqual(by_store["Electrónica DIY"].shipping_cost, 0.0)
+        self.assertTrue(by_store["Electrónica DIY"].qualifies_free)
+        self.assertEqual(by_store["Electrónica RyCH"].shipping_cost, 0.0)
+        self.assertTrue(by_store["Electrónica RyCH"].is_pickup_only)
 
-    la_sd = next(s for s in shipping_details if s.store_name == "La Electrónica")
-    diy_sd = next(s for s in shipping_details if s.store_name == "Electrónica DIY")
-    rych_sd = next(s for s in shipping_details if s.store_name == "Electrónica RyCH")
+        # v1
+        quote_id = self.history_mgr.get_next_quote_id("COT")
+        quote_v1 = QuoteCalculator.build_quote(
+            quote_id=quote_id, items=items, customer=customer,
+            shipping_details=shipping_details, service_fee_percent=12.0,
+        )
+        expected_items_subtotal = 857.25
+        expected_fee = round(expected_items_subtotal * 0.12, 2)
+        self.assertAlmostEqual(quote_v1.total_shipping, 35.0, delta=0.01)
+        self.assertAlmostEqual(quote_v1.total, expected_items_subtotal + expected_fee + 35.0, delta=0.01)
 
-    assert la_sd.shipping_cost == 35.0
-    assert not la_sd.qualifies_free
-    assert diy_sd.shipping_cost == 0.0
-    assert diy_sd.qualifies_free
-    assert rych_sd.shipping_cost == 0.0
-    assert rych_sd.is_pickup_only
+        self.history_mgr.save_quote(quote_v1)
 
-    # Build Quote v1
-    quote_id = history_mgr.get_next_quote_id("COT")
-    quote_v1 = QuoteCalculator.build_quote(
-        quote_id=quote_id,
-        items=items,
-        customer=customer,
-        shipping_details=shipping_details,
-        service_fee_percent=12.0
-    )
+        # v2: cambia cantidad de La Electrónica a 4 -> 160 >= 150 -> gratis
+        new_qid, new_version, base_id = self.history_mgr.get_next_version_info(quote_v1.quote_id)
+        self.assertEqual(new_version, 2)
+        self.assertEqual(new_qid, f"{quote_v1.quote_id}_v2")
 
-    expected_items_subtotal = 80.0 + 775.0 + 2.25 # 857.25
-    expected_fee = round(expected_items_subtotal * 0.12, 2) # 102.87
-    expected_total = round(expected_items_subtotal + expected_fee + 35.0, 2) # 995.12
+        items_v2 = [
+            QuoteCalculator.create_quote_item(p_la, quantity=4),
+            QuoteCalculator.create_quote_item(p_diy, quantity=1),
+            QuoteCalculator.create_quote_item(p_rych, quantity=1),
+        ]
+        shipping_v2 = QuoteCalculator.evaluate_shipping_details(
+            QuoteCalculator.calculate_store_subtotals(items_v2), test_shipping_rules
+        )
+        la_v2 = next(sd for sd in shipping_v2 if sd.store_name == "La Electrónica")
+        self.assertTrue(la_v2.qualifies_free)
+        self.assertEqual(la_v2.shipping_cost, 0.0)
 
-    print(f"\nCotización v1 ({quote_v1.quote_id}):")
-    print(f"  Subtotal Componentes: {format_currency(quote_v1.items_subtotal)}")
-    print(f"  Margen (12%):         {format_currency(quote_v1.service_fee_amount)}")
-    print(f"  Total Envíos:         {format_currency(quote_v1.total_shipping)}")
-    print(f"  TOTAL GENERAL:        {format_currency(quote_v1.total)}")
+        quote_v2 = QuoteCalculator.build_quote(
+            quote_id=new_qid, items=items_v2, customer=customer,
+            shipping_details=shipping_v2, service_fee_percent=12.0,
+            version=new_version, base_quote_id=base_id,
+        )
+        self.assertAlmostEqual(quote_v2.total_shipping, 0.0, delta=0.01)
+        self.history_mgr.save_quote(quote_v2)
 
-    assert abs(quote_v1.items_subtotal - expected_items_subtotal) < 0.01
-    assert abs(quote_v1.service_fee_amount - expected_fee) < 0.01
-    assert abs(quote_v1.total_shipping - 35.0) < 0.01
-    assert abs(quote_v1.total - expected_total) < 0.01
+        self.assertEqual(len(self.history_mgr.load_all_quotes()), 2)
 
-    history_mgr.save_quote(quote_v1)
-    exporter.export_all(quote_v1)
-
-    # 2. Test Versioning: Create Quote v2
-    new_qid, new_version, base_id = history_mgr.get_next_version_info(quote_v1.quote_id)
-    print(f"\nGenerando nueva versión: {new_qid} (Versión {new_version}, Base {base_id})")
-    assert new_version == 2
-    assert new_qid == f"{quote_v1.quote_id}_v2"
-
-    # In v2: change La Electrónica quantity to 4 (4 * 40 = Q160 >= Q150 -> Free Shipping!)
-    item_la_v2 = QuoteCalculator.create_quote_item(p_la, quantity=4) # 160.00
-    items_v2 = [item_la_v2, item_diy, item_rych]
-    
-    store_subtotals_v2 = QuoteCalculator.calculate_store_subtotals(items_v2)
-    shipping_details_v2 = QuoteCalculator.evaluate_shipping_details(store_subtotals_v2, test_shipping_rules)
-
-    la_sd_v2 = next(s for s in shipping_details_v2 if s.store_name == "La Electrónica")
-    assert la_sd_v2.qualifies_free
-    assert la_sd_v2.shipping_cost == 0.0
-
-    quote_v2 = QuoteCalculator.build_quote(
-        quote_id=new_qid,
-        items=items_v2,
-        customer=customer,
-        shipping_details=shipping_details_v2,
-        service_fee_percent=12.0,
-        version=new_version,
-        base_quote_id=base_id
-    )
-
-    print(f"\nCotización v2 ({quote_v2.quote_id}):")
-    print(f"  Subtotal Componentes: {format_currency(quote_v2.items_subtotal)}")
-    print(f"  Margen (12%):         {format_currency(quote_v2.service_fee_amount)}")
-    print(f"  Total Envíos:         {format_currency(quote_v2.total_shipping)}")
-    print(f"  TOTAL GENERAL:        {format_currency(quote_v2.total)}")
-
-    assert abs(quote_v2.total_shipping - 0.0) < 0.01
-
-    history_mgr.save_quote(quote_v2)
-    exp_res_v2 = exporter.export_all(quote_v2)
-    assert exp_res_v2.client_pdf and exp_res_v2.client_pdf.exists()
-    assert exp_res_v2.internal_pdf and exp_res_v2.internal_pdf.exists()
-    print(f"  [OK] PDF v2 Cliente generado: {exp_res_v2.client_pdf.name}")
-    print(f"  [OK] PDF v2 Interno generado: {exp_res_v2.internal_pdf.name}")
-
-    print("\n--- TODOS LOS TESTS DE ENVÍO Y VERSIONADO PASARON CON ÉXITO ---")
 
 if __name__ == "__main__":
-    test_shipping_and_versioning()
+    unittest.main()

@@ -1,7 +1,5 @@
 import sys
 import os
-import json
-import copy
 import shutil
 import tempfile
 import unittest
@@ -9,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.models import Product, QuoteItem, Quote, Customer, BusinessInfo, StoreShippingDetail
+from src.models import Product, Quote, Customer, BusinessInfo, StoreShippingDetail
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
@@ -178,7 +176,7 @@ class TestCustomerAndHistoryOffline(unittest.TestCase):
         
         orig_cust = Customer(name="Cliente Original", phone="1111-2222", email="orig@test.com", notes="Cotización Base")
         shipping = [
-            StoreShippingDetail("Electrónica DIY", 200.0, 250.0, False, 35.0, "Q 35.00", False),
+            StoreShippingDetail("Electrónica DIY", 200.0, 250.0, False, 35.0, "Q 35.00", False, True),
             StoreShippingDetail("Electrónica RyCH", 100.0, None, True, 0.0, "No aplica", True)
         ]
         

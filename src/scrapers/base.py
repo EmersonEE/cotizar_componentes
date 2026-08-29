@@ -1,10 +1,13 @@
 import re
 import time
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 import httpx
-from bs4 import BeautifulSoup
 from src.models import Product
+from src.scrapers.throttle import throttled_http_request
+
+logger = logging.getLogger(__name__)
 
 class ScraperError(Exception):
     """Base exception for scraping errors."""
@@ -49,21 +52,26 @@ class BaseScraper(ABC):
         last_err = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                with httpx.Client(timeout=self.timeout, follow_redirects=follow_redirects, verify=True) as client:
-                    response = client.get(url, headers=req_headers)
-                    if response.status_code == 404:
-                        raise ProductNotFoundError(f"Producto no encontrado (HTTP 404): {url}")
-                    response.raise_for_status()
-                    return response
+                with throttled_http_request():
+                    with httpx.Client(timeout=self.timeout, follow_redirects=follow_redirects, verify=True) as client:
+                        response = client.get(url, headers=req_headers)
+                if response.status_code == 404:
+                    raise ProductNotFoundError(f"Producto no encontrado (HTTP 404): {url}")
+                response.raise_for_status()
+                return response
             except httpx.HTTPStatusError as e:
                 last_err = e
                 if e.response.status_code == 404:
                     raise ProductNotFoundError(f"Producto no encontrado (HTTP 404): {url}")
+                logger.debug("Intento %d/%d falló para %s (HTTP %s): %s",
+                             attempt, self.max_retries, url, e.response.status_code, e)
                 time.sleep(0.5 * attempt)
             except Exception as e:
                 last_err = e
+                logger.debug("Intento %d/%d falló para %s: %s", attempt, self.max_retries, url, e)
                 time.sleep(0.5 * attempt)
 
+        logger.warning("Fallo definitivo al conectar con %s: %s", url, last_err)
         raise ScraperError(f"Error al conectar con {url}: {last_err}")
 
     @staticmethod

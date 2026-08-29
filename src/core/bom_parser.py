@@ -1,9 +1,9 @@
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional
 
 from src.config import AppConfig
-from src.core.ai_service import extract_bom_with_ai, check_ollama_status
+from src.core.ai_service import extract_bom_with_ai
 
 @dataclass
 class ParsedBOMItem:

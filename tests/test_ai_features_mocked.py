@@ -8,7 +8,7 @@ import httpx
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.core.ai_service import check_ollama_status, extract_bom_with_ai, suggest_alternatives_with_ai
-from src.core.bom_parser import parse_bom_text_hybrid, BOMParseResult
+from src.core.bom_parser import parse_bom_text_hybrid
 from src.config import AppConfig
 
 class TestAIFeaturesMocked(unittest.TestCase):

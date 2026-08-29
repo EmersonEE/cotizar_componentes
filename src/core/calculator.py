@@ -21,6 +21,34 @@ class QuoteCalculator:
         )
 
     @staticmethod
+    def merge_duplicate_items(items: List[QuoteItem]) -> List[QuoteItem]:
+        """
+        Fusiona ítems repetidos (mismo SKU, o misma URL si no hay SKU, o mismo
+        nombre si no hay ninguno), sumando cantidades y conservando el orden
+        original. Usa el precio del primer ítem encontrado.
+        Devuelve una nueva lista (no muta la entrada).
+        """
+        merged: Dict[str, QuoteItem] = {}
+        order: List[str] = []
+
+        for item in items:
+            sku = (item.product.sku or "").strip().lower()
+            url = (item.product.url or "").strip().lower()
+            name = item.product.name.strip().lower()
+            key = sku or url or name
+
+            if key in merged:
+                existing = merged[key]
+                merged[key] = QuoteCalculator.create_quote_item(
+                    existing.product, existing.quantity + item.quantity
+                )
+            else:
+                merged[key] = item
+                order.append(key)
+
+        return [merged[k] for k in order]
+
+    @staticmethod
     def group_items_by_store(items: List[QuoteItem]) -> Dict[str, List[QuoteItem]]:
         """Groups a list of quote items by their origin store name."""
         grouped = defaultdict(list)
@@ -64,7 +92,8 @@ class QuoteCalculator:
                     qualifies_free=True,
                     shipping_cost=0.0,
                     status_label="No aplica (Retiro en tienda)",
-                    is_pickup_only=True
+                    is_pickup_only=True,
+                    shipping_was_custom=False
                 ))
             elif subtotal >= threshold:
                 # Free shipping minimum reached
@@ -75,7 +104,8 @@ class QuoteCalculator:
                     qualifies_free=True,
                     shipping_cost=0.0,
                     status_label=f"Gratis (mínimo Q{threshold:,.0f} alcanzado)",
-                    is_pickup_only=False
+                    is_pickup_only=False,
+                    shipping_was_custom=False
                 ))
             else:
                 # Free shipping minimum NOT reached; apply shipping cost
@@ -88,7 +118,8 @@ class QuoteCalculator:
                     qualifies_free=False,
                     shipping_cost=cost,
                     status_label=f"Q {cost:,.2f}",
-                    is_pickup_only=False
+                    is_pickup_only=False,
+                    shipping_was_custom=(store_name in custom_shipping_costs)
                 ))
 
         return details
@@ -154,6 +185,7 @@ class QuoteCalculator:
             total=total,
             currency_symbol=currency_symbol,
             currency_code=currency_code,
+            validity_days=validity_days,
             created_at=now.isoformat(),
             updated_at=now.isoformat()
         )

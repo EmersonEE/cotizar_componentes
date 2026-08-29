@@ -1,29 +1,44 @@
 import json
-import os
+import logging
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from src.models import BusinessInfo
+from src.stores import STORES
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
-DEFAULT_SHIPPING_RULES = {
-    "La Electrónica": {
-        "free_threshold": 150.0,
-        "default_cost": 35.0,
-        "is_pickup_only": False
-    },
-    "Electrónica DIY": {
-        "free_threshold": 250.0,
-        "default_cost": 35.0,
-        "is_pickup_only": False
-    },
-    "Electrónica RyCH": {
-        "free_threshold": None,
-        "default_cost": 0.0,
-        "is_pickup_only": True
+
+def _default_shipping_rules() -> Dict[str, Dict[str, Any]]:
+    """Single source of truth for default shipping rules, derivada del registro
+    central de tiendas (src/stores.py)."""
+    return {
+        store.name: {
+            "free_threshold": store.free_threshold,
+            "default_cost": store.default_shipping_cost,
+            "is_pickup_only": store.is_pickup_only,
+        }
+        for store in STORES
     }
-}
+
+
+def _parse_bool(value: Any, default: bool = True) -> bool:
+    """Lenient boolean parsing: accepts bool, int/float and common string forms
+    ('true'/'1'/'yes'/'si'/'on', 'false'/'0'/'no'/'off')."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in ("true", "1", "yes", "si", "on"):
+            return True
+        if v in ("false", "0", "no", "off"):
+            return False
+    return default
+
 
 @dataclass
 class AppConfig:
@@ -33,11 +48,7 @@ class AppConfig:
     currency_code: str = "GTQ"
     quote_prefix: str = "COT"
     business: BusinessInfo = field(default_factory=lambda: BusinessInfo(name="Emerson Electrónica & Integración"))
-    shipping_rules: Dict[str, Dict[str, Any]] = field(default_factory=lambda: {
-        "La Electrónica": {"free_threshold": 150.0, "default_cost": 35.0, "is_pickup_only": False},
-        "Electrónica DIY": {"free_threshold": 250.0, "default_cost": 35.0, "is_pickup_only": False},
-        "Electrónica RyCH": {"free_threshold": None, "default_cost": 0.0, "is_pickup_only": True},
-    })
+    shipping_rules: Dict[str, Dict[str, Any]] = field(default_factory=_default_shipping_rules)
 
     enable_ai: bool = True
     ollama_url: str = "http://localhost:11434"
@@ -56,24 +67,44 @@ class AppConfig:
         biz_data = data.get("business", {})
         business = BusinessInfo.from_dict(biz_data)
 
-        shipping_rules = data.get("shipping_rules", {
-            "La Electrónica": {"free_threshold": 150.0, "default_cost": 35.0, "is_pickup_only": False},
-            "Electrónica DIY": {"free_threshold": 250.0, "default_cost": 35.0, "is_pickup_only": False},
-            "Electrónica RyCH": {"free_threshold": None, "default_cost": 0.0, "is_pickup_only": True},
-        })
+        shipping_rules = data.get("shipping_rules") or _default_shipping_rules()
 
-        return cls(
+        cfg = cls(
             service_fee_percent=float(data.get("service_fee_percent", 12.0)),
             validity_days=int(data.get("validity_days", 5)),
-            currency_symbol=data.get("currency_symbol", "Q"),
-            currency_code=data.get("currency_code", "GTQ"),
-            quote_prefix=data.get("quote_prefix", "COT"),
+            currency_symbol=str(data.get("currency_symbol", "Q")),
+            currency_code=str(data.get("currency_code", "GTQ")),
+            quote_prefix=str(data.get("quote_prefix", "COT")),
             business=business,
             shipping_rules=shipping_rules,
-            enable_ai=bool(data.get("enable_ai", True)),
+            enable_ai=_parse_bool(data.get("enable_ai", True), True),
             ollama_url=str(data.get("ollama_url", "http://localhost:11434")),
             ollama_model=str(data.get("ollama_model", "qwen2.5:7b"))
         )
+        cfg._validate()
+        return cfg
+
+    def _validate(self):
+        """Clamps invalid business values and logs warnings, keeping the app running."""
+        if self.service_fee_percent < 0:
+            logger.warning("service_fee_percent inválido (%.2f); se ajusta a 0.", self.service_fee_percent)
+            self.service_fee_percent = 0.0
+        if self.validity_days < 1:
+            logger.warning("validity_days inválido (%d); se ajusta a 1.", self.validity_days)
+            self.validity_days = 1
+        if not self.quote_prefix or not str(self.quote_prefix).strip():
+            logger.warning("quote_prefix vacío; se usa 'COT'.")
+            self.quote_prefix = "COT"
+
+        for store, rules in self.shipping_rules.items():
+            threshold = rules.get("free_threshold")
+            if threshold is not None and float(threshold) < 0:
+                logger.warning("free_threshold negativo para '%s' (%.2f); se ajusta a 0.", store, threshold)
+                rules["free_threshold"] = 0.0
+            cost = rules.get("default_cost", 0.0)
+            if float(cost) < 0:
+                logger.warning("default_cost negativo para '%s' (%.2f); se ajusta a 0.", store, cost)
+                rules["default_cost"] = 0.0
 
     def save(self, config_path: Path = DEFAULT_CONFIG_PATH):
         data = {

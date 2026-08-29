@@ -1,8 +1,10 @@
-import re
+import logging
 from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from src.models import Product
-from src.scrapers.base import BaseScraper, ScraperError, ProductNotFoundError
+from src.scrapers.base import BaseScraper, ScraperError
+
+logger = logging.getLogger(__name__)
 
 class LaElectronicaScraper(BaseScraper):
     STORE_NAME = "La Electrónica"
@@ -66,7 +68,8 @@ class LaElectronicaScraper(BaseScraper):
                     image_url=image_url,
                     sku=sku
                 )
-        except Exception:
+        except Exception as e:
+            logger.debug("Endpoint JSON de La Electrónica falló para %s (%s); usando fallback HTML.", url, e)
             pass
 
         # Fallback strategy: HTML Parsing

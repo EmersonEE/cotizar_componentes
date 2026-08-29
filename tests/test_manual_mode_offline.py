@@ -4,11 +4,11 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.models import Product, QuoteItem, Quote, Customer, BusinessInfo, StoreShippingDetail
+from src.models import Product, QuoteItem, Customer, BusinessInfo
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter
@@ -93,8 +93,19 @@ class TestManualModeOffline(unittest.TestCase):
     @patch('src.core.history_manager.scrape_product')
     def test_fallen_store_during_reverification_does_not_crash(self, mock_scrape):
         """Validates that if a store is down (scraper raises exception), reverification handles it gracefully."""
+        from src.config import AppConfig
+        config = AppConfig.load()
         p = Product("Arduino Uno", "https://example.com/arduino", "Electrónica DIY", 120.0)
-        quote = QuoteCalculator.build_quote("COT-FAIL-001", [QuoteCalculator.create_quote_item(p, 1)], self.customer)
+        # Envío explícito según las reglas reales para que el total se conserve si el precio no cambia
+        shipping = QuoteCalculator.evaluate_shipping_details(
+            {"Electrónica DIY": 120.0}, config.shipping_rules
+        )
+        quote = QuoteCalculator.build_quote(
+            "COT-FAIL-001",
+            [QuoteCalculator.create_quote_item(p, 1)],
+            self.customer,
+            shipping_details=shipping,
+        )
         self.history_mgr.save_quote(quote)
 
         # Simulate store down (e.g. 503 Service Unavailable or Connection Timeout)

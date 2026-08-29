@@ -1,18 +1,28 @@
 import re
 import difflib
 import itertools
-from dataclasses import dataclass, field
+import logging
+from dataclasses import dataclass
 from typing import List, Optional, Tuple, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from src.models import Product, QuoteItem, Quote, Customer, BusinessInfo
+from src.models import Product, QuoteItem, Quote, Customer
 from src.config import AppConfig
 from src.core.bom_parser import ParsedBOMItem
 from src.core.calculator import QuoteCalculator
 from src.scrapers.search import SearchResultItem, metasearch
-from src.scrapers import scrape_product
+from src.stores import STORE_NAMES
 
-SUPPORTED_STORES = ["Electrónica RyCH", "La Electrónica", "Electrónica DIY"]
+logger = logging.getLogger(__name__)
+
+# Derivado del registro central de tiendas (T10)
+SUPPORTED_STORES = list(STORE_NAMES)
+
+# Límite de combinaciones para la búsqueda exhaustiva (product cartesiano)
+EXHAUSTIVE_COMBINATION_LIMIT = 50_000
+# Límite de nodos para la búsqueda acotada (DFS con poda por cota inferior).
+# Si se excede, se usa un fallback greedy por menor precio (nunca se cuelga).
+BOUNDED_SEARCH_NODE_LIMIT = 2_000_000
 
 @dataclass
 class MatchResult:
@@ -244,6 +254,35 @@ def search_bom_items_parallel(
 
     return [r for r in results if r is not None]
 
+def _greedy_mixed_assignment(
+    items_to_optimize: List[Tuple[int, ParsedBOMItem, List[Tuple[SearchResultItem, float]]]],
+    shipping_rules: Dict[str, Dict[str, Any]],
+    fee_multiplier: float
+) -> Tuple[List[Tuple[SearchResultItem, float]], float, float, float]:
+    """
+    Fallback seguro: asigna a cada ítem el candidato más barato (desempate por score).
+    Devuelve (chosen_combination, total_items_subtotal, total_shipping, total_score).
+    Nunca se cuelga y siempre produce una asignación válida.
+    """
+    chosen: List[Tuple[SearchResultItem, float]] = []
+    store_subtotals: Dict[str, float] = {}
+    total_items_subtotal = 0.0
+    total_score = 0.0
+
+    for _, bom_item, cands in items_to_optimize:
+        best = min(cands, key=lambda c: (c[0].unit_price, -c[1]))
+        chosen.append(best)
+        cand, score = best
+        sub = round(cand.unit_price * bom_item.quantity, 2)
+        store_subtotals[cand.store_name] = store_subtotals.get(cand.store_name, 0.0) + sub
+        total_items_subtotal += sub
+        total_score += score
+
+    shipping_details = QuoteCalculator.evaluate_shipping_details(store_subtotals, shipping_rules)
+    total_shipping = sum(sd.shipping_cost for sd in shipping_details)
+    return chosen, total_items_subtotal, total_shipping, total_score
+
+
 def find_optimal_mixed_assignment(
     match_results: List[MatchResult],
     shipping_rules: Dict[str, Dict[str, Any]],
@@ -286,19 +325,17 @@ def find_optimal_mixed_assignment(
     # Combinatorial search: evaluate all combinations of candidate choices
     # For each item, candidate options are at most 3 (one per store)
     choice_lists = [cands for _, _, cands in items_to_optimize]
-    
+
     best_cost = float('inf')
     best_total_score = -1.0
     best_combination: Optional[List[Tuple[SearchResultItem, float]]] = None
 
-    # Use branch and bound / product iteration
-    # Since len(items_to_optimize) is typical BOM (<= 20) and choices <= 3:
-    # If total combinations <= 50,000, exhaustive cartesian product is instantaneous.
     total_combinations = 1
     for cl in choice_lists:
         total_combinations *= len(cl)
 
-    if total_combinations <= 50000:
+    if total_combinations <= EXHAUSTIVE_COMBINATION_LIMIT:
+        # BOM típico: el producto cartesiano exhaustivo es instantáneo.
         for combo in itertools.product(*choice_lists):
             # combo is tuple of (SearchResultItem, score)
             # Calculate store subtotals
@@ -323,9 +360,33 @@ def find_optimal_mixed_assignment(
                 best_total_score = sum_scores
                 best_combination = combo
     else:
-        # Branch and bound for very large BOMs
+        # BOM grande: DFS con poda por cota inferior admisible.
+        # Cota inferior = subtotal mínimo restante (mejor precio por ítem) * fee (envío >= 0),
+        # así que si la cota >= mejor costo conocido, la rama se descarta.
+        min_remaining_subtotal = []
+        for _, bom_item, cands in items_to_optimize:
+            min_unit = min(c.unit_price for c, _ in cands)
+            min_remaining_subtotal.append(round(min_unit * bom_item.quantity, 2))
+
+        suffix_min_subtotal = [0.0] * (len(items_to_optimize) + 1)
+        for i in range(len(items_to_optimize) - 1, -1, -1):
+            suffix_min_subtotal[i] = suffix_min_subtotal[i + 1] + min_remaining_subtotal[i]
+
+        nodes_explored = 0
+        search_aborted = False
+
         def search_bb(item_idx, current_subtotals, current_items_subtotal, current_combo, current_score):
-            nonlocal best_cost, best_total_score, best_combination
+            nonlocal best_cost, best_total_score, best_combination, nodes_explored, search_aborted
+            nodes_explored += 1
+            if nodes_explored > BOUNDED_SEARCH_NODE_LIMIT:
+                search_aborted = True
+                return
+
+            # Poda por cota inferior
+            lower_bound = (current_items_subtotal + suffix_min_subtotal[item_idx]) * fee_multiplier
+            if lower_bound >= best_cost:
+                return
+
             if item_idx == len(items_to_optimize):
                 shipping_details = QuoteCalculator.evaluate_shipping_details(current_subtotals, shipping_rules)
                 total_shipping = sum(sd.shipping_cost for sd in shipping_details)
@@ -337,7 +398,11 @@ def find_optimal_mixed_assignment(
                 return
 
             _, bom_item, cands = items_to_optimize[item_idx]
-            for cand, score in cands:
+            # Explorar primero el candidato más barato -> mejor cota superior antes
+            cands_sorted = sorted(cands, key=lambda c: (c[0].unit_price, -c[1]))
+            for cand, score in cands_sorted:
+                if search_aborted:
+                    return
                 sub = round(cand.unit_price * bom_item.quantity, 2)
                 st_name = cand.store_name
                 new_subtotals = current_subtotals.copy()
@@ -351,6 +416,17 @@ def find_optimal_mixed_assignment(
                 )
 
         search_bb(0, {}, 0.0, [], 0.0)
+
+        if search_aborted or best_combination is None:
+            # Límite de nodos excedido (BOM extremadamente grande): fallback greedy seguro
+            logger.warning(
+                "Optimizador mixto: búsqueda acotada excedió el límite de nodos (%d) "
+                "con %d ítems. Se usa asignación greedy por menor precio.",
+                BOUNDED_SEARCH_NODE_LIMIT, len(items_to_optimize),
+            )
+            best_combination, _, _, _ = _greedy_mixed_assignment(
+                items_to_optimize, shipping_rules, fee_multiplier
+            )
 
     # Build QuoteItem list in original BOM line order
     optimal_items: List[QuoteItem] = []

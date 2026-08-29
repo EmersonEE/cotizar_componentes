@@ -1,18 +1,14 @@
 import sys
 import os
-import json
-import copy
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.models import (
-    Product, QuoteItem, Quote, Customer, BusinessInfo, StoreShippingDetail,
-    QuoteStatus, InvalidStatusTransitionError
+    Product, Quote, Customer, BusinessInfo, QuoteStatus, InvalidStatusTransitionError
 )
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager

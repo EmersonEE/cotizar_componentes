@@ -152,6 +152,10 @@ class StoreShippingDetail:
     shipping_cost: float = 0.0
     status_label: str = ""
     is_pickup_only: bool = False
+    # True cuando el costo fue establecido explícitamente por el usuario (no calculado
+    # automáticamente con default_cost). Se conserva al duplicar/re-verificar para no
+    # pisar costos especiales; los costos automáticos se recalculan con las reglas.
+    shipping_was_custom: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -160,6 +164,12 @@ class StoreShippingDetail:
     def from_dict(cls, data: dict) -> 'StoreShippingDetail':
         if not isinstance(data, dict):
             return cls(store_name="N/A", items_subtotal=0.0)
+        raw_custom = data.get("shipping_was_custom")
+        if raw_custom is not None:
+            shipping_was_custom = bool(raw_custom)
+        else:
+            # Legacy: los costos > 0 en cotizaciones viejas se tratan como puestos a mano
+            shipping_was_custom = float(data.get("shipping_cost", 0.0) or 0.0) > 0.0
         return cls(
             store_name=str(data.get("store_name", "N/A")),
             items_subtotal=float(data.get("items_subtotal", 0.0)),
@@ -167,7 +177,8 @@ class StoreShippingDetail:
             qualifies_free=bool(data.get("qualifies_free", False)),
             shipping_cost=float(data.get("shipping_cost", 0.0)),
             status_label=str(data.get("status_label", "")),
-            is_pickup_only=bool(data.get("is_pickup_only", False))
+            is_pickup_only=bool(data.get("is_pickup_only", False)),
+            shipping_was_custom=shipping_was_custom
         )
 
 @dataclass
@@ -189,6 +200,9 @@ class Quote:
     status_updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
     currency_symbol: str = "Q"
     currency_code: str = "GTQ"
+    validity_days: int = 5
+    # F6: seguimiento de venta (factura/entrega) cuando la cotización es ACEPTADA
+    sale_notes: str = ""
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -259,6 +273,8 @@ class Quote:
             "total": self.total,
             "currency_symbol": self.currency_symbol,
             "currency_code": self.currency_code,
+            "validity_days": self.validity_days,
+            "sale_notes": self.sale_notes,
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
@@ -301,6 +317,8 @@ class Quote:
             total=float(data.get("total", 0.0)),
             currency_symbol=str(data.get("currency_symbol", "Q")),
             currency_code=str(data.get("currency_code", "GTQ")),
+            validity_days=int(data.get("validity_days", 5)),
+            sale_notes=str(data.get("sale_notes", "")),
             created_at=created_at,
             updated_at=updated_at
         )
