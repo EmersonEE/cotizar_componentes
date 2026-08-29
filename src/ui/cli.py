@@ -33,7 +33,8 @@ from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
     summarize_match_results,
-    build_all_bom_scenarios
+    build_all_bom_scenarios,
+    BOMScenario,
 )
 from src.services.quote_flow import QuoteFlowService
 
@@ -65,7 +66,7 @@ class CotizadorCLI:
     def show_banner(self):
         banner_text = Text()
         banner_text.append("⚡ COTIZADOR DE COMPONENTES ELECTRÓNICOS ⚡\n", style="bold cyan")
-        banner_text.append("Guatemala • La Electrónica | Electrónica DIY | Electrónica RyCH\n", style="dim white")
+        banner_text.append(f"Guatemala • {' | '.join(STORE_NAMES)}\n", style="dim white")
         banner_text.append(f"Margen: {self.config.service_fee_percent}% • Moneda: {self.config.currency_code} ({self.config.currency_symbol})", style="bold yellow")
         
         console.print(Panel(banner_text, box=box.ROUNDED, expand=False, border_style="cyan"))
@@ -75,7 +76,7 @@ class CotizadorCLI:
             console.clear()
             self.show_banner()
             console.print("\n[bold green]MENÚ PRINCIPAL[/bold green]")
-            console.print("  [bold cyan]1.[/bold cyan] 📋 Crear Cotización por Lista Rápida (BOM Multilínea - 4 Opciones)")
+            console.print(f"  [bold cyan]1.[/bold cyan] 📋 Crear Cotización por Lista Rápida (BOM Multilínea - {len(STORE_NAMES) + 1} Opciones)")
             console.print("  [bold cyan]2.[/bold cyan] ➕ Crear Cotización Manual (Ítem por Ítem)")
             console.print("  [bold cyan]3.[/bold cyan] ✏️  Editar Cotización Guardada (Nueva Versión)")
             console.print("  [bold cyan]4.[/bold cyan] 📄 Duplicar Cotización (Nueva Independiente)")
@@ -260,10 +261,14 @@ class CotizadorCLI:
         except Exception:
             pass
 
-    def _obtener_producto_interactivo(self) -> Optional[Product]:
-        """Allows user to search by name in the 3 stores, paste a direct URL, or enter manually."""
+    def _obtener_producto_interactivo(self, default_query: str = "") -> Optional[Product]:
+        """Allows user to search by name in the 3 stores, paste a direct URL, or enter manually.
+
+        default_query pre-rellena el término de búsqueda y el nombre del ingreso
+        manual (útil al reasignar un componente no disponible de un escenario).
+        """
         console.print("\n[bold yellow]¿Cómo deseas agregar el componente?[/bold yellow]")
-        console.print("  [bold cyan]1.[/bold cyan] 🔍 Buscar por nombre / valor en las 3 tiendas (Metabuscador)")
+        console.print(f"  [bold cyan]1.[/bold cyan] 🔍 Buscar por nombre / valor en las {len(STORE_NAMES)} tiendas (Metabuscador)")
         console.print("  [bold cyan]2.[/bold cyan] 🔗 Pegar URL directa")
         console.print("  [bold cyan]3.[/bold cyan] ✍️  Ingreso Manual (si la tienda falló o no está en línea)")
         console.print("  [bold cyan]4.[/bold cyan] ↩️  Cancelar")
@@ -272,7 +277,10 @@ class CotizadorCLI:
 
         if modo == "1":
             while True:
-                query = Prompt.ask("\n🔍 Ingresa término de búsqueda (ej. 'ESP32', 'resistencia 220', 'sensor ultrasónico')").strip()
+                if default_query:
+                    query = Prompt.ask("\n🔍 Ingresa término de búsqueda (ej. 'ESP32', 'resistencia 220', 'sensor ultrasónico')", default=default_query).strip()
+                else:
+                    query = Prompt.ask("\n🔍 Ingresa término de búsqueda (ej. 'ESP32', 'resistencia 220', 'sensor ultrasónico')").strip()
                 if not query:
                     return None
 
@@ -321,7 +329,7 @@ class CotizadorCLI:
                         return None
                     continue
 
-                table = Table(title=f"Resultados para '{query}' en las 3 tiendas", box=box.ROUNDED)
+                table = Table(title=f"Resultados para '{query}' en las {len(STORE_NAMES)} tiendas", box=box.ROUNDED)
                 table.add_column("#", justify="center", style="bold cyan", no_wrap=True)
                 table.add_column("Tienda", style="dim")
                 table.add_column("Componente / Descripción", style="white")
@@ -395,7 +403,7 @@ class CotizadorCLI:
                     return None
 
         elif modo == "3":
-            return self._ingresar_producto_manual()
+            return self._ingresar_producto_manual(default_name=default_query)
 
         return None
 
@@ -503,7 +511,7 @@ class CotizadorCLI:
         else:
             fee_percent = FloatPrompt.ask("Ingresa el porcentaje de margen deseado (%)", default=margin)
 
-        with console.status(f"[bold green]Consultando las 3 tiendas en paralelo para los {parse_res.total_items} componentes...[/bold green]", spinner="dots"):
+        with console.status(f"[bold green]Consultando las {len(STORE_NAMES)} tiendas en paralelo para los {parse_res.total_items} componentes...[/bold green]", spinner="dots"):
             match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
 
         # ----------------------------------------------------
@@ -604,7 +612,7 @@ class CotizadorCLI:
                     console.print(f"  • Línea #{idx} '{m.bom_item.product_query}' ➔ Asignado: '{c.title}' ({c.store_name} - Q{c.unit_price:.2f}) [Score: {int(m.confidence_score*100)}%]")
 
             console.print("\n[bold cyan]Acciones Disponibles:[/bold cyan]")
-            console.print("  [bold green][C][/bold green] 🚀 [bold green]Continuar y generar las 4 opciones de cotización[/bold green]")
+            console.print(f"  [bold green][C][/bold green] 🚀 [bold green]Continuar y generar las {len(STORE_NAMES) + 1} opciones de cotización[/bold green]")
             console.print("  [bold yellow][#][/bold yellow] Ver todos los candidatos / cambiar candidato de una línea (ej. escribe '1', '2'...)")
             if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
                 console.print("  [bold magenta][A][/bold magenta] 💡 [bold magenta]Sugerir reemplazos / equivalentes con IA Local (Qwen 2.5)[/bold magenta]")
@@ -720,7 +728,7 @@ class CotizadorCLI:
                     console.print("\n[bold cyan]Opciones Disponibles para esta Línea:[/bold cyan]")
                     if m.all_candidates:
                         console.print(f"  [bold green][1..{len(m.all_candidates)}][/bold green] Seleccionar uno de los candidatos automáticos de la lista")
-                    console.print("  [bold cyan][B][/bold cyan] 🔍 Buscar con otro término personalizado en las 3 tiendas")
+                    console.print(f"  [bold cyan][B][/bold cyan] 🔍 Buscar con otro término personalizado en las {len(STORE_NAMES)} tiendas")
                     console.print("  [bold cyan][U][/bold cyan] 🔗 Pegar link / URL directa de cualquier tienda (Scraping automático)")
                     console.print("  [bold cyan][M][/bold cyan] ✍️  Ingresar componente manualmente (Nombre, Tienda, Precio)")
                     console.print("  [bold cyan][0][/bold cyan] Descartar / Marcar como no encontrado")
@@ -740,7 +748,7 @@ class CotizadorCLI:
                     elif line_opc == "b":
                         custom_q = Prompt.ask("Ingresa el nuevo término de búsqueda", default=m.bom_item.product_query).strip()
                         if custom_q:
-                            with console.status(f"[bold yellow]Buscando '{custom_q}' en las 3 tiendas...[/bold yellow]"):
+                            with console.status(f"[bold yellow]Buscando '{custom_q}' en las {len(STORE_NAMES)} tiendas...[/bold yellow]"):
                                 custom_results = metasearch(custom_q, max_per_store=5)
                                 custom_results = [r for r in custom_results if r.unit_price > 0]
                             if not custom_results:
@@ -831,7 +839,7 @@ class CotizadorCLI:
         # ----------------------------------------------------
         # 2. Construir los 4 escenarios (con Mixto Óptimo)
         # ----------------------------------------------------
-        with console.status("[bold green]Calculando el escenario mixto óptimo y las 3 tiendas...[/bold green]"):
+        with console.status(f"[bold green]Calculando el escenario mixto óptimo y las {len(STORE_NAMES)} tiendas...[/bold green]"):
             scenarios = build_all_bom_scenarios(
                 match_results=match_results,
                 customer=customer,
@@ -845,7 +853,7 @@ class CotizadorCLI:
         while True:
             console.clear()
             self.show_banner()
-            console.print("\n[bold cyan]=== COMPARATIVA DE LAS 4 OPCIONES DE COTIZACIÓN ===[/bold cyan]")
+            console.print(f"\n[bold cyan]=== COMPARATIVA DE LAS {len(scenarios)} OPCIONES DE COTIZACIÓN ===[/bold cyan]")
             console.print(f"[dim]Cliente: {customer.name} | Tel: {customer.phone or 'N/A'} | Ítems en lista: {len(parse_res.items)}[/dim]\n")
 
             comp_table = Table(box=box.ROUNDED)
@@ -872,11 +880,10 @@ class CotizadorCLI:
 
             console.print(comp_table)
             console.print("\n[bold cyan]Acciones Disponibles:[/bold cyan]")
-            console.print("  [bold green][1][/bold green] Exportar [bold]Opción 1 (Cotización Mixta Óptima - Mínimo Costo Total)[/bold]")
-            console.print("  [bold green][2][/bold green] Exportar [bold]Opción 2 (Todo en Electrónica RyCH)[/bold]")
-            console.print("  [bold green][3][/bold green] Exportar [bold]Opción 3 (Todo en La Electrónica)[/bold]")
-            console.print("  [bold green][4][/bold green] Exportar [bold]Opción 4 (Todo en Electrónica DIY)[/bold]")
-            console.print("  [bold yellow][V1 - V4][/bold yellow] Ver el detalle desglosado de componentes de una opción (ej. 'v1' o 'v4')")
+            for sc in scenarios:
+                console.print(f"  [bold green][{sc.scenario_id}][/bold green] Exportar [bold]Opción {sc.scenario_id} ({sc.title})[/bold]")
+            v_labels = ", ".join(f"V{i}" for i in range(1, len(scenarios) + 1))
+            console.print(f"  [bold yellow][{v_labels}][/bold yellow] Ver el detalle desglosado de componentes de una opción (ej. 'v1')")
             console.print("  [bold red][C][/bold red] Cancelar cotización")
 
             user_choice = Prompt.ask("\nSelecciona opción", default="1").strip().lower()
@@ -885,43 +892,124 @@ class CotizadorCLI:
                 console.print("[yellow]Cotización cancelada.[/yellow]")
                 return
 
-            if user_choice.startswith("v") and len(user_choice) == 2 and user_choice[1] in ["1", "2", "3", "4"]:
-                v_idx = int(user_choice[1]) - 1
+            if user_choice.startswith("v") and user_choice[1:].isdigit():
+                v_num = int(user_choice[1:])
+                if not (1 <= v_num <= len(scenarios)):
+                    console.print(f"[red]Solo existen opciones V1 a V{len(scenarios)}.[/red]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    continue
+                v_idx = v_num - 1
                 selected_sc = scenarios[v_idx]
                 console.print(f"\n[bold yellow]Detalle de componentes para: {selected_sc.title}[/bold yellow]")
-                
-                det_table = Table(box=box.SIMPLE_HEAD)
-                det_table.add_column("#", justify="center", style="cyan")
-                det_table.add_column("Solicitado en BOM", style="dim")
-                det_table.add_column("Componente Asignado", style="white")
-                det_table.add_column("Tienda", style="cyan")
-                det_table.add_column("Cant.", justify="center", style="bold")
-                det_table.add_column("Precio U.", justify="right", style="green")
-                det_table.add_column("Subtotal", justify="right", style="bold green")
 
-                for it_idx, item in enumerate(selected_sc.items, 1):
-                    det_table.add_row(
-                        str(it_idx),
-                        match_results[it_idx-1].bom_item.product_query[:25] if it_idx <= len(match_results) else "-",
-                        item.product.name[:38],
-                        item.product.store_name,
-                        str(item.quantity),
-                        format_currency(item.unit_price, selected_sc.quote.currency_symbol),
-                        format_currency(item.subtotal, selected_sc.quote.currency_symbol)
-                    )
-
-                console.print(det_table)
+                self._mostrar_detalle_escenario(selected_sc)
 
                 if selected_sc.missing_queries:
                     console.print("\n[bold red]⚠️ Componentes no disponibles en esta opción:[/bold red]")
-                    for mis in selected_sc.missing_queries:
-                        console.print(f"  • [red]❌ {mis}[/red]")
+                    for i, mis in enumerate(selected_sc.missing_queries, 1):
+                        console.print(f"  {i}. [red]❌ {mis}[/red]")
+
+                # Acciones de ajuste sobre este escenario: agregar faltantes o editar asignados
+                while True:
+                    console.print("\n[bold cyan]Acciones de ajuste para esta opción:[/bold cyan]")
+                    if selected_sc.missing_queries:
+                        console.print("  [1] 🔍 Buscar/agregar un componente no disponible")
+                    if selected_sc.items:
+                        console.print("  [2] ✏️  Editar/reemplazar un componente ya asignado")
+                    console.print("  [0] ↩️  Regresar a la comparativa")
+
+                    ajuste_opts = []
+                    if selected_sc.missing_queries:
+                        ajuste_opts.append("1")
+                    if selected_sc.items:
+                        ajuste_opts.append("2")
+                    ajuste_opts.append("0")
+                    ajuste = Prompt.ask("Selecciona acción", choices=ajuste_opts, default="0")
+
+                    if ajuste == "0":
+                        break
+
+                    elif ajuste == "1" and selected_sc.missing_queries:
+                        sel_miss = IntPrompt.ask(
+                            f"Selecciona el componente a buscar (1 a {len(selected_sc.missing_queries)}, 0 = ninguno)",
+                            default=1,
+                        )
+                        if 1 <= sel_miss <= len(selected_sc.missing_queries):
+                            query = selected_sc.missing_queries[sel_miss - 1]
+                            bom_item = next(
+                                (m.bom_item for m in match_results if m.bom_item.product_query == query),
+                                None,
+                            )
+                            default_qty = bom_item.quantity if bom_item else 1
+
+                            console.print(f"\n[bold cyan]Componente a agregar:[/bold cyan] [bold white]{query}[/bold white] (cantidad BOM: {default_qty})")
+                            product = self._obtener_producto_interactivo(default_query=query)
+                            if product is None:
+                                console.print("[yellow]No se agregó ningún componente.[/yellow]")
+                            else:
+                                qty = IntPrompt.ask(f"Cantidad deseada para '{product.name}'", default=default_qty)
+                                while qty <= 0:
+                                    console.print("[red]La cantidad debe ser al menos 1.[/red]")
+                                    qty = IntPrompt.ask(f"Cantidad deseada para '{product.name}'", default=default_qty)
+                                selected_sc.items.append(QuoteCalculator.create_quote_item(product, qty))
+                                selected_sc.item_queries.append(query)
+                                if query in selected_sc.missing_queries:
+                                    selected_sc.missing_queries.remove(query)
+                                self._rebuild_scenario_quote(selected_sc, customer, fee_percent)
+                                self._marcar_escenario_ajustado(selected_sc)
+                                console.print(
+                                    f"[bold green]✔ Componente agregado:[/bold green] {qty}x {product.name} "
+                                    f"({product.store_name} - Q{product.unit_price:.2f})"
+                                )
+                        console.print(f"\n[bold yellow]Detalle actualizado de: {selected_sc.title}[/bold yellow]")
+                        self._mostrar_detalle_escenario(selected_sc)
+                        if selected_sc.missing_queries:
+                            console.print("\n[bold red]⚠️ Componentes aún no disponibles:[/bold red]")
+                            for i, mis in enumerate(selected_sc.missing_queries, 1):
+                                console.print(f"  {i}. [red]❌ {mis}[/red]")
+
+                    elif ajuste == "2" and selected_sc.items:
+                        sel_row = IntPrompt.ask(
+                            f"Selecciona el # del componente a editar (1 a {len(selected_sc.items)}, 0 = ninguno)",
+                            default=1,
+                        )
+                        if 1 <= sel_row <= len(selected_sc.items):
+                            current_item = selected_sc.items[sel_row - 1]
+                            console.print(
+                                f"\n[bold cyan]Editando:[/bold cyan] {current_item.quantity}x {current_item.product.name} "
+                                f"({current_item.product.store_name} - Q{current_item.unit_price:.2f})"
+                            )
+                            new_product = self._obtener_producto_interactivo(default_query=current_item.product.name)
+                            if new_product is None:
+                                console.print("[yellow]No se realizó ningún cambio.[/yellow]")
+                            else:
+                                new_qty = IntPrompt.ask(f"Cantidad deseada para '{new_product.name}'", default=current_item.quantity)
+                                while new_qty <= 0:
+                                    console.print("[red]La cantidad debe ser al menos 1.[/red]")
+                                    new_qty = IntPrompt.ask(f"Cantidad deseada para '{new_product.name}'", default=current_item.quantity)
+                                selected_sc.items[sel_row - 1] = QuoteCalculator.create_quote_item(new_product, new_qty)
+                                self._rebuild_scenario_quote(selected_sc, customer, fee_percent)
+                                self._marcar_escenario_ajustado(selected_sc)
+                                console.print(
+                                    f"[bold green]✔ Componente reemplazado:[/bold green] {new_qty}x {new_product.name} "
+                                    f"({new_product.store_name} - Q{new_product.unit_price:.2f})"
+                                )
+                            console.print(f"\n[bold yellow]Detalle actualizado de: {selected_sc.title}[/bold yellow]")
+                            self._mostrar_detalle_escenario(selected_sc)
+                            if selected_sc.missing_queries:
+                                console.print("\n[bold red]⚠️ Componentes aún no disponibles:[/bold red]")
+                                for i, mis in enumerate(selected_sc.missing_queries, 1):
+                                    console.print(f"  {i}. [red]❌ {mis}[/red]")
 
                 Prompt.ask("\n[dim]Presiona Enter para regresar a la comparativa...[/dim]")
                 continue
 
-            if user_choice in ["1", "2", "3", "4"]:
+            if user_choice.isdigit():
                 sel_idx = int(user_choice) - 1
+                if not (0 <= sel_idx < len(scenarios)):
+                    console.print(f"[red]Solo existen opciones 1 a {len(scenarios)}.[/red]")
+                    Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                    continue
                 chosen_scenario = scenarios[sel_idx]
                 
                 if not chosen_scenario.items:
@@ -949,8 +1037,60 @@ class CotizadorCLI:
                     self._mostrar_panel_documentos(res.export, res.quote.quote_id)
                 break
             else:
-                console.print("[red]Opción no válida. Ingresa 1, 2, 3, 4, o v1-v4 para ver el detalle.[/red]")
+                console.print(f"[red]Opción no válida. Ingresa 1 a {len(scenarios)}, o v1-v{len(scenarios)} para ver el detalle.[/red]")
                 Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+    def _mostrar_detalle_escenario(self, selected_sc: BOMScenario):
+        """Muestra la tabla desglosada de componentes de un escenario.
+
+        La columna "Solicitado en BOM" usa item_queries (alineado por índice con
+        items) para que cada fila muestre la consulta BOM REAL del componente,
+        aunque el escenario tenga componentes no encontrados.
+        """
+        det_table = Table(box=box.SIMPLE_HEAD)
+        det_table.add_column("#", justify="center", style="cyan")
+        det_table.add_column("Solicitado en BOM", style="dim")
+        det_table.add_column("Componente Asignado", style="white")
+        det_table.add_column("Tienda", style="cyan")
+        det_table.add_column("Cant.", justify="center", style="bold")
+        det_table.add_column("Precio U.", justify="right", style="green")
+        det_table.add_column("Subtotal", justify="right", style="bold green")
+
+        queries = selected_sc.item_queries or []
+        for it_idx, item in enumerate(selected_sc.items, 1):
+            solic = queries[it_idx - 1] if it_idx <= len(queries) else "-"
+            det_table.add_row(
+                str(it_idx),
+                solic[:25],
+                item.product.name[:38],
+                item.product.store_name,
+                str(item.quantity),
+                format_currency(item.unit_price, selected_sc.quote.currency_symbol),
+                format_currency(item.subtotal, selected_sc.quote.currency_symbol)
+            )
+        console.print(det_table)
+
+    def _rebuild_scenario_quote(self, scenario: BOMScenario, customer: Customer, fee_percent: float):
+        """Recalcula el quote de un escenario tras agregar o editar componentes."""
+        store_subtotals = QuoteCalculator.calculate_store_subtotals(scenario.items)
+        shipping = QuoteCalculator.evaluate_shipping_details(store_subtotals, self.config.shipping_rules)
+        scenario.quote = QuoteCalculator.build_quote(
+            quote_id=scenario.quote.quote_id,
+            items=scenario.items,
+            customer=customer,
+            shipping_details=shipping,
+            service_fee_percent=fee_percent,
+            validity_days=self.config.validity_days,
+            currency_symbol=self.config.currency_symbol,
+            currency_code=self.config.currency_code,
+        )
+        scenario.quote.status = QuoteStatus.GUARDADA.value
+        scenario.total_found = len(scenario.items)
+
+    def _marcar_escenario_ajustado(self, scenario: BOMScenario):
+        """Marca el escenario como ajustado manualmente (una sola vez)."""
+        if "(ajustada manualmente)" not in scenario.title:
+            scenario.title += " (ajustada manualmente)"
 
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN MANUAL ===[/bold cyan]")
@@ -1757,11 +1897,14 @@ class CotizadorCLI:
             self.config.business.email = Prompt.ask("Email de contacto", default=self.config.business.email)
 
             if Confirm.ask("¿Deseas editar los umbrales de envío gratis?", default=False):
-                for store in ["La Electrónica", "Electrónica DIY"]:
-                    thresh = FloatPrompt.ask(f"Monto mínimo para envío gratis en {store} (Q)", default=self.config.shipping_rules[store]["free_threshold"])
-                    cost = FloatPrompt.ask(f"Costo de envío sugerido en {store} cuando no alcanza mínimo (Q)", default=self.config.shipping_rules[store]["default_cost"])
-                    self.config.shipping_rules[store]["free_threshold"] = thresh
-                    self.config.shipping_rules[store]["default_cost"] = cost
+                # Iterar todas las tiendas con envío (excluye las de retiro en tienda)
+                for store, rules in self.config.shipping_rules.items():
+                    if rules.get("is_pickup_only"):
+                        continue
+                    thresh = FloatPrompt.ask(f"Monto mínimo para envío gratis en {store} (Q)", default=rules["free_threshold"])
+                    cost = FloatPrompt.ask(f"Costo de envío sugerido en {store} cuando no alcanza mínimo (Q)", default=rules["default_cost"])
+                    rules["free_threshold"] = thresh
+                    rules["default_cost"] = cost
 
             self.config.save()
             console.print("[bold green]✔ Configuración guardada exitosamente.[/bold green]")

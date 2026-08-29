@@ -250,7 +250,7 @@ def test_bom_manual_candidate_override():
         config=cfg,
         service_fee_percent=10.0
     )
-    assert len(scenarios) == 4
+    assert len(scenarios) >= 4
     mixed = scenarios[0]
     assert mixed.total_found == 1
     assert len(mixed.items) == 1

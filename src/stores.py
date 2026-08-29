@@ -42,6 +42,14 @@ STORES: List[Store] = [
         free_threshold=None,
         default_shipping_cost=0.0,
     ),
+    Store(
+        name="Electrónica Sigma",
+        domain="electronicasigma.com.gt",
+        domain_aliases=("www.electronicasigma.com.gt",),
+        is_pickup_only=False,
+        free_threshold=250.0,
+        default_shipping_cost=35.0,
+    ),
 ]
 
 STORE_NAMES: List[str] = [s.name for s in STORES]

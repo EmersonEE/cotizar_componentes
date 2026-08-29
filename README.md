@@ -7,6 +7,12 @@ Herramienta en Python para integradores y vendedores de electrónica en Guatemal
 1. **La Electrónica** (`https://laelectronica.com.gt/`)
 2. **Electrónica DIY** (`https://www.electronicadiy.com/es`)
 3. **Electrónica RyCH** (`https://electronicarych.com/`)
+4. **Electrónica Sigma** (`https://electronicasigma.com.gt/`)
+
+> Para agregar otra tienda: añade su entrada en `src/stores.py`, crea su scraper
+> en `src/scrapers/` y regístralo en `src/scrapers/__init__.py` y
+> `src/scrapers/search.py`. El resto (escenarios, envíos, UIs, chequeo de salud)
+> se adapta solo gracias al registro central de tiendas.
 
 ---
 

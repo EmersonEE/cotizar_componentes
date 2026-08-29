@@ -70,7 +70,15 @@ class AppConfig:
         biz_data = data.get("business", {})
         business = BusinessInfo.from_dict(biz_data)
 
-        shipping_rules = data.get("shipping_rules") or _default_shipping_rules()
+        shipping_rules = data.get("shipping_rules") or {}
+        # Garantizar una entrada por tienda del registro central (T10): las tiendas
+        # nuevas se incorporan automáticamente con sus reglas por defecto.
+        for store in STORES:
+            shipping_rules.setdefault(store.name, {
+                "free_threshold": store.free_threshold,
+                "default_cost": store.default_shipping_cost,
+                "is_pickup_only": store.is_pickup_only,
+            })
 
         cfg = cls(
             service_fee_percent=float(data.get("service_fee_percent", 10.0)),

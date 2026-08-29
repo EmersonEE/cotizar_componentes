@@ -81,6 +81,17 @@ class TestConfigValidationOffline(unittest.TestCase):
         self.assertTrue(cfg.shipping_rules["Electrónica RyCH"]["is_pickup_only"])
         self.assertIsNone(cfg.shipping_rules["Electrónica RyCH"]["free_threshold"])
 
+    def test_new_store_auto_added_to_shipping_rules(self):
+        """Una tienda nueva del registro (T10) se incorpora a shipping_rules
+        aunque config.json no la tenga todavía."""
+        self._write_config({"shipping_rules": {
+            "La Electrónica": {"free_threshold": 200.0, "default_cost": 15.0, "is_pickup_only": False},
+        }})
+        cfg = AppConfig.load(self.config_path)
+        self.assertIn("Electrónica Sigma", cfg.shipping_rules)
+        self.assertFalse(cfg.shipping_rules["Electrónica Sigma"]["is_pickup_only"])
+        self.assertGreaterEqual(cfg.shipping_rules["Electrónica Sigma"]["default_cost"], 0)
+
 
 class TestQuoteValidityAndTemplateOffline(unittest.TestCase):
 

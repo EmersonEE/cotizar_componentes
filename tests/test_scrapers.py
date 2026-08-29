@@ -10,6 +10,7 @@ from src.scrapers.base import BaseScraper
 from src.scrapers.la_electronica import LaElectronicaScraper
 from src.scrapers.electronica_diy import ElectronicaDIYScraper
 from src.scrapers.electronica_rych import ElectronicaRyCHScraper
+from src.scrapers.electronica_sigma import ElectronicaSigmaScraper
 
 
 class FakeResponse:
@@ -112,6 +113,56 @@ class TestScrapersOffline(unittest.TestCase):
         self.assertEqual(prod.store_name, "La Electrónica")
         with self.assertRaises(StoreNotSupportedError):
             scrape_product("https://amazon.com/dp/B08N5WRWNW")
+
+
+class TestElectronicaSigmaScraper(unittest.TestCase):
+
+    SIGMA_JSONLD = (
+        "<html><head></head><body><script type='application/ld+json'>"
+        '{"@context":"https://schema.org/","@graph":['
+        '{"@type":"BreadcrumbList","itemListElement":[]},'
+        '{"@type":"Product","name":"MODULO WIFI + BLUETOOTH ESP32 38 PINES",'
+        '"image":"https://sigma/img.png","sku":"CA54/CP96-5",'
+        '"offers":[{"@type":"Offer","price":"125.00","priceCurrency":"GTQ",'
+        '"availability":"https://schema.org/InStock"}]}]}'
+        "</script></body></html>"
+    )
+
+    def test_can_handle_domains(self):
+        self.assertTrue(ElectronicaSigmaScraper().can_handle("https://electronicasigma.com.gt/producto/x"))
+        self.assertTrue(ElectronicaSigmaScraper().can_handle("https://www.electronicasigma.com.gt/producto/x"))
+        self.assertFalse(ElectronicaSigmaScraper().can_handle("https://laelectronica.com.gt/products/x"))
+
+    def test_jsonld_product_path(self):
+        scraper = ElectronicaSigmaScraper()
+        with patch.object(scraper, "fetch_url", return_value=FakeResponse(text=self.SIGMA_JSONLD)):
+            prod = scraper.scrape("https://electronicasigma.com.gt/producto/modulo-wifi-bluetooth-esp32-38-pines/")
+        self.assertEqual(prod.name, "MODULO WIFI + BLUETOOTH ESP32 38 PINES")
+        self.assertEqual(prod.unit_price, 125.0)
+        self.assertEqual(prod.sku, "CA54/CP96-5")
+        self.assertTrue(prod.in_stock)
+        self.assertEqual(prod.image_url, "https://sigma/img.png")
+
+    def test_jsonld_out_of_stock(self):
+        html = self.SIGMA_JSONLD.replace("InStock", "OutOfStock")
+        scraper = ElectronicaSigmaScraper()
+        with patch.object(scraper, "fetch_url", return_value=FakeResponse(text=html)):
+            prod = scraper.scrape("https://electronicasigma.com.gt/producto/x")
+        self.assertFalse(prod.in_stock)
+        self.assertEqual(prod.stock_status, "Agotado")
+
+    def test_html_fallback_without_jsonld(self):
+        html = ("<html><body><h1 class='product_title'>Cautín 60W</h1>"
+                "<div class='summary'><p class='price'><span class='woocommerce-Price-amount amount'>"
+                "<bdi><span>Q</span> 45.00</bdi></span></p></div></body></html>")
+        scraper = ElectronicaSigmaScraper()
+        with patch.object(scraper, "fetch_url", return_value=FakeResponse(text=html)):
+            prod = scraper.scrape("https://electronicasigma.com.gt/producto/cautin-60w/")
+        self.assertEqual(prod.name, "Cautín 60W")
+        self.assertEqual(prod.unit_price, 45.0)
+
+    def test_get_scraper_for_url_sigma(self):
+        self.assertIsInstance(get_scraper_for_url("https://electronicasigma.com.gt/producto/x"), ElectronicaSigmaScraper)
 
 
 if __name__ == "__main__":

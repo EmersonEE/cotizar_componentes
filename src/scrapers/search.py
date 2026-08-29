@@ -499,6 +499,105 @@ def search_electronica_diy(query: str, limit: int = 8, timeout: float = 6.0) -> 
 
     return all_results[:limit]
 
+
+def search_electronica_sigma_single_term(query: str, limit: int = 8, timeout: float = 6.0) -> List[SearchResultItem]:
+    """Searches Electrónica Sigma (WooCommerce) for a specific search term."""
+    results: List[SearchResultItem] = []
+    encoded_query = urllib.parse.quote_plus(query.strip())
+    search_url = f"https://electronicasigma.com.gt/?s={encoded_query}&post_type=product"
+
+    html = robust_fetch_html(search_url, timeout=timeout)
+    if not html:
+        return results
+
+    soup = BeautifulSoup(html, "html.parser")
+    seen_urls: Set[str] = set()
+
+    for li in soup.select("ul.products li.product"):
+        if len(results) >= limit:
+            break
+
+        link_el = li.select_one("a[href*='/producto/']")
+        if not link_el:
+            continue
+
+        raw_href = link_el.get("href", "")
+        if "/producto/" not in raw_href:
+            continue
+
+        full_url = raw_href.split("?")[0]
+        if full_url in seen_urls:
+            continue
+
+        title = ""
+        # El tema duplica el enlace del producto (uno para la imagen, otro para el
+        # título); el h2.woocommerce-loop-product__title es la fuente fiable.
+        title_el = li.select_one("h2.woocommerce-loop-product__title, h3, .entry-title, h2 a, h3 a")
+        if title_el:
+            title = title_el.get_text(strip=True)
+        if not title:
+            for a in li.select("a"):
+                t = a.get_text(strip=True)
+                if t and "añadir" not in t.lower() and "wishlist" not in t.lower():
+                    title = t
+                    break
+        if not title:
+            continue
+        seen_urls.add(full_url)
+
+        price_val = 0.0
+        price_el = li.select_one(".price, .woocommerce-Price-amount")
+        if price_el:
+            price_val = _extract_price(price_el.get_text(" ", strip=True))
+
+        classes = " ".join(li.get("class") or [])
+        is_available = "outofstock" not in classes
+        if is_available:
+            stock_el = li.select_one(".stock")
+            if stock_el:
+                txt = stock_el.get_text(" ", strip=True).lower()
+                if any(w in txt for w in ("agotado", "sin existencias", "sin stock", "out of stock")):
+                    is_available = False
+
+        img_el = li.select_one("img")
+        image_url = None
+        if img_el:
+            image_url = img_el.get("src") or img_el.get("data-src") or img_el.get("data-lazy-src")
+            if image_url and image_url.startswith("//"):
+                image_url = "https:" + image_url
+
+        if price_val > 0:
+            results.append(SearchResultItem(
+                store_name="Electrónica Sigma",
+                title=title,
+                url=full_url,
+                unit_price=round(price_val, 2),
+                in_stock=is_available,
+                stock_status="Disponible" if is_available else "Agotado",
+                image_url=image_url
+            ))
+
+    return results
+
+
+def search_electronica_sigma(query: str, limit: int = 8, timeout: float = 6.0) -> List[SearchResultItem]:
+    """Cascading search in Electrónica Sigma."""
+    tiers = clean_search_term_tiers(query)
+    seen_urls: Set[str] = set()
+    all_results: List[SearchResultItem] = []
+
+    for t in tiers:
+        found = search_electronica_sigma_single_term(t, limit=limit, timeout=timeout)
+        for item in found:
+            if item.url not in seen_urls:
+                seen_urls.add(item.url)
+                all_results.append(item)
+        if len(all_results) >= 2:
+            break
+
+    return all_results[:limit]
+
+
 def metasearch(query: str, max_per_store: int = 5, timeout: float = 6.0, global_timeout: float = 30.0) -> List[SearchResultItem]:
     """Executes parallel search across the 3 supported stores.
 
@@ -534,11 +633,12 @@ def _metasearch_uncached(query: str, max_per_store: int, timeout: float, global_
     """Ejecución real de la metabúsqueda (sin caché)."""
     combined_results: List[SearchResultItem] = []
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {
             executor.submit(search_electronica_rych, query, max_per_store, timeout): "Electrónica RyCH",
             executor.submit(search_la_electronica, query, max_per_store, timeout): "La Electrónica",
-            executor.submit(search_electronica_diy, query, max_per_store, timeout): "Electrónica DIY"
+            executor.submit(search_electronica_diy, query, max_per_store, timeout): "Electrónica DIY",
+            executor.submit(search_electronica_sigma, query, max_per_store, timeout): "Electrónica Sigma",
         }
 
         deadline = time.monotonic() + max(0.0, global_timeout)

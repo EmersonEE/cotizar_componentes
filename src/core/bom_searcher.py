@@ -2,7 +2,7 @@ import re
 import difflib
 import itertools
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -67,7 +67,7 @@ class MatchResult:
 
 @dataclass
 class BOMScenario:
-    """Represents one of the 4 quote scenarios generated from a BOM list."""
+    """Represents one of the quote scenarios generated from a BOM list."""
     scenario_id: int
     title: str
     store_name: Optional[str]  # None for Mixed, or store name
@@ -76,6 +76,9 @@ class BOMScenario:
     total_requested: int
     total_found: int
     quote: Quote
+    # Alineado por índice con items: consulta BOM original de cada ítem.
+    # Evita desalineaciones al mostrar el detalle cuando hay componentes no encontrados.
+    item_queries: List[str] = field(default_factory=list)
 
     @property
     def is_complete(self) -> bool:
@@ -508,11 +511,9 @@ def build_all_bom_scenarios(
     temp_quote_prefix: str = "PREVIEW"
 ) -> List[BOMScenario]:
     """
-    Builds the 4 quote scenarios from the search results:
+    Builds the quote scenarios from the search results:
     1. Opción 1: Cotización Mixta Óptima (Minimiza componentes + envíos + servicio)
-    2. Opción 2: Todo en Electrónica RyCH
-    3. Opción 3: Todo en La Electrónica
-    4. Opción 4: Todo en Electrónica DIY
+    2..N: Opción por tienda (todo en cada tienda del registro central)
     Preserves original line order.
     """
     total_requested = len(match_results)
@@ -526,6 +527,21 @@ def build_all_bom_scenarios(
         shipping_rules=config.shipping_rules,
         service_fee_percent=service_fee_percent
     )
+
+    # Alinear cada ítem mixto con su consulta BOM original (misma lógica de inclusión
+    # que find_optimal_mixed_assignment: candidato en alguna tienda o selected_candidate)
+    mixed_queries: List[str] = []
+    for m in match_results:
+        has_candidate = False
+        for store in SUPPORTED_STORES:
+            best_store_cand = m.get_best_match_for_store(store)
+            if best_store_cand and best_store_cand[0].unit_price > 0:
+                has_candidate = True
+                break
+        if not has_candidate and m.selected_candidate:
+            has_candidate = True
+        if has_candidate:
+            mixed_queries.append(m.bom_item.product_query)
 
     store_subtotals_mixed = QuoteCalculator.calculate_store_subtotals(mixed_items) if mixed_items else {}
     shipping_mixed = QuoteCalculator.evaluate_shipping_details(store_subtotals_mixed, config.shipping_rules)
@@ -548,15 +564,17 @@ def build_all_bom_scenarios(
         missing_queries=mixed_missing,
         total_requested=total_requested,
         total_found=len(mixed_items),
-        quote=quote_mixed
+        quote=quote_mixed,
+        item_queries=mixed_queries
     ))
 
     # ----------------------------------------------------
-    # Escenarios 2, 3, 4: Todo en una Tienda Específica
+    # Escenarios 2..N: Todo en una Tienda Específica
     # ----------------------------------------------------
     for s_idx, store_name in enumerate(SUPPORTED_STORES, start=2):
         store_items: List[QuoteItem] = []
         store_missing: List[str] = []
+        store_queries: List[str] = []
 
         for m in match_results:
             store_match = m.get_best_match_for_store(store_name)
@@ -572,6 +590,7 @@ def build_all_bom_scenarios(
                     image_url=cand.image_url
                 )
                 store_items.append(QuoteCalculator.create_quote_item(prod, m.bom_item.quantity))
+                store_queries.append(m.bom_item.product_query)
             else:
                 store_missing.append(m.bom_item.product_query)
 
@@ -596,7 +615,8 @@ def build_all_bom_scenarios(
             missing_queries=store_missing,
             total_requested=total_requested,
             total_found=len(store_items),
-            quote=store_quote
+            quote=store_quote,
+            item_queries=store_queries
         ))
 
     return scenarios

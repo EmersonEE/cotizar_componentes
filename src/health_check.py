@@ -1,4 +1,4 @@
-"""Chequeo de salud de los scrapers de las 3 tiendas.
+"""Chequeo de salud de los scrapers de las tiendas soportadas.
 
 Verifica que cada tienda sigue parseando correctamente probando (a) el scraping
 de una URL de producto conocida y (b) la búsqueda por término, midiendo latencia
@@ -19,12 +19,14 @@ KNOWN_PRODUCT_URLS = {
     "La Electrónica": "https://laelectronica.com.gt/products/multimetro-zoyi-zt-225-auto-rango-ultra-preciso",
     "Electrónica DIY": "https://www.electronicadiy.com/products/fnirsi-hrm-10",
     "Electrónica RyCH": "https://electronicarych.com/shop/al-22vi-al-22vi-alambre-1mt-calibre-22-violeta-estanado-7381",
+    "Electrónica Sigma": "https://electronicasigma.com.gt/producto/modulo-wifi-bluetooth-esp32-38-pines/",
 }
 
 SEARCH_FUNCTION_NAMES = {
     "La Electrónica": "search_la_electronica",
     "Electrónica DIY": "search_electronica_diy",
     "Electrónica RyCH": "search_electronica_rych",
+    "Electrónica Sigma": "search_electronica_sigma",
 }
 
 DEFAULT_SEARCH_QUERY = "ESP32"

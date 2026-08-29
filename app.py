@@ -202,6 +202,8 @@ def get_store_badge_class(store_name: str) -> str:
         return "badge-store-rych"
     elif "DIY" in store_name:
         return "badge-store-diy"
+    elif "Sigma" in store_name:
+        return "badge-store-sigma"
     return "badge-store-la"
 
 # 5. Encabezado de la Aplicación
@@ -231,6 +233,7 @@ st.markdown("""
   .badge-store-rych { background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
   .badge-store-diy { background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
   .badge-store-la { background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+  .badge-store-sigma { background-color: #fce7f3; color: #9d174d; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
   
   .status-badge-aceptada { background-color: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
   .status-badge-enviada { background-color: #f3e8ff; color: #6b21a8; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
@@ -242,10 +245,10 @@ st.markdown("""
 <div class="main-header">
   <div>
     <h1>⚡ Cotizador de Componentes Electrónicos</h1>
-    <p>Guatemala • La Electrónica | Electrónica DIY | Electrónica RyCH</p>
+    <p>Guatemala • PLACEHOLDER_STORES</p>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""".replace("PLACEHOLDER_STORES", " | ".join(STORE_NAMES)), unsafe_allow_html=True)
 
 # 6. Pestañas Principales
 tab_cotizador, tab_historial, tab_config = st.tabs([
@@ -534,7 +537,7 @@ with tab_cotizador:
                     st.warning(f"⚠️ **Componentes no encontrados / descartados ({len(unfound_lines)}):**\n" + "\n".join([f"- {u}" for u in unfound_lines]))
 
                 # Botón para generar escenarios con la selección actual
-                if st.button("🚀 Generar las 4 Opciones de Cotización (Incluye Mixto Óptimo)", type="primary", use_container_width=True):
+                if st.button(f"🚀 Generar las {len(STORE_NAMES) + 1} Opciones de Cotización (Incluye Mixto Óptimo)", type="primary", use_container_width=True):
                     current_cust = Customer(
                         name=st.session_state.customer_name.strip() or "Cliente General",
                         phone=st.session_state.customer_phone.strip(),
@@ -1220,6 +1223,8 @@ with tab_config:
         new_la_cost = st.number_input("La Electrónica: Costo si no alcanza mínimo (Q)", value=float(config.shipping_rules["La Electrónica"]["default_cost"]))
         new_diy_thresh = st.number_input("Electrónica DIY: Mínimo envío gratis (Q)", value=float(config.shipping_rules["Electrónica DIY"]["free_threshold"]))
         new_diy_cost = st.number_input("Electrónica DIY: Costo si no alcanza mínimo (Q)", value=float(config.shipping_rules["Electrónica DIY"]["default_cost"]))
+        new_sigma_thresh = st.number_input("Electrónica Sigma: Mínimo envío gratis (Q)", value=float(config.shipping_rules["Electrónica Sigma"]["free_threshold"]))
+        new_sigma_cost = st.number_input("Electrónica Sigma: Costo si no alcanza mínimo (Q)", value=float(config.shipping_rules["Electrónica Sigma"]["default_cost"]))
 
     with cfg_c2:
         st.markdown("#### Datos de tu Negocio (Encabezado y Pie de Cotización)")
@@ -1245,6 +1250,8 @@ with tab_config:
         config.shipping_rules["La Electrónica"]["default_cost"] = new_la_cost
         config.shipping_rules["Electrónica DIY"]["free_threshold"] = new_diy_thresh
         config.shipping_rules["Electrónica DIY"]["default_cost"] = new_diy_cost
+        config.shipping_rules["Electrónica Sigma"]["free_threshold"] = new_sigma_thresh
+        config.shipping_rules["Electrónica Sigma"]["default_cost"] = new_sigma_cost
         config.save()
         st.success("✔ ¡Configuración actualizada exitosamente!")
         st.rerun()

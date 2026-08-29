@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from src.core.bom_parser import parse_bom_text, parse_bom_line
 from src.core.bom_searcher import (
+    SUPPORTED_STORES,
     calculate_match_score,
     search_bom_items_parallel,
     build_all_bom_scenarios,
@@ -90,6 +91,8 @@ class TestBOMSearchAndScenariosOffline(unittest.TestCase):
                                  url=f"https://la.com/{q}", unit_price=55.0, in_stock=True, stock_status="Disponible"),
                 SearchResultItem(store_name="Electrónica DIY", title=f"DIY {query}",
                                  url=f"https://diy.com/{q}", unit_price=60.0, in_stock=True, stock_status="Disponible"),
+                SearchResultItem(store_name="Electrónica Sigma", title=f"SIGMA {query}",
+                                 url=f"https://sigma.com/{q}", unit_price=48.0, in_stock=True, stock_status="Disponible"),
             ]
         return fake_metasearch
 
@@ -109,13 +112,14 @@ class TestBOMSearchAndScenariosOffline(unittest.TestCase):
             self.assertEqual(m.status, "ALTA")
 
     @patch("src.core.bom_searcher.metasearch")
-    def test_four_scenarios_generation(self, mock_meta):
+    def test_all_scenarios_generation(self, mock_meta):
         mock_meta.side_effect = self._mock_metasearch()
         config = AppConfig()
         config.shipping_rules = {
             "Electrónica RyCH": {"is_pickup_only": True, "free_threshold": None, "default_cost": 0.0},
             "La Electrónica": {"is_pickup_only": False, "free_threshold": 150.0, "default_cost": 35.0},
             "Electrónica DIY": {"is_pickup_only": False, "free_threshold": 250.0, "default_cost": 35.0},
+            "Electrónica Sigma": {"is_pickup_only": False, "free_threshold": 250.0, "default_cost": 35.0},
         }
         customer = Customer(name="Cliente Test")
 
@@ -127,18 +131,62 @@ class TestBOMSearchAndScenariosOffline(unittest.TestCase):
         match_results = search_bom_items_parallel(parse_res.items, max_workers=5)
         scenarios = build_all_bom_scenarios(match_results, customer, config, service_fee_percent=10.0)
 
-        self.assertEqual(len(scenarios), 4)
+        self.assertEqual(len(scenarios), len(SUPPORTED_STORES) + 1)
         # El orden de escenarios sigue al registro central de tiendas (src/stores.py)
         expected_titles = [
             "Cotización Mixta (Mejor Precio Combinado)",
             "Todo en La Electrónica",
             "Todo en Electrónica DIY",
             "Todo en Electrónica RyCH",
+            "Todo en Electrónica Sigma",
         ]
         for idx, (sc, exp_title) in enumerate(zip(scenarios, expected_titles), 1):
             self.assertEqual(sc.title, exp_title)
             self.assertEqual(sc.scenario_id, idx)
             self.assertTrue(len(sc.items) >= 2)
+
+
+    @patch("src.core.bom_searcher.metasearch")
+    def test_item_queries_aligned_when_some_missing(self, mock_meta):
+        """
+        Regresión: la columna 'Solicitado en BOM' debe mostrar la consulta REAL
+        de cada ítem, aunque el escenario tenga componentes no encontrados
+        (antes se desalineaba por posición: la fila N mostraba el BOM N aunque
+        el ítem correspondiera a otro componente).
+        """
+        def fake(query, max_per_store=5, timeout=6.0, global_timeout=30.0):
+            q = query.lower()
+            if "oled" in q or "stepper" in q or "motor" in q:
+                return [SearchResultItem(store_name="La Electrónica", title=f"LA {query}",
+                                         url=f"https://la.com/{q}", unit_price=10.0, in_stock=True, stock_status="Disponible")]
+            return [SearchResultItem(store_name="Electrónica RyCH", title=f"RYCH {query}",
+                                     url=f"https://rych.com/{q}", unit_price=12.0, in_stock=True, stock_status="Disponible")]
+
+        mock_meta.side_effect = fake
+        config = AppConfig()
+        config.shipping_rules = {s: {"is_pickup_only": False, "free_threshold": 250.0, "default_cost": 35.0}
+                                 for s in SUPPORTED_STORES}
+
+        bom = "2x ESP32 NodeMCU\n1x Sensor DHT22\n5x Pantalla OLED 0.96 I2C\n3x Motor Stepper"
+        parse_res = parse_bom_text(bom)
+        matches = search_bom_items_parallel(parse_res.items, max_workers=5)
+        scenarios = build_all_bom_scenarios(matches, Customer("T"), config, 10.0)
+
+        la = next(s for s in scenarios if s.store_name == "La Electrónica")
+        # La Electrónica solo tiene OLED y Motor -> 2 ítems, 2 faltantes
+        self.assertEqual(len(la.items), 2)
+        self.assertEqual(la.missing_queries, ["ESP32 NodeMCU", "Sensor DHT22"])
+        # Las consultas alineadas NO son las 2 primeras del BOM (que faltan)
+        self.assertEqual(la.item_queries, ["Pantalla OLED 0.96 I2C", "Motor Stepper"])
+        self.assertNotEqual(la.item_queries[0], matches[0].bom_item.product_query)
+        # Coherencia: por cada ítem, la cantidad coincide con su BOM original
+        self.assertEqual(la.items[0].quantity, 5)  # OLED
+        self.assertEqual(la.items[1].quantity, 3)  # Motor
+
+        # Escenario mixto: todos encontrados -> queries en orden original
+        mixta = scenarios[0]
+        self.assertEqual(len(mixta.items), 4)
+        self.assertEqual(mixta.item_queries, [m.bom_item.product_query for m in matches])
 
 
 if __name__ == "__main__":

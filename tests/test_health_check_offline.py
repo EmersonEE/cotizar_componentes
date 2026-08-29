@@ -74,23 +74,23 @@ class TestHealthCheckOffline(unittest.TestCase):
         res = check_store_search("Tienda Inexistente")
         self.assertFalse(res["ok"])
 
+    @patch("src.scrapers.search.search_electronica_sigma")
     @patch("src.scrapers.search.search_electronica_rych")
     @patch("src.scrapers.search.search_la_electronica")
     @patch("src.scrapers.search.search_electronica_diy")
     @patch("src.health_check.scrape_product")
-    def test_run_full_check_reports_all_stores(self, mock_scrape, m_diy, m_la, m_rych):
+    def test_run_full_check_reports_all_stores(self, mock_scrape, m_diy, m_la, m_rych, m_sigma):
         mock_scrape.return_value = Product("ESP32", "https://x.com/e", "La Electrónica", 95.0)
         ok_item = [SearchResultItem(store_name="La Electrónica", title="ESP32", url="https://x/e",
                                     unit_price=95.0, in_stock=True, stock_status="Disponible")]
-        m_rych.return_value = ok_item
-        m_la.return_value = ok_item
-        m_diy.return_value = ok_item
+        for mock in (m_rych, m_la, m_diy, m_sigma):
+            mock.return_value = ok_item
 
         results = run_store_health_check()
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 4)
         self.assertTrue(all(r["overall_ok"] for r in results))
         stores = {r["store_name"] for r in results}
-        self.assertEqual(stores, {"La Electrónica", "Electrónica DIY", "Electrónica RyCH"})
+        self.assertEqual(stores, {"La Electrónica", "Electrónica DIY", "Electrónica RyCH", "Electrónica Sigma"})
 
 
 if __name__ == "__main__":

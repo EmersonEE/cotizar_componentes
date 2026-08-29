@@ -22,46 +22,49 @@ class TestMetasearchOffline(unittest.TestCase):
     def setUp(self):
         search_module._CACHE.clear()
 
+    @patch("src.scrapers.search.search_electronica_sigma",
+           return_value=[_item("Electrónica Sigma", "ESP32 SIGMA", 88.0)])
     @patch("src.scrapers.search.search_electronica_diy",
            return_value=[_item("Electrónica DIY", "ESP32 DIY", 90.0)])
     @patch("src.scrapers.search.search_la_electronica",
            return_value=[_item("La Electrónica", "ESP32 LA", 95.0)])
     @patch("src.scrapers.search.search_electronica_rych",
            return_value=[_item("Electrónica RyCH", "ESP32 RYCH", 99.0)])
-    def test_metasearch_combines_stores(self, m_rych, m_la, m_diy):
+    def test_metasearch_combines_stores(self, m_rych, m_la, m_diy, m_sigma):
         res = metasearch("ESP32")
-        self.assertEqual(len(res), 3)
+        self.assertEqual(len(res), 4)
         stores = {r.store_name for r in res}
-        self.assertEqual(stores, {"Electrónica DIY", "La Electrónica", "Electrónica RyCH"})
+        self.assertEqual(stores, {"Electrónica DIY", "La Electrónica", "Electrónica RyCH", "Electrónica Sigma"})
 
+    @patch("src.scrapers.search.search_electronica_sigma",
+           return_value=[_item("Electrónica Sigma", "X SIGMA", 4.0)])
     @patch("src.scrapers.search.search_electronica_diy",
            return_value=[_item("Electrónica DIY", "X DIY", 1.0)])
     @patch("src.scrapers.search.search_la_electronica",
            return_value=[_item("La Electrónica", "X LA", 2.0)])
     @patch("src.scrapers.search.search_electronica_rych",
            return_value=[_item("Electrónica RyCH", "X RYCH", 3.0)])
-    def test_metasearch_cache_avoids_repeated_calls(self, m_rych, m_la, m_diy):
+    def test_metasearch_cache_avoids_repeated_calls(self, m_rych, m_la, m_diy, m_sigma):
         query = "cache-test-xyz"
         r1 = metasearch(query)
         r2 = metasearch(query)
-        self.assertEqual(len(r1), 3)
-        self.assertEqual(len(r2), 3)
+        self.assertEqual(len(r1), 4)
+        self.assertEqual(len(r2), 4)
         # El caché (F10) evita volver a golpear las tiendas
-        m_rych.assert_called_once()
-        m_la.assert_called_once()
-        m_diy.assert_called_once()
+        for mock in (m_rych, m_la, m_diy, m_sigma):
+            mock.assert_called_once()
 
+    @patch("src.scrapers.search.search_electronica_sigma", return_value=[])
     @patch("src.scrapers.search.search_electronica_diy", return_value=[])
     @patch("src.scrapers.search.search_la_electronica", return_value=[])
     @patch("src.scrapers.search.search_electronica_rych")
-    def test_metasearch_global_timeout_bounds_wall_time(self, m_rych, m_la, m_diy):
+    def test_metasearch_global_timeout_bounds_wall_time(self, m_rych, m_la, m_diy, m_sigma):
         def slow(*args, **kwargs):
             time.sleep(0.8)
             return []
 
-        m_rych.side_effect = slow
-        m_la.side_effect = slow
-        m_diy.side_effect = slow
+        for mock in (m_rych, m_la, m_diy, m_sigma):
+            mock.side_effect = slow
 
         t0 = time.time()
         res = metasearch("timeout-test", global_timeout=0.3)
