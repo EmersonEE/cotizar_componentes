@@ -7,7 +7,12 @@ import httpx
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.core.ai_service import check_ollama_status, extract_bom_with_ai, suggest_alternatives_with_ai
+from src.core.ai_service import (
+    check_ollama_status,
+    extract_bom_with_ai,
+    suggest_alternatives_with_ai,
+    verify_matches_with_ai,
+)
 from src.core.bom_parser import parse_bom_text_hybrid
 from src.config import AppConfig
 
@@ -83,6 +88,47 @@ class TestAIFeaturesMocked(unittest.TestCase):
             self.assertEqual(alts[0]["nombre"], "ESP32 DevKit V1")
             self.assertEqual(alts[0]["compatibilidad"], "Directa (Pin a Pin)")
             self.assertEqual(alts[1]["nombre"], "NodeMCU v3 CH340")
+
+    def test_verify_matches_with_ai_success(self):
+        """Validates batch verification of BOM candidates with mocked Ollama response."""
+        mock_json = {
+            "response": json.dumps({
+                "verificaciones": [
+                    {"componente": "LED rojo 5 mm", "match": False, "precio_ok": False,
+                     "razon": "El candidato es una fuente de poder, no un LED"},
+                    {"componente": "Sensor DHT22", "match": True, "precio_ok": True, "razon": ""},
+                ]
+            })
+        }
+
+        with patch('httpx.Client.post') as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_json
+            mock_post.return_value = mock_resp
+
+            items = [
+                {"componente": "LED rojo 5 mm", "candidato": "FE-305D Fuente 30Vcc", "tienda": "RyCH", "precio": 630.0},
+                {"componente": "Sensor DHT22", "candidato": "Sensor DHT22", "tienda": "DIY", "precio": 59.0},
+            ]
+            result = verify_matches_with_ai(items, host="http://localhost:11434", model="qwen2.5:7b")
+
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result), 2)
+            self.assertFalse(result[0]["match"])
+            self.assertFalse(result[0]["precio_ok"])
+            self.assertIn("fuente", result[0]["razon"].lower())
+            self.assertTrue(result[1]["match"])
+
+    def test_verify_matches_with_ai_failure_returns_none(self):
+        """Validates that verification failures return None (no crash)."""
+        with patch('httpx.Client.post') as mock_post:
+            mock_post.side_effect = httpx.ConnectError("Ollama is offline")
+            result = verify_matches_with_ai([{"componente": "X", "candidato": "Y", "tienda": "Z", "precio": 1.0}])
+            self.assertIsNone(result)
+
+    def test_verify_matches_empty_input(self):
+        self.assertIsNone(verify_matches_with_ai([]))
 
     def test_hybrid_bom_parser_fallback_when_ollama_down(self):
         """Validates that parse_bom_text_hybrid seamlessly falls back to regex when Ollama fails."""

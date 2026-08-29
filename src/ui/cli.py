@@ -28,7 +28,11 @@ from src.core.bom_parser import (
     parse_bom_text_hybrid,
     is_suspicious_regex_fallback,
 )
-from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_status
+from src.core.ai_service import (
+    suggest_alternatives_with_ai,
+    verify_matches_with_ai,
+    check_ollama_status,
+)
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
@@ -36,7 +40,7 @@ from src.core.bom_searcher import (
     build_all_bom_scenarios,
     BOMScenario,
 )
-from src.services.quote_flow import QuoteFlowService
+from src.services.quote_flow import QuoteFlowService, review_scenario_quality
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -616,6 +620,7 @@ class CotizadorCLI:
             console.print("  [bold yellow][#][/bold yellow] Ver todos los candidatos / cambiar candidato de una línea (ej. escribe '1', '2'...)")
             if self.config.enable_ai and check_ollama_status(self.config.ollama_url):
                 console.print("  [bold magenta][A][/bold magenta] 💡 [bold magenta]Sugerir reemplazos / equivalentes con IA Local (Qwen 2.5)[/bold magenta]")
+                console.print("  [bold magenta][V][/bold magenta] 🤖 [bold magenta]Verificar calidad de emparejamientos con IA (una llamada en lote)[/bold magenta]")
             console.print("  [bold red][X][/bold red] Cancelar cotización")
 
             user_action = Prompt.ask("\nSelecciona una acción", default="C").strip().lower()
@@ -686,6 +691,50 @@ class CotizadorCLI:
                     else:
                         console.print("[yellow]La IA no pudo generar sugerencias para este componente.[/yellow]")
                     Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+
+            elif user_action == "v" and self.config.enable_ai and check_ollama_status(self.config.ollama_url):
+                # Verificación de calidad de emparejamientos con IA (una llamada en lote)
+                pairs = [
+                    (m.bom_item.product_query, m.selected_candidate.title,
+                     m.selected_candidate.store_name, m.selected_candidate.unit_price)
+                    for m in match_results if m.selected_candidate
+                ][:20]
+                if not pairs:
+                    console.print("[yellow]No hay candidatos asignados para verificar.[/yellow]")
+                    continue
+
+                res = self._verificar_emparejamientos_ia(pairs)
+                if res is None:
+                    continue
+                mismatches, price_warnings, ok = res
+
+                console.print(f"\n[bold]🤖 Resultado de la verificación con IA:[/bold] "
+                              f"[green]✔ {ok} correctos[/green]"
+                              f"{f' · [red]❌ {len(mismatches)} NO coinciden[/red]' if mismatches else ''}"
+                              f"{f' · [yellow]⚠ {len(price_warnings)} precio dudoso[/yellow]' if price_warnings else ''}")
+
+                for q, t, p, razon in mismatches:
+                    console.print(f"  [bold red]❌ '{q}' → '{t}' (Q{p:,.2f})[/bold red]")
+                    if razon:
+                        console.print(f"     [dim]Razón: {razon}[/dim]")
+                if mismatches:
+                    console.print("[dim]Los NO coincidentes quedaron marcados como REVISAR. Presiona su # de línea para cambiar candidato o [A] para alternativas.[/dim]")
+                for q, t, p, razon in price_warnings:
+                    console.print(f"  [yellow]⚠️ '{q}' → Q{p:,.2f}[/yellow] ({razon})")
+
+                # Marcar estado según resultado
+                for m in match_results:
+                    if not m.selected_candidate:
+                        continue
+                    matched_q = next((q for q, _, _, _ in mismatches if q == m.bom_item.product_query), None)
+                    if matched_q:
+                        m.status = "REVISAR"
+                        m.is_confirmed = False
+                    elif any(q == m.bom_item.product_query for q, _, _, _ in price_warnings):
+                        pass  # aviso, sin bloqueo
+                    else:
+                        m.is_confirmed = True
+                continue
 
             elif user_action.isdigit():
                 line_num = int(user_action)
@@ -1019,6 +1068,32 @@ class CotizadorCLI:
 
                 console.print(f"\n[bold green]Has seleccionado:[/bold green] [bold cyan]{chosen_scenario.title}[/bold cyan]")
 
+                # Revisor de calidad antes de exportar: anomalías de precio vs histórico
+                # (offline) + verificación opcional de emparejamientos con IA
+                warnings = review_scenario_quality(chosen_scenario, self.history_mgr)
+                if self.config.enable_ai and check_ollama_status(self.config.ollama_url) and 0 < len(chosen_scenario.items) <= 20:
+                    if Confirm.ask("\n🤖 ¿Verificar calidad de emparejamientos con IA antes de exportar?", default=False):
+                        pairs = [
+                            (sc_q or item.product.name, item.product.name, item.product.store_name, item.unit_price)
+                            for sc_q, item in zip(chosen_scenario.item_queries or [], chosen_scenario.items)
+                        ]
+                        res = self._verificar_emparejamientos_ia(pairs)
+                        if res:
+                            mismatches, price_warnings, ok = res
+                            for q, t, p, razon in mismatches:
+                                warnings.append(f"❌ '{q}' → '{t}' (Q{p:,.2f})" + (f": {razon}" if razon else ""))
+                            for q, t, p, razon in price_warnings:
+                                warnings.append(f"⚠️ '{q}' → Q{p:,.2f} ({razon})")
+
+                if warnings:
+                    console.print("\n[bold yellow]⚠️ Revisión de calidad antes de exportar:[/bold yellow]")
+                    for w in warnings:
+                        console.print(f"  {w}")
+                    if not Confirm.ask("¿Deseas continuar y exportar de todas formas?", default=False):
+                        console.print("[yellow]Exportación cancelada. Ajusta los componentes y vuelve a intentar.[/yellow]")
+                        Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
+                        continue
+
                 flow = QuoteFlowService(self.config, self.history_mgr, self.exporter)
                 final_quote = flow.finalize_scenario_quote(
                     items=chosen_scenario.items,
@@ -1091,6 +1166,46 @@ class CotizadorCLI:
         """Marca el escenario como ajustado manualmente (una sola vez)."""
         if "(ajustada manualmente)" not in scenario.title:
             scenario.title += " (ajustada manualmente)"
+
+    def _verificar_emparejamientos_ia(self, pairs):
+        """
+        Verifica en lote (una llamada a Ollama) si cada candidato corresponde al
+        componente solicitado. pairs: [(query, titulo, tienda, precio), ...].
+        Devuelve (mismatches, price_warnings, ok_count) o None si la IA falla.
+        """
+        if not pairs:
+            return ([], [], 0)
+
+        payload = [
+            {"componente": q, "candidato": t, "tienda": s, "precio": p}
+            for q, t, s, p in pairs
+        ]
+        with console.status(
+            f"[bold magenta]🤖 Verificando {len(payload)} emparejamientos con IA Local ({self.config.ollama_model})...[/bold magenta]",
+            spinner="dots",
+        ):
+            verifications = verify_matches_with_ai(
+                payload, host=self.config.ollama_url, model=self.config.ollama_model
+            )
+        if not verifications:
+            console.print("[yellow]La IA no pudo completar la verificación. Intenta de nuevo.[/yellow]")
+            return None
+
+        by_query = {v.get("componente"): v for v in verifications if v.get("componente")}
+        mismatches = []
+        price_warnings = []
+        ok = 0
+        for q, t, s, p in pairs:
+            v = by_query.get(q)
+            if not v:
+                continue
+            if v.get("match") is False:
+                mismatches.append((q, t, p, v.get("razon", "")))
+            elif v.get("precio_ok") is False:
+                price_warnings.append((q, t, p, v.get("razon", "")))
+            else:
+                ok += 1
+        return mismatches, price_warnings, ok
 
     def crear_nueva_cotizacion(self):
         console.print("\n[bold cyan]=== NUEVA COTIZACIÓN MANUAL ===[/bold cyan]")

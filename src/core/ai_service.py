@@ -103,6 +103,101 @@ Texto a analizar:
         logger.warning(f"Failed to extract BOM with AI: {e}")
         return None
 
+def verify_matches_with_ai(
+    items: List[Dict[str, Any]],
+    host: str = "http://localhost:11434",
+    model: str = "qwen2.5:7b",
+    timeout: float = 90.0,
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Verifica EN LOTE si cada producto candidato corresponde realmente al componente
+    solicitado en el BOM (y si su precio parece razonable). Una sola llamada a Ollama.
+
+    items: [{"componente": "LED rojo 5 mm", "candidato": "FE-305D Fuente 30Vcc...",
+             "tienda": "Electrónica RyCH", "precio": 630.0}, ...]
+
+    Devuelve [{"componente": str, "match": bool, "precio_ok": bool, "razon": str}]
+    alineado con los componentes de entrada, o None si la IA falla.
+    """
+    if not items:
+        return None
+
+    lista_json = json.dumps(items, ensure_ascii=False)
+
+    prompt = f"""Eres un ingeniero electrónico senior experto en componentes y precios del mercado de Guatemala.
+Tu tarea es verificar, para CADA elemento de la lista, si el "candidato" (producto encontrado en una tienda)
+corresponde realmente al "componente" solicitado por el cliente.
+
+Criterios:
+1. "match": true SOLO si el candidato ES el componente solicitado o un equivalente directo funcional
+   (misma función y especificaciones clave). Si es un componente distinto (ej. pidieron 'LED rojo 5mm' y el
+   candidato es una 'Fuente de alimentación', o pidieron 'Resistencia 220 ohm' y el candidato es una
+   'Resistencia 10k ohm'), responde match: false.
+2. "precio_ok": false si el precio parece anormalmente alto o bajo para ese componente (suele indicar un
+   emparejamiento incorrecto o un producto distinto).
+3. Sé estricto: ante la duda de que sea otro componente, responde match: false con una razón corta.
+
+Lista a verificar:
+{lista_json}
+
+Responde ÚNICAMENTE con un objeto JSON válido con esta estructura (UN elemento por cada componente de la lista, en el mismo orden):
+{{
+  "verificaciones": [
+    {{"componente": "LED rojo 5 mm", "match": false, "precio_ok": false, "razon": "El candidato es una fuente de poder, no un LED"}}
+  ]
+}}
+"""
+
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "format": "json",
+        "stream": False,
+        "options": {
+            "temperature": 0.1,
+            "top_p": 0.9
+        }
+    }
+
+    try:
+        url = f"{host.rstrip('/')}/api/generate"
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.warning("verify_matches_with_ai: Ollama respondió status %s", resp.status_code)
+                return None
+
+            data = resp.json()
+            raw_response = data.get("response", "")
+            if not raw_response:
+                return None
+
+            parsed = json.loads(raw_response)
+            verifications_raw = parsed.get("verificaciones", [])
+            if not isinstance(verifications_raw, list):
+                return None
+
+            verified: List[Dict[str, Any]] = []
+            for v in verifications_raw:
+                if not isinstance(v, dict):
+                    continue
+                comp = str(v.get("componente", "")).strip()
+                if not comp:
+                    continue
+                verified.append({
+                    "componente": comp,
+                    "match": bool(v.get("match", False)),
+                    "precio_ok": bool(v.get("precio_ok", True)),
+                    "razon": str(v.get("razon", "")).strip(),
+                })
+
+            return verified if verified else None
+
+    except Exception as e:
+        logger.warning("Failed to verify matches with AI: %s", e)
+        return None
+
+
 def suggest_alternatives_with_ai(
     component_name: str,
     reason: str = "Agotado o no encontrado en tiendas locales",

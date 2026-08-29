@@ -13,6 +13,29 @@ from src.config import AppConfig
 from src.core.calculator import QuoteCalculator
 from src.core.history_manager import HistoryManager
 from src.core.exporter import QuoteExporter, ExportResult
+from src.core.bom_searcher import BOMScenario
+
+
+def review_scenario_quality(scenario: BOMScenario, history_mgr: HistoryManager,
+                            max_price_vs_history_pct: float = 0.4) -> List[str]:
+    """
+    Advertencias heurísticas de calidad sobre un escenario antes de exportar:
+    compara el precio actual de cada ítem con el promedio histórico del mismo URL
+    (F4) y reporta diferencias superiores a max_price_vs_history_pct (40%).
+    Devuelve una lista de advertencias legibles (vacía si todo está bien).
+    """
+    warnings: List[str] = []
+    for i, item in enumerate(scenario.items, 1):
+        hist = history_mgr.get_price_history(url=item.product.url, limit=5)
+        if not hist:
+            continue
+        avg = sum(h["unit_price"] for h in hist) / len(hist)
+        if avg > 0 and abs(item.unit_price - avg) / avg > max_price_vs_history_pct:
+            warnings.append(
+                f"Ítem #{i} '{item.product.name[:45]}': precio actual Q{item.unit_price:,.2f} "
+                f"vs histórico promedio Q{avg:,.2f} (diferencia > {int(max_price_vs_history_pct * 100)}%)."
+            )
+    return warnings
 
 
 @dataclass
