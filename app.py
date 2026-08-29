@@ -93,6 +93,8 @@ def init_session_state():
         st.session_state.bom_scenarios = None
     if "service_fee_percent" not in st.session_state:
         st.session_state.service_fee_percent = config.service_fee_percent
+    if "discount_percent" not in st.session_state:
+        st.session_state.discount_percent = 0.0
 
 init_session_state()
 
@@ -113,6 +115,7 @@ def reset_to_new_quote():
     st.session_state.bom_match_results = None
     st.session_state.bom_scenarios = None
     st.session_state.service_fee_percent = config.service_fee_percent
+    st.session_state.discount_percent = 0.0
 
 def load_quote_for_editing(quote: Quote):
     st.session_state.active_quote_id = quote.quote_id
@@ -130,6 +133,7 @@ def load_quote_for_editing(quote: Quote):
         if sd.shipping_was_custom
     }
     st.session_state.service_fee_percent = quote.service_fee_percent
+    st.session_state.discount_percent = getattr(quote, "discount_percent", 0.0)
     st.session_state.editing_mode = True
 
 def generate_whatsapp_link(quote: Quote) -> str:
@@ -177,6 +181,7 @@ def get_current_quote() -> Quote:
         items=display_items,
         customer=customer,
         shipping_details=shipping_details,
+        discount_percent=st.session_state.discount_percent,
         service_fee_percent=st.session_state.service_fee_percent,
         validity_days=config.validity_days,
         version=st.session_state.version,
@@ -186,6 +191,13 @@ def get_current_quote() -> Quote:
     )
     q.status = st.session_state.status
     return q
+
+def get_store_badge_class(store_name: str) -> str:
+    if "RyCH" in store_name:
+        return "badge-store-rych"
+    elif "DIY" in store_name:
+        return "badge-store-diy"
+    return "badge-store-la"
 
 # 5. Encabezado de la Aplicación
 st.markdown("""
@@ -252,6 +264,19 @@ with tab_cotizador:
 
         # 1. Datos del Cliente
         st.markdown("#### 👤 Datos del Cliente")
+        frequent_custs = history_mgr.get_frequent_customers(limit=10)
+        if frequent_custs:
+            cust_opts = ["-- Seleccionar cliente frecuente --"] + [f"{c['name']} ({c['count']} cotizaciones)" for c in frequent_custs]
+            sel_frequent = st.selectbox("⚡ Autocompletar cliente frecuente", cust_opts, index=0, key="sel_frequent_cust")
+            if sel_frequent != "-- Seleccionar cliente frecuente --":
+                chosen_c = frequent_custs[cust_opts.index(sel_frequent) - 1]
+                if st.session_state.customer_name != chosen_c["name"]:
+                    st.session_state.customer_name = chosen_c["name"]
+                    st.session_state.customer_phone = chosen_c["phone"]
+                    st.session_state.customer_email = chosen_c["email"]
+                    st.session_state.customer_notes = chosen_c["notes"]
+                    st.rerun()
+
         c1, c2 = st.columns([1.2, 1.0])
         with c1:
             st.session_state.customer_name = st.text_input("Nombre del Cliente", value=st.session_state.customer_name, placeholder="Ej. Ing. Carlos Mendoza")
@@ -594,6 +619,10 @@ with tab_cotizador:
         # 3. Lista de Componentes Agregados (Editable)
         st.markdown(f"#### 📦 Componentes en la Cotización ({len(st.session_state.quote_items)})")
         
+        out_of_stock_items = [it for it in st.session_state.quote_items if not it.product.in_stock or str(it.product.stock_status).lower() in ("agotado", "sin stock")]
+        if out_of_stock_items:
+            st.warning(f"⚠️ **Atención:** Hay {len(out_of_stock_items)} componente(s) marcado(s) como **Agotado / Sin Stock** en las tiendas.")
+
         if not st.session_state.quote_items:
             st.info("Aún no has agregado ningún componente a esta cotización.")
         else:
@@ -602,8 +631,11 @@ with tab_cotizador:
                 i_col1, i_col2, i_col3, i_col4, i_col5 = st.columns([2.8, 1.0, 0.9, 1.1, 0.5])
                 with i_col1:
                     manual_tag = " <span class='badge-store-la'>⚠️ Manual</span>" if item.product.is_manual else ""
+                    stock_tag = ""
+                    if not item.product.in_stock or str(item.product.stock_status).lower() in ("agotado", "sin stock"):
+                        stock_tag = " <span style='background-color:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;'>🔴 Agotado</span>"
                     sku_text = f" | SKU: `{item.product.sku}`" if item.product.sku else ""
-                    st.markdown(f"**{i+1}. {item.product.name}**{manual_tag}", unsafe_allow_html=True)
+                    st.markdown(f"**{i+1}. {item.product.name}**{manual_tag}{stock_tag}", unsafe_allow_html=True)
                     st.caption(f"Tienda: {item.product.store_name}{sku_text}")
                     # F4: precio histórico de referencia (última vez cotizado)
                     try:
@@ -647,27 +679,37 @@ with tab_cotizador:
 
         st.divider()
 
-        # 4. Evaluación y Costos de Envío por Tienda
-        st.markdown("#### 🚚 Costos de Envío por Tienda")
+        # 4. Cálculo de Envíos por Tienda
+        st.markdown("#### 🚚 Envíos por Tienda")
+        
         if st.session_state.quote_items:
             store_subtotals = QuoteCalculator.calculate_store_subtotals(st.session_state.quote_items)
-            for store_name, sub in store_subtotals.items():
-                rule = config.shipping_rules.get(store_name, {})
-                is_pickup = rule.get("is_pickup_only", False)
-                thresh = rule.get("free_threshold")
-                default_cost = float(rule.get("default_cost", 35.0))
-
-                s_c1, s_c2 = st.columns([2.5, 1.5])
-                with s_c1:
-                    if is_pickup or thresh is None:
-                        st.success(f"**{store_name}** (Subtotal: Q {sub:,.2f}) — ✔ Retiro en tienda (Sin costo)")
-                    elif sub >= thresh:
-                        st.success(f"**{store_name}** (Subtotal: Q {sub:,.2f}) — ✔ ¡Envío Gratis alcanzado! (Mínimo Q{thresh:,.0f})")
+            current_shipping_details = QuoteCalculator.evaluate_shipping_details(
+                store_subtotals,
+                config.shipping_rules,
+                st.session_state.custom_shipping_costs
+            )
+            
+            for sd in current_shipping_details:
+                sc_col1, sc_col2 = st.columns([3, 1.5])
+                with sc_col1:
+                    badge_cls = get_store_badge_class(sd.store_name)
+                    st.markdown(f"<span class='{badge_cls}'>{sd.store_name}</span> &nbsp; Subtotal: **Q {sd.subtotal:,.2f}**", unsafe_allow_html=True)
+                    if sd.is_pickup_only:
+                        st.caption("🏬 Solo Retiro en Tienda (Q 0.00)")
+                    elif sd.qualifies_free:
+                        st.caption(f"🎉 **¡Envío Gratis!** (Superó umbral de Q {config.shipping_rules.get(sd.store_name, {}).get('free_threshold', 0):,.2f})")
                     else:
-                        st.warning(f"**{store_name}** (Subtotal: Q {sub:,.2f}) — No alcanza mínimo de Q{thresh:,.0f} para envío gratis")
-                with s_c2:
-                    if not is_pickup and (thresh is not None and sub < thresh):
-                        cur_cost = st.session_state.custom_shipping_costs.get(store_name, default_cost)
+                        rule = config.shipping_rules.get(sd.store_name, {})
+                        thresh = rule.get("free_threshold")
+                        faltante = (thresh - sd.subtotal) if thresh else 0
+                        st.caption(f"📦 Envío estándar: Q {sd.shipping_cost:,.2f} (Faltan Q {faltante:,.2f} para envío gratis)")
+                with sc_col2:
+                    store_name = sd.store_name
+                    is_custom = sd.shipping_was_custom
+                    cur_cost = sd.shipping_cost
+
+                    if st.checkbox("Modificar flete", value=is_custom, key=f"chk_custom_{store_name}"):
                         cost_input = st.number_input(
                             f"Costo Envío ({store_name})",
                             min_value=0.0,
@@ -684,19 +726,31 @@ with tab_cotizador:
         # 5. Resumen Financiero y Botones de Guardado
         current_quote = get_current_quote()
 
-        # F5: margen configurable por cotización (no solo el global de config.json)
-        st.number_input(
-            "Margen de servicio (%) para esta cotización",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(st.session_state.service_fee_percent),
-            step=0.5,
-            key="service_fee_percent",
-        )
+        f_col_m, f_col_d = st.columns([1, 1])
+        with f_col_m:
+            st.number_input(
+                "Margen de servicio (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(st.session_state.service_fee_percent),
+                step=0.5,
+                key="service_fee_percent",
+            )
+        with f_col_d:
+            st.number_input(
+                "Descuento comercial (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(st.session_state.discount_percent),
+                step=0.5,
+                key="discount_percent",
+            )
 
         sum_c1, sum_c2 = st.columns([1, 1])
         with sum_c1:
             st.metric("Subtotal Componentes", f"Q {current_quote.items_subtotal:,.2f}")
+            if current_quote.discount_amount > 0:
+                st.metric(f"Descuento ({current_quote.discount_percent}%):", f"- Q {current_quote.discount_amount:,.2f}")
             st.metric(f"Servicio Gestión ({current_quote.service_fee_percent}%):", f"Q {current_quote.service_fee_amount:,.2f}")
         with sum_c2:
             st.metric("Total Envíos", f"Q {current_quote.total_shipping:,.2f}")
@@ -722,6 +776,7 @@ with tab_cotizador:
                             notes=st.session_state.customer_notes.strip()
                         ),
                         shipping_details=current_quote.shipping_details,
+                        discount_percent=st.session_state.discount_percent,
                         service_fee_percent=st.session_state.service_fee_percent,
                         validity_days=config.validity_days,
                         version=new_v,
@@ -821,6 +876,20 @@ with tab_cotizador:
 # ==========================================
 with tab_historial:
     st.markdown("### 📋 Historial y Búsqueda de Cotizaciones")
+
+    with st.expander("📊 Métricas Comerciales y Analítica", expanded=False):
+        stats = history_mgr.get_commercial_analytics()
+        m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+        m_c1.metric("Total Cotizaciones", f"{stats['total_quotes']}")
+        m_c2.metric("Tasa de Cierre", f"{stats['conversion_rate']}%", f"{stats['accepted_count']} Aceptadas")
+        m_c3.metric("Monto Facturado", f"Q {stats['total_sold_amount']:,.2f}")
+        m_c4.metric("Margen Ganado", f"Q {stats['total_earned_margin']:,.2f}")
+
+        st.caption("Distribución por Estado:")
+        st_cols = st.columns(len(stats["status_counts"]))
+        for idx, (st_name, st_count) in enumerate(stats["status_counts"].items()):
+            with st_cols[idx]:
+                st.markdown(f"**{st_name}:** `{st_count}`")
     
     f_col1, f_col2 = st.columns([2.5, 1.2])
     with f_col1:
@@ -891,7 +960,20 @@ with tab_historial:
                     for it in q.items:
                         st.caption(f"• {it.quantity}x [{it.product.name}]({it.product.url}) ({it.product.store_name}) = Q {it.subtotal:,.2f}")
                     
-                    st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f} | **Margen ({q.service_fee_percent}%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
+                    disc_info = f" | **Descuento:** -Q {q.discount_amount:,.2f}" if getattr(q, "discount_amount", 0.0) > 0 else ""
+                    st.markdown(f"**Subtotal:** Q {q.items_subtotal:,.2f}{disc_info} | **Margen ({q.service_fee_percent}%):** Q {q.service_fee_amount:,.2f} | **Envíos:** Q {q.total_shipping:,.2f} | **Total:** **Q {q.total:,.2f}**")
+
+                    # F5: Hoja de compras consolidada (Packing List)
+                    with st.expander("📦 Hoja de Compras (Packing List por Tienda)", expanded=False):
+                        plist = exporter.generate_packing_list(q)
+                        st.markdown(f"**Total a Desembolsar en Tiendas:** `Q {plist['total_purchase_cost']:,.2f}` &nbsp;|&nbsp; **Ganancia Estimada:** `Q {plist['estimated_profit']:,.2f}`")
+                        for sname, sdata in plist["stores"].items():
+                            st.markdown(f"**🏬 {sname}** (Ítems: Q {sdata['subtotal']:,.2f} + Flete: Q {sdata['shipping_cost']:,.2f} = **Total: Q {sdata['total_store']:,.2f}**)")
+                            for p_it in sdata["items"]:
+                                sku_str = f" `[{p_it['sku']}]`" if p_it['sku'] else ""
+                                link_str = f"[{p_it['name']}]({p_it['url']})" if p_it['url'] else p_it['name']
+                                chk_label = f"{p_it['quantity']}x {p_it['name']}{sku_str} (Q {p_it['unit_price']:,.2f} c/u = Q {p_it['subtotal']:,.2f})"
+                                st.checkbox(chk_label, key=f"pk_{q.quote_id}_{sname}_{p_it['sku'] or p_it['name'][:12]}")
 
                     # F6: seguimiento de venta (factura/entrega) para cotizaciones aceptadas
                     if eff_status == "ACEPTADA":

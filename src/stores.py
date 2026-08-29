@@ -23,8 +23,8 @@ STORES: List[Store] = [
         domain="laelectronica.com.gt",
         domain_aliases=("www.laelectronica.com.gt",),
         is_pickup_only=False,
-        free_threshold=150.0,
-        default_shipping_cost=35.0,
+        free_threshold=200.0,
+        default_shipping_cost=15.0,
     ),
     Store(
         name="Electrónica DIY",
@@ -32,7 +32,7 @@ STORES: List[Store] = [
         domain_aliases=("www.electronicadiy.com",),
         is_pickup_only=False,
         free_threshold=250.0,
-        default_shipping_cost=35.0,
+        default_shipping_cost=20.0,
     ),
     Store(
         name="Electrónica RyCH",

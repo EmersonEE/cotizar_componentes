@@ -73,6 +73,9 @@ class QuoteExporter:
             writer.writerow([])
             # Financial summary
             writer.writerow(["", "", "", "", "SUBTOTAL COMPONENTES:", f"{quote.items_subtotal:.2f}"])
+            if getattr(quote, "discount_amount", 0.0) > 0:
+                disc_lbl = f"DESCUENTO ESPECIAL ({quote.discount_percent:.1f}%):" if getattr(quote, "discount_percent", 0.0) > 0 else "DESCUENTO ESPECIAL:"
+                writer.writerow(["", "", "", "", disc_lbl, f"-{quote.discount_amount:.2f}"])
             writer.writerow(["", "", "", "", f"SERVICIO COMPRA ({quote.service_fee_percent}%):", f"{quote.service_fee_amount:.2f}"])
             
             # Shipping breakdown
@@ -89,7 +92,7 @@ class QuoteExporter:
         """Renders the HTML template into a string."""
         if business is None:
             config = AppConfig.load()
-            business = config.business
+            business = business or config.business
 
         template = self.jinja_env.get_template("quote_template.html")
         return template.render(
@@ -137,6 +140,59 @@ class QuoteExporter:
         except Exception as e:
             logger.warning("No se pudo generar PDF automáticamente con WeasyPrint: %s", e)
             return None
+
+    def generate_packing_list(self, quote: Quote) -> dict:
+        """
+        Genera la hoja de compra consolidada (Packing List / Hoja de Ruta)
+        agrupada por tienda para surtir los componentes de la cotización.
+        """
+        grouped = {}
+        for item in quote.items:
+            sname = item.product.store_name
+            if sname not in grouped:
+                grouped[sname] = {
+                    "items": [],
+                    "subtotal": 0.0,
+                    "shipping_cost": 0.0,
+                    "shipping_label": "Retiro en tienda",
+                    "total_store": 0.0,
+                }
+            grouped[sname]["items"].append({
+                "name": item.product.name,
+                "sku": item.product.sku or "",
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "subtotal": item.subtotal,
+                "url": item.product.url,
+                "is_manual": item.product.is_manual,
+                "stock_status": item.product.stock_status,
+                "in_stock": item.product.in_stock,
+            })
+            grouped[sname]["subtotal"] = round(grouped[sname]["subtotal"] + item.subtotal, 2)
+
+        for sd in quote.shipping_details:
+            if sd.store_name in grouped:
+                grouped[sd.store_name]["shipping_cost"] = sd.shipping_cost
+                grouped[sd.store_name]["shipping_label"] = sd.status_label
+                grouped[sd.store_name]["total_store"] = round(
+                    grouped[sd.store_name]["subtotal"] + sd.shipping_cost, 2
+                )
+
+        total_purchase_cost = round(sum(g["total_store"] for g in grouped.values()), 2)
+        profit_margin = round(quote.total - total_purchase_cost, 2)
+
+        return {
+            "quote_id": quote.quote_id,
+            "version": quote.version,
+            "customer_name": quote.customer.name,
+            "date": quote.date,
+            "stores": grouped,
+            "total_items": len(quote.items),
+            "total_quantity": sum(it.quantity for it in quote.items),
+            "total_purchase_cost": total_purchase_cost,
+            "total_client_price": quote.total,
+            "estimated_profit": profit_margin,
+        }
 
     def export_all(self, quote: Quote, business: Optional[BusinessInfo] = None) -> ExportResult:
         """

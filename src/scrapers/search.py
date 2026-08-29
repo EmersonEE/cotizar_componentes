@@ -2,12 +2,12 @@ import re
 import time
 import threading
 import unicodedata
-import urllib.request
 import urllib.parse
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Set, Dict, Tuple
+import httpx
 from bs4 import BeautifulSoup
 
 from src.scrapers.base import BaseScraper
@@ -62,11 +62,13 @@ def _extract_price(text: str) -> float:
 
 def robust_fetch_html(url: str, timeout: float = 6.0) -> str:
     """Fetches raw HTML with resilient headers avoiding Cloudflare/Shopify 429 blocks."""
-    req = urllib.request.Request(url, headers=DEFAULT_HEADERS)
     try:
         with throttled_http_request():
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return resp.read().decode('utf-8', errors='ignore')
+            with httpx.Client(timeout=timeout, headers=DEFAULT_HEADERS, follow_redirects=True, verify=True) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    return resp.text
+                return ""
     except Exception as e:
         logger.debug("robust_fetch_html falló para %s: %s", url, e)
         return ""
@@ -260,15 +262,8 @@ def search_la_electronica_single_term(query: str, limit: int = 8, timeout: float
             continue
         seen_urls.add(clean_url)
 
-        price_val = 0.0
         price_el = card.select_one(".price-item--sale, .price-item--regular, .price")
-        if price_el:
-            try:
-                nums = re.findall(r"(\d+(?:\.\d+)?)", price_el.get_text())
-                if nums:
-                    price_val = float(nums[0])
-            except Exception:
-                pass
+        price_val = _extract_price(price_el.get_text(strip=True)) if price_el else 0.0
 
         sold_out_el = card.select_one(".badge--bottom-left, .sold-out, .price--sold-out")
         is_available = not bool(sold_out_el)
@@ -345,15 +340,8 @@ def search_electronica_diy_single_term(query: str, limit: int = 8, timeout: floa
             continue
         seen_handles.add(clean_url)
 
-        price_val = 0.0
         price_el = card.select_one(".price__current, .productitem--price, .price")
-        if price_el:
-            try:
-                nums = re.findall(r"(\d+(?:\.\d+)?)", price_el.get_text())
-                if nums:
-                    price_val = float(nums[0])
-            except Exception:
-                pass
+        price_val = _extract_price(price_el.get_text(strip=True)) if price_el else 0.0
 
         sold_out_el = card.select_one(".badge--soldout, .productitem--badge-soldout, [class*='sold-out']")
         is_available = not bool(sold_out_el)

@@ -83,7 +83,19 @@ class QuoteCalculator:
             threshold = rule.get("free_threshold")
             default_cost = float(rule.get("default_cost", 35.0))
 
-            if is_pickup or threshold is None:
+            if store_name in custom_shipping_costs:
+                cost = round(float(custom_shipping_costs[store_name]), 2)
+                details.append(StoreShippingDetail(
+                    store_name=store_name,
+                    items_subtotal=subtotal,
+                    free_threshold=threshold,
+                    qualifies_free=(cost == 0.0),
+                    shipping_cost=cost,
+                    status_label="No aplica (Retiro en tienda)" if cost == 0.0 else f"Q {cost:,.2f}",
+                    is_pickup_only=(is_pickup and cost == 0.0),
+                    shipping_was_custom=True
+                ))
+            elif is_pickup or threshold is None:
                 # Store doesn't do shipping / in-store pickup
                 details.append(StoreShippingDetail(
                     store_name=store_name,
@@ -109,8 +121,7 @@ class QuoteCalculator:
                 ))
             else:
                 # Free shipping minimum NOT reached; apply shipping cost
-                cost = custom_shipping_costs.get(store_name, default_cost)
-                cost = round(float(cost), 2)
+                cost = round(float(default_cost), 2)
                 details.append(StoreShippingDetail(
                     store_name=store_name,
                     items_subtotal=subtotal,
@@ -119,7 +130,7 @@ class QuoteCalculator:
                     shipping_cost=cost,
                     status_label=f"Q {cost:,.2f}",
                     is_pickup_only=False,
-                    shipping_was_custom=(store_name in custom_shipping_costs)
+                    shipping_was_custom=False
                 ))
 
         return details
@@ -132,7 +143,9 @@ class QuoteCalculator:
         shipping_details: Optional[List[StoreShippingDetail]] = None,
         shipping_rules: Optional[Dict[str, dict]] = None,
         custom_shipping_costs: Optional[Dict[str, float]] = None,
-        service_fee_percent: float = 12.0,
+        discount_percent: float = 0.0,
+        discount_amount: float = 0.0,
+        service_fee_percent: float = 10.0,
         validity_days: int = 5,
         version: int = 1,
         base_quote_id: Optional[str] = None,
@@ -145,10 +158,18 @@ class QuoteCalculator:
         # 1. Components Subtotal
         items_subtotal = round(sum(item.subtotal for item in items), 2)
 
-        # 2. Service fee (12% ONLY over components subtotal)
-        service_fee_amount = round(items_subtotal * (service_fee_percent / 100.0), 2)
+        # 2. Discount calculation
+        if discount_percent > 0:
+            calc_discount = round(items_subtotal * (discount_percent / 100.0), 2)
+        else:
+            calc_discount = round(discount_amount, 2)
+        calc_discount = max(0.0, min(calc_discount, items_subtotal))
+        subtotal_after_discount = round(items_subtotal - calc_discount, 2)
 
-        # 3. Shipping details
+        # 3. Service fee (calculated over subtotal after discount)
+        service_fee_amount = round(subtotal_after_discount * (service_fee_percent / 100.0), 2)
+
+        # 4. Shipping details
         if shipping_details is None:
             if shipping_rules is None:
                 shipping_rules = {}
@@ -161,8 +182,8 @@ class QuoteCalculator:
 
         total_shipping = round(sum(sd.shipping_cost for sd in shipping_details), 2)
 
-        # 4. Grand Total = Components + Service Fee + Shipping
-        total = round(items_subtotal + service_fee_amount + total_shipping, 2)
+        # 5. Grand Total = Subtotal after discount + Service Fee + Shipping
+        total = round(subtotal_after_discount + service_fee_amount + total_shipping, 2)
 
         now = datetime.now()
         date_str = now.strftime("%d/%m/%Y")
@@ -179,6 +200,8 @@ class QuoteCalculator:
             items=items,
             shipping_details=shipping_details,
             items_subtotal=items_subtotal,
+            discount_percent=discount_percent,
+            discount_amount=calc_discount,
             service_fee_percent=service_fee_percent,
             service_fee_amount=service_fee_amount,
             total_shipping=total_shipping,

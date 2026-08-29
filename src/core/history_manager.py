@@ -195,8 +195,97 @@ class HistoryManager:
                         "store_name": item.product.store_name,
                     })
 
-        history.sort(key=lambda h: h["date"], reverse=True)
+        def _parse_hist_date(h: Dict[str, Any]) -> datetime:
+            try:
+                return datetime.strptime(h["date"], "%d/%m/%Y")
+            except Exception:
+                return datetime.min
+
+        history.sort(key=_parse_hist_date, reverse=True)
         return history[:limit]
+
+    def get_frequent_customers(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Retorna los clientes frecuentes extraídos del historial, agregados por nombre
+        (excluyendo 'Cliente General'), ordenados por frecuencia descendente y última fecha.
+        """
+        quotes = self.load_all_quotes()
+        cust_map: Dict[str, Dict[str, Any]] = {}
+
+        for q in quotes:
+            name = (q.customer.name or "").strip()
+            if not name or name.lower() in ("cliente general", "general"):
+                continue
+            key = name.lower()
+            if key not in cust_map:
+                cust_map[key] = {
+                    "name": name,
+                    "phone": q.customer.phone or "",
+                    "email": q.customer.email or "",
+                    "notes": q.customer.notes or "",
+                    "count": 0,
+                    "last_date": q.date,
+                    "total_spent": 0.0,
+                }
+            cust_map[key]["count"] += 1
+            if q.customer.phone and not cust_map[key]["phone"]:
+                cust_map[key]["phone"] = q.customer.phone
+            if q.customer.email and not cust_map[key]["email"]:
+                cust_map[key]["email"] = q.customer.email
+            if q.status == QuoteStatus.ACEPTADA.value:
+                cust_map[key]["total_spent"] += q.total
+
+        customers = list(cust_map.values())
+        customers.sort(key=lambda c: (c["count"], c["total_spent"]), reverse=True)
+        return customers[:limit]
+
+    def get_commercial_analytics(self) -> Dict[str, Any]:
+        """
+        Calcula y retorna indicadores clave de rendimiento (KPIs) comerciales:
+        - Tasa de conversión (Aceptadas / Total)
+        - Montos cotizados vs ganados
+        - Margen acumulado (ganancia)
+        - Desglose por tienda
+        """
+        quotes = self.load_all_quotes()
+        total_quotes = len(quotes)
+        
+        status_counts = {s.value: 0 for s in QuoteStatus}
+        total_quoted_amount = 0.0
+        total_sold_amount = 0.0
+        total_earned_margin = 0.0
+        store_stats: Dict[str, Dict[str, Any]] = {}
+
+        for q in quotes:
+            eff_st = self.effective_status(q)
+            status_counts[eff_st] = status_counts.get(eff_st, 0) + 1
+            total_quoted_amount += q.total
+
+            if eff_st == QuoteStatus.ACEPTADA.value:
+                total_sold_amount += q.total
+                total_earned_margin += q.service_fee_amount
+
+            for it in q.items:
+                sname = it.product.store_name
+                if sname not in store_stats:
+                    store_stats[sname] = {"count": 0, "subtotal": 0.0}
+                store_stats[sname]["count"] += it.quantity
+                store_stats[sname]["subtotal"] += it.subtotal
+
+        accepted_count = status_counts.get(QuoteStatus.ACEPTADA.value, 0)
+        conversion_rate = round((accepted_count / total_quotes * 100.0), 1) if total_quotes > 0 else 0.0
+
+        return {
+            "total_quotes": total_quotes,
+            "total_quoted_amount": round(total_quoted_amount, 2),
+            "total_sold_amount": round(total_sold_amount, 2),
+            "total_earned_margin": round(total_earned_margin, 2),
+            "accepted_count": accepted_count,
+            "conversion_rate": conversion_rate,
+            "status_counts": status_counts,
+            "store_stats": store_stats,
+            "frequent_customers": self.get_frequent_customers(limit=5),
+        }
 
     def export_history(self, path: Path) -> Path:
         """Exporta el historial completo a un archivo JSON (copia de seguridad/backup manual)."""

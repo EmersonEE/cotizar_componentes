@@ -557,6 +557,12 @@
           <td style="color: #64748b;">Subtotal Componentes:</td>
           <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.items_subtotal) }}</td>
         </tr>
+        {% if quote.discount_amount and quote.discount_amount > 0 %}
+        <tr>
+          <td style="color: #16a34a;">Descuento Especial {% if quote.discount_percent and quote.discount_percent > 0 %}({{ "%.1f"|format(quote.discount_percent) }}%){% endif %}:</td>
+          <td class="text-right font-mono" style="font-weight: 600; color: #16a34a;">- {{ quote.currency_symbol }} {{ "%.2f"|format(quote.discount_amount) }}</td>
+        </tr>
+        {% endif %}
         <tr>
           <td style="color: #64748b;">Servicio de Gestión y Compra ({{ quote.service_fee_percent }}%):</td>
           <td class="text-right font-mono" style="font-weight: 600;">{{ quote.currency_symbol }} {{ "%.2f"|format(quote.service_fee_amount) }}</td>

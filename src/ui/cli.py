@@ -73,11 +73,12 @@ class CotizadorCLI:
             console.print("  [bold cyan]4.[/bold cyan] 📄 Duplicar Cotización (Nueva Independiente)")
             console.print("  [bold cyan]5.[/bold cyan] 🔍 Buscar y Ver Historial de Cotizaciones")
             console.print("  [bold cyan]6.[/bold cyan] 🔄 Re-verificar Precios de una Cotización")
-            console.print("  [bold cyan]7.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
-            console.print("  [bold cyan]8.[/bold cyan] 🗑️  Eliminar Cotización (Definitivo)")
-            console.print("  [bold cyan]9.[/bold cyan] 🚪 Salir")
+            console.print("  [bold cyan]7.[/bold cyan] 📊 Ver Métricas Comerciales y Analítica")
+            console.print("  [bold cyan]8.[/bold cyan] ⚙️  Configuración (Margen, Envíos, Negocio)")
+            console.print("  [bold cyan]9.[/bold cyan] 🗑️  Eliminar Cotización (Definitivo)")
+            console.print("  [bold cyan]10.[/bold cyan] 🚪 Salir")
 
-            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"], default="1")
+            choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], default="1")
 
             if choice == "1":
                 self.crear_cotizacion_bom()
@@ -92,10 +93,12 @@ class CotizadorCLI:
             elif choice == "6":
                 self.reverificar_cotizacion()
             elif choice == "7":
-                self.configuracion_menu()
+                self.mostrar_metricas_comerciales()
             elif choice == "8":
-                self.eliminar_cotizacion()
+                self.configuracion_menu()
             elif choice == "9":
+                self.eliminar_cotizacion()
+            elif choice == "10":
                 console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
                 sys.exit(0)
 
@@ -109,6 +112,21 @@ class CotizadorCLI:
         default_phone = default_customer.phone if default_customer else ""
         default_email = default_customer.email if default_customer else ""
         default_notes = default_customer.notes if default_customer else ""
+
+        if default_customer is None:
+            frequent_customers = self.history_mgr.get_frequent_customers(limit=5)
+            if frequent_customers:
+                console.print("[dim]Clientes frecuentes sugeridos:[/dim]")
+                for idx, fc in enumerate(frequent_customers, 1):
+                    console.print(f"  [bold cyan]{idx}.[/bold cyan] {fc['name']} (Tel: {fc['phone'] or 'N/A'}, {fc['count']} cotizaciones)")
+                console.print("  [bold cyan]0.[/bold cyan] Ingresar cliente nuevo")
+                fc_choice = Prompt.ask("Selecciona un cliente frecuente o 0 para nuevo", default="0")
+                if fc_choice.isdigit() and 1 <= int(fc_choice) <= len(frequent_customers):
+                    chosen = frequent_customers[int(fc_choice) - 1]
+                    default_name = chosen["name"]
+                    default_phone = chosen["phone"]
+                    default_email = chosen["email"]
+                    default_notes = chosen["notes"]
 
         client_name = Prompt.ask("Nombre del cliente", default=default_name).strip() or "Cliente General"
         client_phone = Prompt.ask("Teléfono / WhatsApp (opcional)", default=default_phone).strip()
@@ -1160,6 +1178,9 @@ class CotizadorCLI:
         # Financial summary card
         summary_table = Table(box=box.SIMPLE, show_header=False)
         summary_table.add_row("Subtotal Componentes:", format_currency(quote.items_subtotal, quote.currency_symbol))
+        if getattr(quote, "discount_amount", 0.0) > 0:
+            disc_label = f"Descuento Especial ({quote.discount_percent:.1f}%):" if getattr(quote, "discount_percent", 0.0) > 0 else "Descuento Especial:"
+            summary_table.add_row(f"[green]{disc_label}[/green]", f"[bold green]- {format_currency(quote.discount_amount, quote.currency_symbol)}[/bold green]")
         summary_table.add_row(f"Cargo por Gestión/Servicio ({quote.service_fee_percent}%):", format_currency(quote.service_fee_amount, quote.currency_symbol))
         
         if quote.shipping_details:
@@ -1174,6 +1195,79 @@ class CotizadorCLI:
         summary_table.add_row("[bold green]TOTAL A PAGAR:[/bold green]", f"[bold green]{format_currency(quote.total, quote.currency_symbol)}[/bold green]")
         
         console.print(Panel(summary_table, title="[bold]Desglose Financiero[/bold]", border_style="cyan", expand=False))
+
+    def mostrar_packing_list(self, quote: Quote):
+        """Muestra la hoja de compra consolidada (Packing List) agrupada por tienda."""
+        plist = self.exporter.generate_packing_list(quote)
+        console.clear()
+        self.show_banner()
+        console.print(f"\n[bold green]📦 HOJA DE COMPRAS (PACKING LIST) — {quote.quote_id}[/bold green]")
+        console.print(f"[dim]Cliente: {quote.customer.name} | Fecha: {quote.date}[/dim]\n")
+
+        for sname, sdata in plist["stores"].items():
+            st_table = Table(title=f"🏬 {sname}", box=box.ROUNDED, border_style="cyan")
+            st_table.add_column("Cant.", justify="center", style="bold yellow")
+            st_table.add_column("Componente", style="white")
+            st_table.add_column("SKU", style="dim")
+            st_table.add_column("Precio Unit.", justify="right")
+            st_table.add_column("Subtotal", justify="right", style="bold green")
+            st_table.add_column("URL / Enlace", style="cyan")
+
+            for it in sdata["items"]:
+                st_table.add_row(
+                    str(it["quantity"]),
+                    it["name"],
+                    it["sku"] or "-",
+                    format_currency(it["unit_price"], quote.currency_symbol),
+                    format_currency(it["subtotal"], quote.currency_symbol),
+                    it["url"] or "Ingreso Manual"
+                )
+            console.print(st_table)
+            console.print(f"[bold]  ↳ Subtotal ítems:[/bold] {format_currency(sdata['subtotal'], quote.currency_symbol)} | [bold]Flete:[/bold] {format_currency(sdata['shipping_cost'], quote.currency_symbol)} | [bold green]Total a pagar en {sname}:[/bold green] [bold green]{format_currency(sdata['total_store'], quote.currency_symbol)}[/bold green]\n")
+
+        console.print(Panel(
+            f"[bold]Total a Desembolsar en Tiendas:[/bold] [bold cyan]{format_currency(plist['total_purchase_cost'], quote.currency_symbol)}[/bold cyan]\n"
+            f"[bold]Total Cotizado al Cliente:[/bold] [bold green]{format_currency(plist['total_client_price'], quote.currency_symbol)}[/bold green]\n"
+            f"[bold]Ganancia Neta Estimada (Margen):[/bold] [bold yellow]{format_currency(plist['estimated_profit'], quote.currency_symbol)}[/bold yellow]",
+            title="[bold]Resumen Financiero de Compra[/bold]",
+            border_style="green",
+            expand=False
+        ))
+
+    def mostrar_metricas_comerciales(self):
+        """Muestra panel resumen con indicadores comerciales y tasa de cierre."""
+        stats = self.history_mgr.get_commercial_analytics()
+        console.clear()
+        self.show_banner()
+        console.print("\n[bold cyan]📊 MÉTRICAS COMERCIALES Y ANALÍTICA DE COTIZACIONES[/bold cyan]\n")
+
+        kpi_table = Table(box=box.ROUNDED, show_header=False)
+        kpi_table.add_row("Total de Cotizaciones Emitidas:", f"[bold cyan]{stats['total_quotes']}[/bold cyan]")
+        kpi_table.add_row("Cotizaciones Aceptadas (Ganadas):", f"[bold green]{stats['accepted_count']}[/bold green]")
+        kpi_table.add_row("Tasa de Cierre Comercial:", f"[bold yellow]{stats['conversion_rate']}%[/bold yellow]")
+        kpi_table.add_row("Monto Total Cotizado:", f"[cyan]{format_currency(stats['total_quoted_amount'], self.config.currency_symbol)}[/cyan]")
+        kpi_table.add_row("Monto Total Facturado / Ganado:", f"[bold green]{format_currency(stats['total_sold_amount'], self.config.currency_symbol)}[/bold green]")
+        kpi_table.add_row("Margen Neto Acumulado (Ganancia):", f"[bold yellow]{format_currency(stats['total_earned_margin'], self.config.currency_symbol)}[/bold yellow]")
+        console.print(Panel(kpi_table, title="[bold]Indicadores Clave (KPIs)[/bold]", border_style="cyan", expand=False))
+
+        # Status distribution
+        st_table = Table(title="Distribución de Estados Comerciales", box=box.SIMPLE)
+        st_table.add_column("Estado", style="bold")
+        st_table.add_column("Cantidad", justify="center")
+        for st_name, st_count in stats["status_counts"].items():
+            st_table.add_row(st_name, str(st_count))
+        console.print(st_table)
+
+        # Frequent customers
+        if stats.get("frequent_customers"):
+            fc_table = Table(title="Top Clientes Frecuentes", box=box.SIMPLE)
+            fc_table.add_column("Cliente", style="bold white")
+            fc_table.add_column("Teléfono", style="cyan")
+            fc_table.add_column("Cotizaciones", justify="center")
+            fc_table.add_column("Monto Aceptado", justify="right", style="green")
+            for fc in stats["frequent_customers"]:
+                fc_table.add_row(fc["name"], fc["phone"] or "-", str(fc["count"]), format_currency(fc["total_spent"], self.config.currency_symbol))
+            console.print(fc_table)
 
     def ver_historial(self):
         while True:
@@ -1230,6 +1324,7 @@ class CotizadorCLI:
 
             console.print("\n[bold cyan]Opciones de Acción sobre el Historial:[/bold cyan]")
             console.print("  [bold green][V][/bold green] Ver detalle completo")
+            console.print("  [bold green][K][/bold green] 📦 Ver Hoja de Compras (Packing List por Tienda)")
             console.print("  [bold green][S][/bold green] 🏷️  Cambiar estado comercial (Borrador, Enviada, Aceptada...)")
             console.print("  [bold green][D][/bold green] 📄 Duplicar cotización como nueva independiente")
             console.print("  [bold green][R][/bold green] 🔄 Re-verificar precios en vivo (Crear nueva versión)")
@@ -1239,12 +1334,21 @@ class CotizadorCLI:
             console.print("  [bold cyan][B][/bold cyan] 🔍 Nueva búsqueda en historial")
             console.print("  [bold cyan][0][/bold cyan] ↩️  Regresar al menú principal")
 
-            hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "s", "d", "r", "p", "e", "i", "b", "0"], default="0").lower()
+            hist_opc = Prompt.ask("\nSelecciona acción", choices=["v", "k", "s", "d", "r", "p", "e", "i", "b", "0"], default="0").lower()
 
             if hist_opc == "0":
                 return
             elif hist_opc == "b":
                 continue
+
+            elif hist_opc == "k":
+                qid = Prompt.ask("Ingresa el ID de la cotización").strip()
+                quote = self.history_mgr.get_quote(qid)
+                if quote:
+                    self.mostrar_packing_list(quote)
+                else:
+                    console.print(f"[bold red]Cotización '{qid}' no encontrada.[/bold red]")
+                Prompt.ask("[dim]Presiona Enter para continuar...[/dim]")
 
             elif hist_opc == "e":
                 export_dir = self.history_mgr.file_path.parent

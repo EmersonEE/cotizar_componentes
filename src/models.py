@@ -190,7 +190,9 @@ class Quote:
     items: List[QuoteItem] = field(default_factory=list)
     shipping_details: List[StoreShippingDetail] = field(default_factory=list)
     items_subtotal: float = 0.0
-    service_fee_percent: float = 12.0
+    discount_percent: float = 0.0
+    discount_amount: float = 0.0
+    service_fee_percent: float = 10.0
     service_fee_amount: float = 0.0
     total_shipping: float = 0.0
     total: float = 0.0
@@ -267,6 +269,8 @@ class Quote:
             "shipping_details": [sd.to_dict() for sd in self.shipping_details],
             "items_subtotal": self.items_subtotal,
             "subtotal": self.items_subtotal,
+            "discount_percent": self.discount_percent,
+            "discount_amount": self.discount_amount,
             "service_fee_percent": self.service_fee_percent,
             "service_fee_amount": self.service_fee_amount,
             "total_shipping": self.total_shipping,
@@ -289,6 +293,8 @@ class Quote:
         ]
         
         items_subtotal = float(data.get("items_subtotal", data.get("subtotal", 0.0)))
+        discount_percent = float(data.get("discount_percent", 0.0))
+        discount_amount = float(data.get("discount_amount", 0.0))
         total_shipping = float(data.get("total_shipping", 0.0))
 
         raw_status = str(data.get("status", QuoteStatus.GUARDADA.value)).upper()
@@ -311,7 +317,9 @@ class Quote:
             items=items,
             shipping_details=shipping_details,
             items_subtotal=items_subtotal,
-            service_fee_percent=float(data.get("service_fee_percent", 12.0)),
+            discount_percent=discount_percent,
+            discount_amount=discount_amount,
+            service_fee_percent=float(data.get("service_fee_percent", 10.0)),
             service_fee_amount=float(data.get("service_fee_amount", 0.0)),
             total_shipping=total_shipping,
             total=float(data.get("total", 0.0)),

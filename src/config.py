@@ -42,7 +42,7 @@ def _parse_bool(value: Any, default: bool = True) -> bool:
 
 @dataclass
 class AppConfig:
-    service_fee_percent: float = 12.0
+    service_fee_percent: float = 10.0
     validity_days: int = 5
     currency_symbol: str = "Q"
     currency_code: str = "GTQ"
@@ -70,7 +70,7 @@ class AppConfig:
         shipping_rules = data.get("shipping_rules") or _default_shipping_rules()
 
         cfg = cls(
-            service_fee_percent=float(data.get("service_fee_percent", 12.0)),
+            service_fee_percent=float(data.get("service_fee_percent", 10.0)),
             validity_days=int(data.get("validity_days", 5)),
             currency_symbol=str(data.get("currency_symbol", "Q")),
             currency_code=str(data.get("currency_code", "GTQ")),
