@@ -53,6 +53,9 @@ class AppConfig:
     enable_ai: bool = True
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b"
+    # Timeout (segundos) para la extracción de BOM con IA local. Mensajes largos
+    # (BOMs de 30+ componentes) pueden tardar más de 15s en qwen2.5:7b.
+    ai_timeout: float = 90.0
 
     @classmethod
     def load(cls, config_path: Path = DEFAULT_CONFIG_PATH) -> 'AppConfig':
@@ -79,7 +82,8 @@ class AppConfig:
             shipping_rules=shipping_rules,
             enable_ai=_parse_bool(data.get("enable_ai", True), True),
             ollama_url=str(data.get("ollama_url", "http://localhost:11434")),
-            ollama_model=str(data.get("ollama_model", "qwen2.5:7b"))
+            ollama_model=str(data.get("ollama_model", "qwen2.5:7b")),
+            ai_timeout=float(data.get("ai_timeout", 90.0))
         )
         cfg._validate()
         return cfg
@@ -117,7 +121,8 @@ class AppConfig:
             "shipping_rules": self.shipping_rules,
             "enable_ai": self.enable_ai,
             "ollama_url": self.ollama_url,
-            "ollama_model": self.ollama_model
+            "ollama_model": self.ollama_model,
+            "ai_timeout": self.ai_timeout
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)

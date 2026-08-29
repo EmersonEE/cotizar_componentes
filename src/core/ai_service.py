@@ -35,9 +35,10 @@ Tu tarea es leer el siguiente mensaje o lista libre y extraer todos los componen
 Reglas estrictas:
 1. Normaliza la cantidad a un número entero (mínimo 1). Si no se especifica cantidad, asume 1.
 2. Si el texto desglosa una cantidad total en opciones o variantes (ej. '2 Arduinos, uno con cable y otro sin cable' o '20 LEDs, 10 rojos y 10 azules'), extrae ÚNICAMENTE los ítems específicos desglosados (ej. 1x Arduino Uno con cable, 1x Arduino Uno sin cable; 10x LED rojo, 10x LED azul) y NUNCA agregues un ítem duplicado con el total general.
-3. Limpia el nombre del componente para que sea un término de búsqueda óptimo y conciso en tiendas de electrónica (ej. 'Arduino Uno R3', 'Resistencia 220 ohm 1/4W', 'Pantalla OLED 0.96 I2C', 'Sensor ultrasónico HC-SR04', 'Módulo Bluetooth HC-05', 'Servomotor SG90', 'Fuente 12V 2A', 'Cable Dupont macho-hembra').
+3. Limpia el nombre del componente para que sea un término de búsqueda óptimo y conciso en tiendas de electrónica (ej. 'Arduino Uno R3', 'Resistencia 220 ohm 1/4W', 'Pantalla OLED 0.96 I2C', 'Sensor ultrasónico HC-SR04', 'Módulo Bluetooth HC-05', 'Servomotor SG90', 'Fuente 12V 2A', 'Cable Dupont macho-hembra', 'Caja organizadora', 'Cautín 60W').
 4. Ignora saludos, despedidas, preguntas de precios, charlas o comentarios irrelevantes.
-5. Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
+5. NO omitas componentes pedidos de forma condicional o complementaria: si el texto dice 'si tienen disponible, agréguenme también X', 'también necesito Y', 'adicionalmente Z' o similar, extráelos igualmente con su cantidad (o 1 si no se especifica).
+6. Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
 {{
   "items": [
     {{

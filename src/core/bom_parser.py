@@ -105,21 +105,49 @@ def parse_bom_text(text: str) -> BOMParseResult:
 
     return BOMParseResult(items=items, invalid_lines=invalid_lines, source="regex")
 
+# Marcadores típicos de mensajes conversacionales (WhatsApp/notas libres)
+CONVERSATIONAL_MARKERS = (
+    "hola", "buenos días", "buenas tardes", "quisiera", "necesito",
+    "cotízame", "agrégame", "por favor", "indícame", "me podrías",
+)
+
+
+def is_suspicious_regex_fallback(text: str, result: BOMParseResult) -> bool:
+    """
+    Detecta un fallback regex sospechoso: el texto es un párrafo conversacional
+    (una sola línea larga) y el parser básico apenas produjo ítems (normalmente 1
+    con todo el texto pegado). En ese caso la IA falló (p.ej. timeout) y el
+    resultado regex es casi seguro incorrecto.
+    """
+    if result.source != "regex":
+        return False
+    if result.total_items >= 3:
+        return False
+    stripped = text.strip()
+    if "\n" in stripped or len(stripped) <= 120:
+        return False
+    lowered = stripped.lower()
+    return any(marker in lowered for marker in CONVERSATIONAL_MARKERS)
+
+
 def parse_bom_text_hybrid(
     text: str,
     config: Optional[AppConfig] = None,
-    force_ai: bool = False
+    force_ai: bool = False,
+    timeout: Optional[float] = None
 ) -> BOMParseResult:
     """
     Hybrid BOM parser:
     - If force_ai is True or if text is conversational/unstructured and AI is enabled,
       uses Ollama LLM to extract items with structured JSON output.
+    - timeout: segundos máximo para la llamada a Ollama (usa config.ai_timeout si no se pasa).
     - If AI fails or is disabled, gracefully falls back to classic regex parser.
     """
     if not text or not text.strip():
         return BOMParseResult(items=[], invalid_lines=[], source="regex")
 
     cfg = config or AppConfig.load()
+    ai_timeout = timeout if timeout is not None else getattr(cfg, "ai_timeout", 90.0)
 
     # If AI is enabled or forced, attempt extraction with Ollama
     if force_ai or cfg.enable_ai:
@@ -127,7 +155,7 @@ def parse_bom_text_hybrid(
             raw_text=text,
             host=cfg.ollama_url,
             model=cfg.ollama_model,
-            timeout=15.0
+            timeout=ai_timeout
         )
         if ai_items:
             parsed_items: List[ParsedBOMItem] = []

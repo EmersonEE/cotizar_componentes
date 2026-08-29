@@ -268,6 +268,46 @@ def search_bom_items_parallel(
 
     return [r for r in results if r is not None]
 
+
+def summarize_match_results(match_results: List[MatchResult]) -> Dict[str, int]:
+    """
+    Resumen de una búsqueda BOM: conteos por clasificación.
+    Devuelve {total, found, unfound, media, review, alta}.
+    - found: ítems con candidato seleccionado
+    - unfound: ítems sin candidato (no disponibles)
+    - media: candidato con confianza MEDIA (conviene verificar)
+    - review: candidatos REVISAR pendientes de confirmación
+    - alta: candidatos con confianza ALTA
+    """
+    total = len(match_results)
+    found = 0
+    unfound = 0
+    media = 0
+    review = 0
+    alta = 0
+
+    for m in match_results:
+        if not m.selected_candidate:
+            unfound += 1
+            continue
+        found += 1
+        if m.status == "ALTA":
+            alta += 1
+        elif m.status == "MEDIA":
+            media += 1
+        elif m.requires_review_confirmation:
+            review += 1
+
+    return {
+        "total": total,
+        "found": found,
+        "unfound": unfound,
+        "media": media,
+        "review": review,
+        "alta": alta,
+    }
+
+
 def _greedy_mixed_assignment(
     items_to_optimize: List[Tuple[int, ParsedBOMItem, List[Tuple[SearchResultItem, float]]]],
     shipping_rules: Dict[str, Dict[str, Any]],

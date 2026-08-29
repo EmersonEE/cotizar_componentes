@@ -1,5 +1,6 @@
 import sys
 import copy
+import logging
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional
@@ -27,11 +28,13 @@ from src.core.ai_service import suggest_alternatives_with_ai, check_ollama_statu
 from src.core.bom_searcher import (
     search_bom_items_parallel,
     calculate_match_score,
+    summarize_match_results,
     build_all_bom_scenarios
 )
 from src.services.quote_flow import QuoteFlowService
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 def get_status_style(status_str: str) -> str:
     s = status_str.upper()
@@ -81,27 +84,32 @@ class CotizadorCLI:
 
             choice = Prompt.ask("\nSelecciona una opción", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], default="1")
 
-            if choice == "1":
-                self.crear_cotizacion_bom()
-            elif choice == "2":
-                self.crear_nueva_cotizacion()
-            elif choice == "3":
-                self.editar_cotizacion()
-            elif choice == "4":
-                self.duplicar_cotizacion()
-            elif choice == "5":
-                self.ver_historial()
-            elif choice == "6":
-                self.reverificar_cotizacion()
-            elif choice == "7":
-                self.mostrar_metricas_comerciales()
-            elif choice == "8":
-                self.configuracion_menu()
-            elif choice == "9":
-                self.eliminar_cotizacion()
-            elif choice == "10":
-                console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
-                sys.exit(0)
+            try:
+                if choice == "1":
+                    self.crear_cotizacion_bom()
+                elif choice == "2":
+                    self.crear_nueva_cotizacion()
+                elif choice == "3":
+                    self.editar_cotizacion()
+                elif choice == "4":
+                    self.duplicar_cotizacion()
+                elif choice == "5":
+                    self.ver_historial()
+                elif choice == "6":
+                    self.reverificar_cotizacion()
+                elif choice == "7":
+                    self.mostrar_metricas_comerciales()
+                elif choice == "8":
+                    self.configuracion_menu()
+                elif choice == "9":
+                    self.eliminar_cotizacion()
+                elif choice == "10":
+                    console.print("\n[bold green]¡Hasta pronto![/bold green] 👋\n")
+                    sys.exit(0)
+            except Exception as e:
+                logger.exception("Error en la opción %s", choice)
+                console.print(f"\n[bold red]❌ Ocurrió un error inesperado:[/bold red] {e}")
+                console.print("[dim]El detalle quedó en el registro. Si persiste, comparte esta pantalla para diagnosticarlo.[/dim]")
 
             Prompt.ask("\n[dim]Presiona Enter para continuar...[/dim]")
 
@@ -496,44 +504,76 @@ class CotizadorCLI:
             summary_table.add_column("P. Unitario", justify="right", style="green")
             summary_table.add_column("Confianza / Score", justify="center")
 
-            unfound_count = 0
-
+            # Render defensivo: un ítem con datos raros no debe tumbar la pantalla
             for i, m in enumerate(match_results, 1):
-                if m.selected_candidate:
-                    c = m.selected_candidate
-                    conf_badge = m.status_badge
-                    if m.is_confirmed and m.status == "REVISAR":
-                        conf_badge += " [green](✔ Confirmado)[/green]"
-                    
+                try:
+                    if m.selected_candidate:
+                        c = m.selected_candidate
+                        conf_badge = m.status_badge
+                        if m.is_confirmed and m.status == "REVISAR":
+                            conf_badge += " [green](✔ Confirmado)[/green]"
+
+                        summary_table.add_row(
+                            str(i),
+                            f"{m.bom_item.quantity}x {m.bom_item.product_query}",
+                            c.title[:38] + ("..." if len(c.title) > 38 else ""),
+                            c.store_name,
+                            format_currency(c.unit_price, self.config.currency_symbol),
+                            conf_badge
+                        )
+                    else:
+                        summary_table.add_row(
+                            str(i),
+                            f"{m.bom_item.quantity}x {m.bom_item.product_query}",
+                            "[red]Ningún candidato válido encontrado[/red]",
+                            "-",
+                            "-",
+                            "[bold red]❌ No encontrado[/bold red]"
+                        )
+                except Exception as e:
+                    logger.warning("No se pudo mostrar la línea %d del resumen BOM: %s", i, e)
                     summary_table.add_row(
                         str(i),
                         f"{m.bom_item.quantity}x {m.bom_item.product_query}",
-                        c.title[:38] + ("..." if len(c.title) > 38 else ""),
-                        c.store_name,
-                        format_currency(c.unit_price, self.config.currency_symbol),
-                        conf_badge
-                    )
-                else:
-                    unfound_count += 1
-                    summary_table.add_row(
-                        str(i),
-                        f"{m.bom_item.quantity}x {m.bom_item.product_query}",
-                        "[red]Ningún candidato válido encontrado[/red]",
-                        "-",
-                        "-",
-                        "[bold red]❌ No encontrado[/bold red]"
+                        "[red]Error al renderizar candidato[/red]",
+                        "-", "-", "[bold red]⚠ Error[/bold red]"
                     )
 
             console.print(summary_table)
 
-            # Highlight unfound lines if any
-            if unfound_count > 0:
-                console.print(f"\n[bold yellow]⚠️ Componentes no encontrados / no disponibles ({unfound_count}):[/bold yellow]")
+            # Resumen de disponibilidad SIEMPRE visible
+            summary = summarize_match_results(match_results)
+            if summary["unfound"] > 0 or summary["media"] > 0 or summary["review"] > 0:
+                summary_parts = [f"[green]✔ {summary['found']} encontrados[/green]"]
+                if summary["media"]:
+                    summary_parts.append(f"[yellow]⚠ {summary['media']} a verificar (MEDIA)[/yellow]")
+                if summary["review"]:
+                    summary_parts.append(f"[red]⚠ {summary['review']} a confirmar (REVISAR)[/red]")
+                if summary["unfound"]:
+                    summary_parts.append(f"[bold red]❌ {summary['unfound']} no disponibles[/bold red]")
+                console.print("\n[bold]Resumen:[/bold] " + " · ".join(summary_parts))
+
+            # 1) Componentes sin candidato (no disponibles)
+            if summary["unfound"] > 0:
+                console.print(f"\n[bold red]❌ Componentes no encontrados / no disponibles ({summary['unfound']}):[/bold red]")
                 for idx, m in enumerate(match_results, 1):
                     if not m.selected_candidate:
                         console.print(f"  • Línea #{idx}: [red]{m.bom_item.quantity}x {m.bom_item.product_query}[/red]")
+                console.print("[dim]Usa la opción [A] para pedir reemplazos a la IA o el # de línea para cambiar candidato.[/dim]")
 
-            # Highlight REVISAR lines requiring confirmation
+            # 2) Coincidencias MEDIA (candidato existe pero conviene verificarlo)
+            media_lines = [
+                (idx, m) for idx, m in enumerate(match_results, 1)
+                if m.selected_candidate and m.status == "MEDIA"
+            ]
+            if media_lines:
+                console.print(f"\n[bold yellow]⚠️ Coincidencias MEDIA — verifica que el componente sea el correcto ({len(media_lines)}):[/bold yellow]")
+                for idx, m in media_lines:
+                    c = m.selected_candidate
+                    console.print(f"  • Línea #{idx} '{m.bom_item.product_query}' ➔ Asignado: '{c.title}' ({c.store_name} - Q{c.unit_price:.2f}) [Score: {int(m.confidence_score*100)}%]")
+                console.print("[dim]Presiona el # de línea para ver todos los candidatos y elegir otro.[/dim]")
+
+            # 3) REVISAR que requieren confirmación
             pending_reviews = [
                 (idx, m) for idx, m in enumerate(match_results, 1)
                 if m.requires_review_confirmation

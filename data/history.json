@@ -270,6 +270,8 @@
     ],
     "items_subtotal": 735.5,
     "subtotal": 735.5,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
     "service_fee_percent": 10.0,
     "service_fee_amount": 73.55,
     "total_shipping": 0.0,
@@ -586,6 +588,8 @@
     ],
     "items_subtotal": 947.5,
     "subtotal": 947.5,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
     "service_fee_percent": 10.0,
     "service_fee_amount": 94.75,
     "total_shipping": 0.0,
@@ -596,5 +600,660 @@
     "sale_notes": "",
     "created_at": "2026-08-29T10:53:55.323355",
     "updated_at": "2026-08-29T10:53:55.323355"
+  },
+  {
+    "quote_id": "COT-2026-0003",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-08-29T12:42:12.236665",
+    "date": "29/08/2026",
+    "valid_until": "03/09/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "A000009G caja acrilico transparente compatible con arduino uno R3",
+          "url": "https://electronicarych.com/shop/a000009g-a000009g-caja-acrilico-transparente-compatible-con-arduino-uno-r3-11502?search=arduino+uno+r3",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11502/image_512/%5BA000009G%5D%20A000009G%20caja%20acrilico%20transparente%20compatible%20con%20arduino%20uno%20R3?unique=266f197",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Protoboard 830",
+          "url": "https://www.electronicadiy.com/products/protoboard-830",
+          "store_name": "Electrónica DIY",
+          "unit_price": 33.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/830_puntos.jpg?v=1768522051",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 33.0,
+        "subtotal": 99.0
+      },
+      {
+        "product": {
+          "name": "Resistencias por unidad Ohms 1/4W",
+          "url": "https://www.electronicadiy.com/products/resistencias-por-unidad-1-4w",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/resistencias.png?v=1777909852",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 50,
+        "unit_price": 0.5,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "R0805-1K Resistencia 1K ohm 1/8W SMD",
+          "url": "https://electronicarych.com/shop/r0805-1k-r0805-1k-resistencia-1k-ohm-1-8w-smd-8753?search=resistencia+1k",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/8753/image_512/%5BR0805-1K%5D%20R0805-1K%20Resistencia%201K%20ohm%201-8W%20SMD?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 0.75,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "LD-5RGC LED 5mm rojo verde 3 pin Cátodo",
+          "url": "https://electronicarych.com/shop/virtual-locations-corporacion-r-ch-s-a-inventory-adjustment-ld-5rgc-led-5mm-rojo-verde-3-pin-catodo-12357?search=led+rojo+5mm",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/12357/image_512/%5BVirtual%20Locations-CORPORACION%20R%26CH%2C%20S.A.:%20Inventory%20adjustment%5D%20LD-5RGC%20LED%205mm%20rojo%20verde%203%20pin%20C%C3%A1todo?unique=f4db2de",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 2.0,
+        "subtotal": 20.0
+      },
+      {
+        "product": {
+          "name": "LED Difuso por unidad 3mm",
+          "url": "https://www.electronicadiy.com/products/led-difuso-por-unidad-3mm",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_c553e29ce8174aaab210b30e8d57ec5d_mv2.jpg?v=1592916364",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 0.5,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Display 128X64 OLED con I2C",
+          "url": "https://www.electronicadiy.com/products/display-128x64-oled-con-i2c?_pos=2&_sid=962448540&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 55.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_4bb25aadcae5487e9edb048c7a4f904b_mv2_512x342.jpg?v=1592916315",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 55.0,
+        "subtotal": 110.0
+      },
+      {
+        "product": {
+          "name": "Sensor ultrasónico HC-SR04",
+          "url": "https://www.electronicadiy.com/products/sensor-ultrasonico-hc-sr04",
+          "store_name": "Electrónica DIY",
+          "unit_price": 24.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/ultrasonico04.jpg?v=1710882567",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 24.0,
+        "subtotal": 72.0
+      },
+      {
+        "product": {
+          "name": "MD-SPP-C Módulo bluetooth serial sustituye a HC-06 y HC-05",
+          "url": "https://electronicarych.com/shop/md-spp-c-md-spp-c-modulo-bluetooth-serial-sustituye-a-hc-06-y-hc-05-12084?search=hc-05",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 50.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/12084/image_512/%5BMD-SPP-C%5D%20MD-SPP-C%20M%C3%B3dulo%20bluetooth%20serial%20sustituye%20a%20HC-06%20y%20HC-05?unique=f4db2de",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 50.0,
+        "subtotal": 50.0
+      },
+      {
+        "product": {
+          "name": "Micro servo SG90 1.6kg torque",
+          "url": "https://www.electronicadiy.com/products/micro-servo-sg90-1-6kg-torque",
+          "store_name": "Electrónica DIY",
+          "unit_price": 27.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_3c0bc392fdcf4cdd9c3b0ee0b4bb826f_mv2.jpg?v=1777744696",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 27.0,
+        "subtotal": 108.0
+      },
+      {
+        "product": {
+          "name": "Fuente de alimentación 12V 2A  AC-DC",
+          "url": "https://www.electronicadiy.com/products/fuente-de-alimentacion-12v-2a-ac-dc",
+          "store_name": "Electrónica DIY",
+          "unit_price": 36.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/fuente_12v.jpg?v=1753805545",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 36.5,
+        "subtotal": 73.0
+      },
+      {
+        "product": {
+          "name": "CB20MF4 Cable Dupont 20cm Macho Hembra 4 unidades",
+          "url": "https://electronicarych.com/shop/cb20mf4-cb20mf4-cable-dupont-20cm-macho-hembra-4-unidades-7611?search=dupont+macho+hembra",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7611/image_512/%5BCB20MF4%5D%20CB20MF4%20Cable%20Dupont%2020cm%20Macho%20Hembra%204%20unidades?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 3.5,
+        "subtotal": 17.5
+      },
+      {
+        "product": {
+          "name": "CJP-1 caja organizadora  pequeña 10x7x3cm",
+          "url": "https://electronicarych.com/shop/cjp-1-cjp-1-caja-organizadora-pequena-10x7x3cm-11913?search=caja+organizadora",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 7.25,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11913/image_512/%5BCJP-1%5D%20CJP-1%20caja%20organizadora%20%20peque%C3%B1a%2010x7x3cm?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.25,
+        "subtotal": 7.25
+      },
+      {
+        "product": {
+          "name": "CT-74B60 cautin 60W Miyako",
+          "url": "https://electronicarych.com/shop/ct-74b60-ct-74b60-cautin-60w-miyako-7840?search=cautin+60w",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 50.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7840/image_512/%5BCT-74B60%5D%20CT-74B60%20cautin%2060W%20Miyako?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 50.0,
+        "subtotal": 50.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 189.75,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 492.0,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      }
+    ],
+    "items_subtotal": 681.75,
+    "subtotal": 681.75,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 68.17,
+    "total_shipping": 0.0,
+    "total": 749.92,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-08-29T12:42:12.236635",
+    "updated_at": "2026-08-29T12:42:12.236635"
+  },
+  {
+    "quote_id": "COT-2026-0004",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-08-29T12:44:46.712364",
+    "date": "29/08/2026",
+    "valid_until": "03/09/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "A000009G caja acrilico transparente compatible con arduino uno R3",
+          "url": "https://electronicarych.com/shop/a000009g-a000009g-caja-acrilico-transparente-compatible-con-arduino-uno-r3-11502?search=arduino+uno+r3",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11502/image_512/%5BA000009G%5D%20A000009G%20caja%20acrilico%20transparente%20compatible%20con%20arduino%20uno%20R3?unique=266f197",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 15.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "MD-ESP32C3 Modulo ESP32-C3 Mini 4 MB de memoria Flash integrada",
+          "url": "https://electronicarych.com/shop/md-esp32c3-md-esp32c3-modulo-esp32-c3-mini-4-mb-de-memoria-flash-integrada-15828?search=esp32+38+pines",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 65.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/15828/image_512/%5BMD-ESP32C3%5D%20MD-ESP32C3%20Modulo%20ESP32-C3%20Mini%204%20MB%20de%20memoria%20Flash%20integrada?unique=bdeabf4",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 65.0,
+        "subtotal": 130.0
+      },
+      {
+        "product": {
+          "name": "Board de desarrollo STM32F103C8T6 - tipo C",
+          "url": "https://laelectronica.com.gt/products/board-de-desarrollo-stm32f103c8t6-tipo-c",
+          "store_name": "La Electrónica",
+          "unit_price": 59.0,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/STM32F103C8T6-3.jpg?v=1770083433",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 59.0,
+        "subtotal": 59.0
+      },
+      {
+        "product": {
+          "name": "Protoboard 830",
+          "url": "https://www.electronicadiy.com/products/protoboard-830",
+          "store_name": "Electrónica DIY",
+          "unit_price": 33.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/830_puntos.jpg?v=1768522051",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 33.0,
+        "subtotal": 165.0
+      },
+      {
+        "product": {
+          "name": "CB-10MH Cable de Expansion Dupont Macho Hembra 10cm 4 Unidades",
+          "url": "https://electronicarych.com/shop/cb-10mh-cb-10mh-cable-de-expansion-dupont-macho-hembra-10cm-4-unidades-7619?search=Cable+dupont",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 2.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7619/image_512/%5BCB-10MH%5D%20CB-10MH%20Cable%20de%20Expansion%20Dupont%20Macho%20Hembra%2010cm%204%20Unidades?unique=83909c0",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 2.75,
+        "subtotal": 8.25
+      },
+      {
+        "product": {
+          "name": "CB20MF4 Cable Dupont 20cm Macho Hembra 4 unidades",
+          "url": "https://electronicarych.com/shop/cb20mf4-cb20mf4-cable-dupont-20cm-macho-hembra-4-unidades-7611?search=dupont+macho+hembra",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7611/image_512/%5BCB20MF4%5D%20CB20MF4%20Cable%20Dupont%2020cm%20Macho%20Hembra%204%20unidades?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 3.5,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Conector dupont de 3 pines",
+          "url": "https://laelectronica.com.gt/products/conector-dupont-de-3-pines",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Conector-DuPont-de-3-Pines_5b3e4f7f-3113-411a-97da-eefdb424f496.jpg?v=1770068304",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 1.0,
+        "subtotal": 1.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 190.25,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 60.0,
+        "free_threshold": 200.0,
+        "qualifies_free": false,
+        "shipping_cost": 15.0,
+        "status_label": "Q 15.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 165.0,
+        "free_threshold": 250.0,
+        "qualifies_free": false,
+        "shipping_cost": 20.0,
+        "status_label": "Q 20.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      }
+    ],
+    "items_subtotal": 415.25,
+    "subtotal": 415.25,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 41.53,
+    "total_shipping": 35.0,
+    "total": 491.78,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-08-29T12:44:46.712345",
+    "updated_at": "2026-08-29T12:44:46.712345"
+  },
+  {
+    "quote_id": "COT-2026-0005",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-08-29T12:45:41.239173",
+    "date": "29/08/2026",
+    "valid_until": "03/09/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "A000009G caja acrilico transparente compatible con arduino uno R3",
+          "url": "https://electronicarych.com/shop/a000009g-a000009g-caja-acrilico-transparente-compatible-con-arduino-uno-r3-11502?search=arduino+uno+r3",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11502/image_512/%5BA000009G%5D%20A000009G%20caja%20acrilico%20transparente%20compatible%20con%20arduino%20uno%20R3?unique=266f197",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 15.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "MD-ESP32C3 Modulo ESP32-C3 Mini 4 MB de memoria Flash integrada",
+          "url": "https://electronicarych.com/shop/md-esp32c3-md-esp32c3-modulo-esp32-c3-mini-4-mb-de-memoria-flash-integrada-15828?search=esp32+38+pines",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 65.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/15828/image_512/%5BMD-ESP32C3%5D%20MD-ESP32C3%20Modulo%20ESP32-C3%20Mini%204%20MB%20de%20memoria%20Flash%20integrada?unique=bdeabf4",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 65.0,
+        "subtotal": 130.0
+      },
+      {
+        "product": {
+          "name": "Board de desarrollo STM32F103C8T6 - tipo C",
+          "url": "https://laelectronica.com.gt/products/board-de-desarrollo-stm32f103c8t6-tipo-c",
+          "store_name": "La Electrónica",
+          "unit_price": 59.0,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/STM32F103C8T6-3.jpg?v=1770083433",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 59.0,
+        "subtotal": 59.0
+      },
+      {
+        "product": {
+          "name": "Protoboard 830",
+          "url": "https://www.electronicadiy.com/products/protoboard-830",
+          "store_name": "Electrónica DIY",
+          "unit_price": 33.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/830_puntos.jpg?v=1768522051",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 33.0,
+        "subtotal": 165.0
+      },
+      {
+        "product": {
+          "name": "CB-10MH Cable de Expansion Dupont Macho Hembra 10cm 4 Unidades",
+          "url": "https://electronicarych.com/shop/cb-10mh-cb-10mh-cable-de-expansion-dupont-macho-hembra-10cm-4-unidades-7619?search=dupont",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 2.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7619/image_512/%5BCB-10MH%5D%20CB-10MH%20Cable%20de%20Expansion%20Dupont%20Macho%20Hembra%2010cm%204%20Unidades?unique=83909c0",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 2.75,
+        "subtotal": 8.25
+      },
+      {
+        "product": {
+          "name": "CB20MF4 Cable Dupont 20cm Macho Hembra 4 unidades",
+          "url": "https://electronicarych.com/shop/cb20mf4-cb20mf4-cable-dupont-20cm-macho-hembra-4-unidades-7611?search=dupont+macho+hembra",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/7611/image_512/%5BCB20MF4%5D%20CB20MF4%20Cable%20Dupont%2020cm%20Macho%20Hembra%204%20unidades?unique=e2fcad8",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 3.5,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Conector dupont de 3 pines",
+          "url": "https://laelectronica.com.gt/products/conector-dupont-de-3-pines",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Conector-DuPont-de-3-Pines_5b3e4f7f-3113-411a-97da-eefdb424f496.jpg?v=1770068304",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 1.0,
+        "subtotal": 1.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 190.25,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 60.0,
+        "free_threshold": 200.0,
+        "qualifies_free": false,
+        "shipping_cost": 15.0,
+        "status_label": "Q 15.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 165.0,
+        "free_threshold": 250.0,
+        "qualifies_free": false,
+        "shipping_cost": 20.0,
+        "status_label": "Q 20.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      }
+    ],
+    "items_subtotal": 415.25,
+    "subtotal": 415.25,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 41.53,
+    "total_shipping": 35.0,
+    "total": 491.78,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-08-29T12:45:41.239153",
+    "updated_at": "2026-08-29T12:45:41.239153"
   }
 ]
