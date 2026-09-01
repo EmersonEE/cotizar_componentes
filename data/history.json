@@ -2581,5 +2581,1423 @@
     "sale_notes": "",
     "created_at": "2026-08-29T13:25:12.105637",
     "updated_at": "2026-08-29T13:25:12.105637"
+  },
+  {
+    "quote_id": "COT-2026-0008",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-01T07:47:25.330663",
+    "date": "01/09/2026",
+    "valid_until": "06/09/2026",
+    "customer": {
+      "name": "xiloj",
+      "phone": "58629902",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "SUMADOR DE 4 BITS 74LS283",
+          "url": "https://electronicasigma.com.gt/producto/sumador-de-4-bits-74ls283/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/8-pines.jpg",
+          "sku": "J41/CP102-500",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 14.0,
+        "subtotal": 28.0
+      },
+      {
+        "product": {
+          "name": "Multiplexor SN74HC157N - original Ti",
+          "url": "https://laelectronica.com.gt/products/multiplexador-sn74hc157n",
+          "store_name": "La Electrónica",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_8bdc7682-f355-4754-b3f1-9e42d8d0ff59.jpg?v=1770083497",
+          "sku": "SN74HC157N",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 16.0,
+        "subtotal": 32.0
+      },
+      {
+        "product": {
+          "name": "Compuerta AND 74HC08N",
+          "url": "https://laelectronica.com.gt/products/compuerta-and-74hc08n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_84411915-d3ce-485b-8d2d-7d76df67fe26.jpg?v=1770083119",
+          "sku": "XD74HC08",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Compuerta OR SN74HC32N - original Ti",
+          "url": "https://laelectronica.com.gt/products/compuerta-or-sn74hc32n?_pos=2&_sid=775086703&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_2287b3e9-6c1a-4611-9c40-11e2dd6bc4a7.jpg?v=1770083128",
+          "sku": "SN74HC32N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.0,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Decodificador BCD - 7 segmentos  SMD SN74LS47D - original Ti",
+          "url": "https://laelectronica.com.gt/products/decodificador-bcd-7-segmentos-smd-sn74ls47d-original-ti?_pos=5&_sid=f18904f0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-SMD-SOIC16-Pines.jpg?v=1770065372",
+          "sku": "SN74LS47DR",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Display de 7 segmentos de 1 dígito, cátodo común de 0.56\"",
+          "url": "https://laelectronica.com.gt/products/display-color-rojo-de-7-segmentos-catodo-comun",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/D7-5611BS-1_91f93dab-b202-4871-ae87-85b12991c1df.jpg?v=1770083219",
+          "sku": "DISP-7S1D-CC-R",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Switch Dip de 4 posiciones",
+          "url": "https://laelectronica.com.gt/products/switch-dip-de-4-posiciones",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/dipswitch4p.jpg?v=1770065648",
+          "sku": "SWDIP04P",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 4.0,
+        "subtotal": 8.0
+      },
+      {
+        "product": {
+          "name": "Compuerta NOT 74HC04N",
+          "url": "https://laelectronica.com.gt/products/compuerta-not-74hc04n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_b81030fe-affe-4f13-9afb-5180cd42e420.jpg?v=1770083126",
+          "sku": "74HC04N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 470 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-470-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_f2b7d006-c7d9-414b-b21f-e2d0d97184b8.jpg?v=1770068843",
+          "sku": "RE02A4700",
+          "is_manual": false
+        },
+        "quantity": 12,
+        "unit_price": 0.75,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 2.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Comparador de magnitud 74LS85",
+          "url": "https://laelectronica.com.gt/products/comparador-de-magnitud-74ls85",
+          "store_name": "La Electrónica",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_b4ed0e18-4d70-4cc6-85e3-30252e90bc34.jpg?v=1770083118",
+          "sku": "XD74LS85",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 14.0,
+        "subtotal": 14.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "PLACA DE COBRE Y FIBRA 10X15cm",
+          "url": "https://electronicasigma.com.gt/producto/placa-de-cobre-y-fibra-10x15cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 18.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/10/placa.jpg",
+          "sku": "GV17-B/CPM-0",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 18.0,
+        "subtotal": 18.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica Sigma",
+        "items_subtotal": 46.0,
+        "free_threshold": 250.0,
+        "qualifies_free": false,
+        "shipping_cost": 5.0,
+        "status_label": "Q 5.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 136.0,
+        "free_threshold": 200.0,
+        "qualifies_free": false,
+        "shipping_cost": 15.0,
+        "status_label": "Q 15.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 182.0,
+    "subtotal": 182.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 18.2,
+    "total_shipping": 20.0,
+    "total": 220.2,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-01T07:47:25.330631",
+    "updated_at": "2026-09-01T07:47:25.330631"
+  },
+  {
+    "quote_id": "COT-2026-0008_v2",
+    "version": 2,
+    "base_quote_id": "COT-2026-0008",
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-01T07:55:09.957380",
+    "date": "01/09/2026",
+    "valid_until": "06/09/2026",
+    "customer": {
+      "name": "xiloj",
+      "phone": "58629902",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "SUMADOR DE 4 BITS 74LS283",
+          "url": "https://electronicasigma.com.gt/producto/sumador-de-4-bits-74ls283/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/8-pines.jpg",
+          "sku": "J41/CP102-500",
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 14.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "Multiplexor SN74HC157N - original Ti",
+          "url": "https://laelectronica.com.gt/products/multiplexador-sn74hc157n",
+          "store_name": "La Electrónica",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_8bdc7682-f355-4754-b3f1-9e42d8d0ff59.jpg?v=1770083497",
+          "sku": "SN74HC157N",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 16.0,
+        "subtotal": 32.0
+      },
+      {
+        "product": {
+          "name": "Compuerta AND 74HC08N",
+          "url": "https://laelectronica.com.gt/products/compuerta-and-74hc08n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_84411915-d3ce-485b-8d2d-7d76df67fe26.jpg?v=1770083119",
+          "sku": "XD74HC08",
+          "is_manual": false
+        },
+        "quantity": 9,
+        "unit_price": 5.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Compuerta OR SN74HC32N - original Ti",
+          "url": "https://laelectronica.com.gt/products/compuerta-or-sn74hc32n?_pos=2&_sid=775086703&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_2287b3e9-6c1a-4611-9c40-11e2dd6bc4a7.jpg?v=1770083128",
+          "sku": "SN74HC32N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.0,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Decodificador BCD - 7 segmentos  SMD SN74LS47D - original Ti",
+          "url": "https://laelectronica.com.gt/products/decodificador-bcd-7-segmentos-smd-sn74ls47d-original-ti?_pos=5&_sid=f18904f0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-SMD-SOIC16-Pines.jpg?v=1770065372",
+          "sku": "SN74LS47DR",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Display de 7 segmentos de 1 dígito, cátodo común de 0.56\"",
+          "url": "https://laelectronica.com.gt/products/display-color-rojo-de-7-segmentos-catodo-comun",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/D7-5611BS-1_91f93dab-b202-4871-ae87-85b12991c1df.jpg?v=1770083219",
+          "sku": "DISP-7S1D-CC-R",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Switch Dip de 4 posiciones",
+          "url": "https://laelectronica.com.gt/products/switch-dip-de-4-posiciones",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/dipswitch4p.jpg?v=1770065648",
+          "sku": "SWDIP04P",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 4.0,
+        "subtotal": 16.0
+      },
+      {
+        "product": {
+          "name": "Compuerta NOT 74HC04N",
+          "url": "https://laelectronica.com.gt/products/compuerta-not-74hc04n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_b81030fe-affe-4f13-9afb-5180cd42e420.jpg?v=1770083126",
+          "sku": "74HC04N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 470 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-470-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_f2b7d006-c7d9-414b-b21f-e2d0d97184b8.jpg?v=1770068843",
+          "sku": "RE02A4700",
+          "is_manual": false
+        },
+        "quantity": 28,
+        "unit_price": 0.75,
+        "subtotal": 21.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Comparador de magnitud 74LS85",
+          "url": "https://laelectronica.com.gt/products/comparador-de-magnitud-74ls85",
+          "store_name": "La Electrónica",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_b4ed0e18-4d70-4cc6-85e3-30252e90bc34.jpg?v=1770083118",
+          "sku": "XD74LS85",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 14.0,
+        "subtotal": 14.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "PLACA DE COBRE Y FIBRA 10X15cm",
+          "url": "https://electronicasigma.com.gt/producto/placa-de-cobre-y-fibra-10x15cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 18.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/10/placa.jpg",
+          "sku": "GV17-B/CPM-0",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 18.0,
+        "subtotal": 36.0
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": "DL5RO",
+          "is_manual": false
+        },
+        "quantity": 8,
+        "unit_price": 1.0,
+        "subtotal": 8.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica Sigma",
+        "items_subtotal": 106.0,
+        "free_threshold": 250.0,
+        "qualifies_free": false,
+        "shipping_cost": 5.0,
+        "status_label": "Q 5.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 201.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 307.0,
+    "subtotal": 307.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 30.7,
+    "total_shipping": 5.0,
+    "total": 342.7,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-01T07:55:09.957346",
+    "updated_at": "2026-09-01T07:55:09.957346"
+  },
+  {
+    "quote_id": "COT-2026-0008_v3",
+    "version": 3,
+    "base_quote_id": "COT-2026-0008",
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-01T08:01:22.537934",
+    "date": "01/09/2026",
+    "valid_until": "06/09/2026",
+    "customer": {
+      "name": "xiloj",
+      "phone": "58629902",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "SUMADOR DE 4 BITS 74LS283",
+          "url": "https://electronicasigma.com.gt/producto/sumador-de-4-bits-74ls283/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/8-pines.jpg",
+          "sku": "J41/CP102-500",
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 14.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "Multiplexor SN74HC157N - original Ti",
+          "url": "https://laelectronica.com.gt/products/multiplexador-sn74hc157n",
+          "store_name": "La Electrónica",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_8bdc7682-f355-4754-b3f1-9e42d8d0ff59.jpg?v=1770083497",
+          "sku": "SN74HC157N",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 16.0,
+        "subtotal": 32.0
+      },
+      {
+        "product": {
+          "name": "Compuerta AND 74HC08N",
+          "url": "https://laelectronica.com.gt/products/compuerta-and-74hc08n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_84411915-d3ce-485b-8d2d-7d76df67fe26.jpg?v=1770083119",
+          "sku": "XD74HC08",
+          "is_manual": false
+        },
+        "quantity": 9,
+        "unit_price": 5.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Compuerta OR SN74HC32N - original Ti",
+          "url": "https://laelectronica.com.gt/products/compuerta-or-sn74hc32n?_pos=2&_sid=775086703&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_2287b3e9-6c1a-4611-9c40-11e2dd6bc4a7.jpg?v=1770083128",
+          "sku": "SN74HC32N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.0,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Decodificador BCD - 7 segmentos  SMD SN74LS47D - original Ti",
+          "url": "https://laelectronica.com.gt/products/decodificador-bcd-7-segmentos-smd-sn74ls47d-original-ti?_pos=5&_sid=f18904f0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-SMD-SOIC16-Pines.jpg?v=1770065372",
+          "sku": "SN74LS47DR",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Display de 7 segmentos de 1 dígito, cátodo común de 0.56\"",
+          "url": "https://laelectronica.com.gt/products/display-color-rojo-de-7-segmentos-catodo-comun",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/D7-5611BS-1_91f93dab-b202-4871-ae87-85b12991c1df.jpg?v=1770083219",
+          "sku": "DISP-7S1D-CC-R",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Switch Dip de 4 posiciones",
+          "url": "https://laelectronica.com.gt/products/switch-dip-de-4-posiciones",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/dipswitch4p.jpg?v=1770065648",
+          "sku": "SWDIP04P",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 4.0,
+        "subtotal": 16.0
+      },
+      {
+        "product": {
+          "name": "Compuerta NOT 74HC04N",
+          "url": "https://laelectronica.com.gt/products/compuerta-not-74hc04n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_b81030fe-affe-4f13-9afb-5180cd42e420.jpg?v=1770083126",
+          "sku": "74HC04N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 470 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-470-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_f2b7d006-c7d9-414b-b21f-e2d0d97184b8.jpg?v=1770068843",
+          "sku": "RE02A4700",
+          "is_manual": false
+        },
+        "quantity": 28,
+        "unit_price": 0.75,
+        "subtotal": 21.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Comparador de magnitud 74LS85",
+          "url": "https://laelectronica.com.gt/products/comparador-de-magnitud-74ls85",
+          "store_name": "La Electrónica",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_b4ed0e18-4d70-4cc6-85e3-30252e90bc34.jpg?v=1770083118",
+          "sku": "XD74LS85",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 14.0,
+        "subtotal": 14.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "PLACA DE COBRE Y FIBRA 10X15cm",
+          "url": "https://electronicasigma.com.gt/producto/placa-de-cobre-y-fibra-10x15cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 18.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/10/placa.jpg",
+          "sku": "GV17-B/CPM-0",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 18.0,
+        "subtotal": 36.0
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": "DL5RO",
+          "is_manual": false
+        },
+        "quantity": 8,
+        "unit_price": 1.0,
+        "subtotal": 8.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica Sigma",
+        "items_subtotal": 106.0,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 201.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 307.0,
+    "subtotal": 307.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 30.7,
+    "total_shipping": 0.0,
+    "total": 337.7,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-01T08:01:22.537900",
+    "updated_at": "2026-09-01T08:01:22.537900"
+  },
+  {
+    "quote_id": "COT-2026-0008_v4",
+    "version": 4,
+    "base_quote_id": "COT-2026-0008",
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-01T08:05:12.169875",
+    "date": "01/09/2026",
+    "valid_until": "06/09/2026",
+    "customer": {
+      "name": "xiloj",
+      "phone": "58629902",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "Multiplexor SN74HC157N - original Ti",
+          "url": "https://laelectronica.com.gt/products/multiplexador-sn74hc157n",
+          "store_name": "La Electrónica",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_8bdc7682-f355-4754-b3f1-9e42d8d0ff59.jpg?v=1770083497",
+          "sku": "SN74HC157N",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 16.0,
+        "subtotal": 32.0
+      },
+      {
+        "product": {
+          "name": "Compuerta AND 74HC08N",
+          "url": "https://laelectronica.com.gt/products/compuerta-and-74hc08n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_84411915-d3ce-485b-8d2d-7d76df67fe26.jpg?v=1770083119",
+          "sku": "XD74HC08",
+          "is_manual": false
+        },
+        "quantity": 9,
+        "unit_price": 5.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Compuerta OR SN74HC32N - original Ti",
+          "url": "https://laelectronica.com.gt/products/compuerta-or-sn74hc32n?_pos=2&_sid=775086703&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_2287b3e9-6c1a-4611-9c40-11e2dd6bc4a7.jpg?v=1770083128",
+          "sku": "SN74HC32N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.0,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Decodificador BCD - 7 segmentos  SMD SN74LS47D - original Ti",
+          "url": "https://laelectronica.com.gt/products/decodificador-bcd-7-segmentos-smd-sn74ls47d-original-ti?_pos=5&_sid=f18904f0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-SMD-SOIC16-Pines.jpg?v=1770065372",
+          "sku": "SN74LS47DR",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Display de 7 segmentos de 1 dígito, cátodo común de 0.56\"",
+          "url": "https://laelectronica.com.gt/products/display-color-rojo-de-7-segmentos-catodo-comun",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/D7-5611BS-1_91f93dab-b202-4871-ae87-85b12991c1df.jpg?v=1770083219",
+          "sku": "DISP-7S1D-CC-R",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Switch Dip de 4 posiciones",
+          "url": "https://laelectronica.com.gt/products/switch-dip-de-4-posiciones",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/dipswitch4p.jpg?v=1770065648",
+          "sku": "SWDIP04P",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 4.0,
+        "subtotal": 16.0
+      },
+      {
+        "product": {
+          "name": "Compuerta NOT 74HC04N",
+          "url": "https://laelectronica.com.gt/products/compuerta-not-74hc04n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_b81030fe-affe-4f13-9afb-5180cd42e420.jpg?v=1770083126",
+          "sku": "74HC04N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 470 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-470-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_f2b7d006-c7d9-414b-b21f-e2d0d97184b8.jpg?v=1770068843",
+          "sku": "RE02A4700",
+          "is_manual": false
+        },
+        "quantity": 28,
+        "unit_price": 0.75,
+        "subtotal": 21.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Comparador de magnitud 74LS85",
+          "url": "https://laelectronica.com.gt/products/comparador-de-magnitud-74ls85",
+          "store_name": "La Electrónica",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_b4ed0e18-4d70-4cc6-85e3-30252e90bc34.jpg?v=1770083118",
+          "sku": "XD74LS85",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 14.0,
+        "subtotal": 14.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": "DL5RO",
+          "is_manual": false
+        },
+        "quantity": 8,
+        "unit_price": 1.0,
+        "subtotal": 8.0
+      },
+      {
+        "product": {
+          "name": "Sumador Binario SN74HC283N - genérico",
+          "url": "https://laelectronica.com.gt/products/sumador-binario-sn74hc283n-generico?_pos=3&_sid=29f2042a6&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 9.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_2c83b070-c8cb-4c58-ae5f-7588d96753ca.jpg?v=1770083653",
+          "sku": "SN74HC283N-LX",
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 9.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Placa de cobre 10x15 cm",
+          "url": "https://laelectronica.com.gt/products/placa-de-cobre-10x15-cm?_pos=76&_sid=daa269306&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Placa-de-Cobre-y-Fibra-de-Vidrio-AxB-Producto_ae246892-35ce-4788-aca8-3f3c5f499582.jpg?v=1770068693",
+          "sku": "PCB10X15",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 276.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 276.0,
+    "subtotal": 276.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 27.6,
+    "total_shipping": 0.0,
+    "total": 303.6,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-01T08:05:12.169846",
+    "updated_at": "2026-09-01T08:05:12.169846"
+  },
+  {
+    "quote_id": "COT-2026-0008_v5",
+    "version": 5,
+    "base_quote_id": "COT-2026-0008",
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-01T09:29:05.976104",
+    "date": "01/09/2026",
+    "valid_until": "06/09/2026",
+    "customer": {
+      "name": "xiloj",
+      "phone": "58629902",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "Multiplexor SN74HC157N - original Ti",
+          "url": "https://laelectronica.com.gt/products/multiplexador-sn74hc157n",
+          "store_name": "La Electrónica",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_8bdc7682-f355-4754-b3f1-9e42d8d0ff59.jpg?v=1770083497",
+          "sku": "SN74HC157N",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 16.0,
+        "subtotal": 32.0
+      },
+      {
+        "product": {
+          "name": "Compuerta AND 74HC08N",
+          "url": "https://laelectronica.com.gt/products/compuerta-and-74hc08n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_84411915-d3ce-485b-8d2d-7d76df67fe26.jpg?v=1770083119",
+          "sku": "XD74HC08",
+          "is_manual": false
+        },
+        "quantity": 9,
+        "unit_price": 5.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Compuerta OR SN74HC32N - original Ti",
+          "url": "https://laelectronica.com.gt/products/compuerta-or-sn74hc32n?_pos=2&_sid=775086703&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_2287b3e9-6c1a-4611-9c40-11e2dd6bc4a7.jpg?v=1770083128",
+          "sku": "SN74HC32N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 7.0,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Decodificador BCD - 7 segmentos  SMD SN74LS47D - original Ti",
+          "url": "https://laelectronica.com.gt/products/decodificador-bcd-7-segmentos-smd-sn74ls47d-original-ti?_pos=5&_sid=f18904f0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-SMD-SOIC16-Pines.jpg?v=1770065372",
+          "sku": "SN74LS47DR",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Display de 7 segmentos de 1 dígito, cátodo común de 0.56\"",
+          "url": "https://laelectronica.com.gt/products/display-color-rojo-de-7-segmentos-catodo-comun",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/D7-5611BS-1_91f93dab-b202-4871-ae87-85b12991c1df.jpg?v=1770083219",
+          "sku": "DISP-7S1D-CC-R",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 5.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "Compuerta NOT 74HC04N",
+          "url": "https://laelectronica.com.gt/products/compuerta-not-74hc04n",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC--Encapsulado-14-Pines--Categoria-Y-Producto_b81030fe-affe-4f13-9afb-5180cd42e420.jpg?v=1770083126",
+          "sku": "74HC04N",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 470 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-470-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_f2b7d006-c7d9-414b-b21f-e2d0d97184b8.jpg?v=1770068843",
+          "sku": "RE02A4700",
+          "is_manual": false
+        },
+        "quantity": 12,
+        "unit_price": 0.75,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Comparador de magnitud 74LS85",
+          "url": "https://laelectronica.com.gt/products/comparador-de-magnitud-74ls85",
+          "store_name": "La Electrónica",
+          "unit_price": 14.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_b4ed0e18-4d70-4cc6-85e3-30252e90bc34.jpg?v=1770083118",
+          "sku": "XD74LS85",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 14.0,
+        "subtotal": 14.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": "DL5RO",
+          "is_manual": false
+        },
+        "quantity": 8,
+        "unit_price": 1.0,
+        "subtotal": 8.0
+      },
+      {
+        "product": {
+          "name": "Sumador Binario SN74HC283N - genérico",
+          "url": "https://laelectronica.com.gt/products/sumador-binario-sn74hc283n-generico?_pos=3&_sid=29f2042a6&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 9.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IC-Encapsulado-16-Pines--Categoria-Y-Producto_2c83b070-c8cb-4c58-ae5f-7588d96753ca.jpg?v=1770083653",
+          "sku": "SN74HC283N-LX",
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 9.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "Placa de cobre 10x15 cm",
+          "url": "https://laelectronica.com.gt/products/placa-de-cobre-10x15-cm?_pos=76&_sid=daa269306&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Placa-de-Cobre-y-Fibra-de-Vidrio-AxB-Producto_ae246892-35ce-4788-aca8-3f3c5f499582.jpg?v=1770068693",
+          "sku": "PCB10X15",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 15.0,
+        "subtotal": 30.0
+      },
+      {
+        "product": {
+          "name": "Tira de pinhead macho de 2x40 pines",
+          "url": "https://laelectronica.com.gt/products/tira-de-pinhead-macho-de-2x40-pines",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Regleta-Conector-Doble-Macho-2.54mm-40x2-Pines--Producto.jpg?v=1770083716",
+          "sku": "PIN2R40PM",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 4.0,
+        "subtotal": 4.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 252.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 252.0,
+    "subtotal": 252.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 25.2,
+    "total_shipping": 0.0,
+    "total": 277.2,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-01T09:29:05.976074",
+    "updated_at": "2026-09-01T09:29:05.976074"
   }
 ]
