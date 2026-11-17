@@ -12,6 +12,9 @@ from src.core.ai_service import (
     extract_bom_with_ai,
     suggest_alternatives_with_ai,
     verify_matches_with_ai,
+    build_bom_prompt,
+    build_verification_prompt,
+    build_alternatives_prompt,
 )
 from src.core.bom_parser import parse_bom_text_hybrid
 from src.config import AppConfig
@@ -146,6 +149,103 @@ class TestAIFeaturesMocked(unittest.TestCase):
             self.assertEqual(parse_res.items[0].quantity, 2)
             self.assertEqual(parse_res.items[0].product_query, "ESP32 NodeMCU")
             self.assertEqual(parse_res.items[1].quantity, 10)
+
+    def test_build_prompts_envelope(self):
+        """Validates that prompt builders produce JSON envelopes with sanitization."""
+        p_bom = build_bom_prompt("Mensaje con 'comillas' y 2x ESP32")
+        self.assertIn("ENTRADA_JSON:", p_bom)
+        self.assertIn('"mensaje": "Mensaje con \'comillas\' y 2x ESP32"', p_bom)
+
+        p_ver = build_verification_prompt([{"id": 0, "componente": "ESP32"}])
+        self.assertIn("ENTRADA_JSON:", p_ver)
+        self.assertIn('"id": 0', p_ver)
+
+        p_alt = build_alternatives_prompt("ESP8266", reason="Agotado")
+        self.assertIn("ENTRADA_JSON:", p_alt)
+        self.assertIn('"componente": "ESP8266"', p_alt)
+
+    def test_verify_matches_boolean_string_false(self):
+        """Validates that string 'false' from LLM is NOT coerced to True via bool('false')."""
+        mock_json = {
+            "response": json.dumps({
+                "verificaciones": [
+                    {
+                        "id": 0,
+                        "componente": "ESP32",
+                        "categoria_coincide": "false",  # string en lugar de booleano
+                        "match": "false",               # string en lugar de booleano
+                        "precio_ok": None,
+                        "razon": "CATEGORIA_DISTINTA"
+                    }
+                ]
+            })
+        }
+        with patch("httpx.Client.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_json
+            mock_post.return_value = mock_resp
+
+            res = verify_matches_with_ai([{"componente": "ESP32", "candidato": "Caja"}])
+            self.assertIsNotNone(res)
+            self.assertFalse(res[0]["categoria_coincide"])
+            self.assertFalse(res[0]["match"])
+            self.assertIsNone(res[0]["precio_ok"])
+
+    def test_verify_matches_id_alignment(self):
+        """Validates that items reordered by the LLM are realigned strictly by ID."""
+        mock_json = {
+            "response": json.dumps({
+                "verificaciones": [
+                    {"id": 1, "componente": "Sensor DHT22", "match": True, "categoria_coincide": True, "precio_ok": True, "razon": ""},
+                    {"id": 0, "componente": "ESP32", "match": False, "categoria_coincide": False, "precio_ok": None, "razon": "CATEGORIA_DISTINTA"},
+                ]
+            })
+        }
+        with patch("httpx.Client.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_json
+            mock_post.return_value = mock_resp
+
+            input_items = [
+                {"componente": "ESP32", "candidato": "Fuente"},
+                {"componente": "Sensor DHT22", "candidato": "Sensor DHT22"}
+            ]
+            res = verify_matches_with_ai(input_items)
+            self.assertIsNotNone(res)
+            # Item 0 debe ser ESP32 (match=False) a pesar de que el LLM lo devolvió de segundo
+            self.assertEqual(res[0]["componente"], "ESP32")
+            self.assertFalse(res[0]["match"])
+            # Item 1 debe ser DHT22 (match=True)
+            self.assertEqual(res[1]["componente"], "Sensor DHT22")
+            self.assertTrue(res[1]["match"])
+
+    def test_extract_bom_empty_items_returns_empty_list(self):
+        """Validates that a legitimate message with 0 components returns [] and not None."""
+        mock_json = {"response": json.dumps({"items": []})}
+        with patch("httpx.Client.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_json
+            mock_post.return_value = mock_resp
+
+            res = extract_bom_with_ai("Gracias, ya compré todo.")
+            self.assertEqual(res, [])
+
+    def test_hybrid_parser_with_empty_ai_items(self):
+        """Validates that empty list from AI does not trigger regex fallback."""
+        cfg = AppConfig(enable_ai=True, ollama_url="http://localhost:11434", ollama_model="qwen2.5:7b")
+        mock_json = {"response": json.dumps({"items": []})}
+        with patch("httpx.Client.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = mock_json
+            mock_post.return_value = mock_resp
+
+            res = parse_bom_text_hybrid("Gracias, ya compré todo.", config=cfg, force_ai=True)
+            self.assertEqual(res.source, "ai_ollama")
+            self.assertEqual(len(res.items), 0)
 
 if __name__ == "__main__":
     unittest.main()

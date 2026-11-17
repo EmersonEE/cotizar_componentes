@@ -3999,5 +3999,1594 @@
     "sale_notes": "",
     "created_at": "2026-09-01T09:29:05.976074",
     "updated_at": "2026-09-01T09:29:05.976074"
+  },
+  {
+    "quote_id": "COT-2026-0009",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-09-04T12:53:46.126045",
+    "date": "04/09/2026",
+    "valid_until": "09/09/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "A000009G caja acrilico transparente compatible con arduino uno R3",
+          "url": "https://electronicarych.com/shop/a000009g-a000009g-caja-acrilico-transparente-compatible-con-arduino-uno-r3-11502?search=arduino+uno+r3",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/11502/image_512/%5BA000009G%5D%20A000009G%20caja%20acrilico%20transparente%20compatible%20con%20arduino%20uno%20R3?unique=266f197",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 15.0,
+        "subtotal": 45.0
+      },
+      {
+        "product": {
+          "name": "MD-ESP32C3 Modulo ESP32-C3 Mini 4 MB de memoria Flash integrada",
+          "url": "https://electronicarych.com/shop/md-esp32c3-md-esp32c3-modulo-esp32-c3-mini-4-mb-de-memoria-flash-integrada-15828?search=esp32+38+pines",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 65.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/15828/image_512/%5BMD-ESP32C3%5D%20MD-ESP32C3%20Modulo%20ESP32-C3%20Mini%204%20MB%20de%20memoria%20Flash%20integrada?unique=bdeabf4",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 65.0,
+        "subtotal": 65.0
+      },
+      {
+        "product": {
+          "name": "Board de desarrollo STM32F103C8T6 - tipo C",
+          "url": "https://laelectronica.com.gt/products/board-de-desarrollo-stm32f103c8t6-tipo-c",
+          "store_name": "La Electrónica",
+          "unit_price": 59.0,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/STM32F103C8T6-3.jpg?v=1770083433",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 59.0,
+        "subtotal": 59.0
+      },
+      {
+        "product": {
+          "name": "Módulo Alimentación para Protoboard 3.3v-5v",
+          "url": "https://www.electronicadiy.com/products/modulo-alimentacion-para-protoboard-3-3v-5v?_pos=1&_sid=c6a6a71d7&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 27.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_a4a0b390ed974f2cbaf2a288b16da168_mv2_d_2233_1489_s_2_512x342.jpg?v=1592916386",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 27.0,
+        "subtotal": 135.0
+      },
+      {
+        "product": {
+          "name": "CABLES DUPONT MACHO-HEMBRA 20cm",
+          "url": "https://electronicasigma.com.gt/producto/cables-dupont-macho-hembra-20cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2024/01/MH20-680x680.webp",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 0.75,
+        "subtotal": 2.25
+      },
+      {
+        "product": {
+          "name": "CABLES DUPONT MACHO-HEMBRA 10cm",
+          "url": "https://electronicasigma.com.gt/producto/cables-dupont-macho-hembra-10cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2024/01/MH10-680x680.webp",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.5,
+        "subtotal": 1.0
+      },
+      {
+        "product": {
+          "name": "CABLES DUPONT HEMBRA-HEMBRA 10CM",
+          "url": "https://electronicasigma.com.gt/producto/cables-dupont-hembra-hembra-10cm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2024/01/HH10-680x680.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 0.5,
+        "subtotal": 0.5
+      },
+      {
+        "product": {
+          "name": "RESISTENCIA 220 Ohm 1/4W",
+          "url": "https://electronicasigma.com.gt/producto/resistencia-220-ohm-1-4w/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/0.25-1-680x680.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 50,
+        "unit_price": 0.5,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "RESISTENCIA 1K Ohm 1/4W",
+          "url": "https://electronicasigma.com.gt/producto/resistencia-1k-ohm-1-4w/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/0.25-1-680x680.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 50,
+        "unit_price": 0.5,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "POTENCIÓMETRO 10K Ohm",
+          "url": "https://electronicasigma.com.gt/producto/potenciometro-10k-ohm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/Pot-1.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 4.0,
+        "subtotal": 40.0
+      },
+      {
+        "product": {
+          "name": "LED ROJO DIFUSO 5mm",
+          "url": "https://electronicasigma.com.gt/producto/led-rojo-difuso-5mm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/rojo-difuso-5mm.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "LED VERDE DIFUSO 5mm",
+          "url": "https://electronicasigma.com.gt/producto/led-verde-difuso-5mm/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/Verde-difuso-5mm.png",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "LED Difuso por unidad 3mm",
+          "url": "https://www.electronicadiy.com/products/led-difuso-por-unidad-3mm",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_c553e29ce8174aaab210b30e8d57ec5d_mv2.jpg?v=1592916364",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 0.5,
+        "subtotal": 0.5
+      },
+      {
+        "product": {
+          "name": "LED RGB SMD 5050 WS2812B",
+          "url": "https://laelectronica.com.gt/products/led-rgb-smd-5050",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Led-rgb-smd-5050.jpg?v=1770083373",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 3.0,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "Display 128X64 OLED con I2C",
+          "url": "https://www.electronicadiy.com/products/display-128x64-oled-con-i2c?_pos=2&_sid=7aabf579f&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 55.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_4bb25aadcae5487e9edb048c7a4f904b_mv2_512x342.jpg?v=1592916315",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 55.0,
+        "subtotal": 220.0
+      },
+      {
+        "product": {
+          "name": "Sensor ultrasónico HC-SR04",
+          "url": "https://www.electronicadiy.com/products/sensor-ultrasonico-hc-sr04",
+          "store_name": "Electrónica DIY",
+          "unit_price": 24.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/ultrasonico04.jpg?v=1710882567",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 24.0,
+        "subtotal": 72.0
+      },
+      {
+        "product": {
+          "name": "Sensor de Humedad y Temperatura DHT11",
+          "url": "https://laelectronica.com.gt/products/sensor-de-humedad-y-temperatura-dht11",
+          "store_name": "La Electrónica",
+          "unit_price": 39.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/modulodht11_dd75287c-79c6-443f-9a1f-f13da2f27648.jpg?v=1770068481",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 39.0,
+        "subtotal": 117.0
+      },
+      {
+        "product": {
+          "name": "MD-SPP-C Módulo bluetooth serial sustituye a HC-06 y HC-05",
+          "url": "https://electronicarych.com/shop/md-spp-c-md-spp-c-modulo-bluetooth-serial-sustituye-a-hc-06-y-hc-05-12084?search=hc-05",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 50.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/12084/image_512/%5BMD-SPP-C%5D%20MD-SPP-C%20M%C3%B3dulo%20bluetooth%20serial%20sustituye%20a%20HC-06%20y%20HC-05?unique=f4db2de",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 50.0,
+        "subtotal": 100.0
+      },
+      {
+        "product": {
+          "name": "Módulo Inalámbrico Wifi ESP8266 Esp-01",
+          "url": "https://www.electronicadiy.com/products/modulo-inalambrico-wifi-esp8266-esp-01",
+          "store_name": "Electrónica DIY",
+          "unit_price": 35.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_8d4a0c0a15a8485681bedc0247f99ef6_mv2.jpg?v=1592918892",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 35.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "Micro servo SG90 1.6kg torque",
+          "url": "https://www.electronicadiy.com/products/micro-servo-sg90-1-6kg-torque",
+          "store_name": "Electrónica DIY",
+          "unit_price": 27.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_3c0bc392fdcf4cdd9c3b0ee0b4bb826f_mv2.jpg?v=1777744696",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 27.0,
+        "subtotal": 135.0
+      },
+      {
+        "product": {
+          "name": "Puente H L298N",
+          "url": "https://laelectronica.com.gt/products/puente-h-l298n",
+          "store_name": "La Electrónica",
+          "unit_price": 29.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/multiwatt15v_e6024a38-a687-4246-b09f-800901a29473.jpg?v=1770065620",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 29.0,
+        "subtotal": 87.0
+      },
+      {
+        "product": {
+          "name": "CAJA ORGANIZADORA CON 15 DIVISIONES AJUSTABLES",
+          "url": "https://electronicasigma.com.gt/producto/caja-organizadora-con-15-divisiones-ajustables/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 31.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2026/02/15021.webp",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 31.0,
+        "subtotal": 124.0
+      },
+      {
+        "product": {
+          "name": "Motor de pasos Nema 17 de 40mm",
+          "url": "https://laelectronica.com.gt/products/motor-de-pasos-nema-17-de-500-rpm",
+          "store_name": "La Electrónica",
+          "unit_price": 175.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Motor-Stepper-Nema-17-De-500-RPM.jpg?v=1770083478",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 175.0,
+        "subtotal": 350.0
+      },
+      {
+        "product": {
+          "name": "Driver A4988 (CNC o Impresora 3D)",
+          "url": "https://www.electronicadiy.com/products/driver-a4988-cnc-o-impresora-3d?_pos=1&_sid=9c853409b&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 30.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_8b2c7583af8e426cb3fce2b90cc1beae_mv2_512x512.jpg?v=1592916318",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 30.0,
+        "subtotal": 60.0
+      },
+      {
+        "product": {
+          "name": "Transistor 2N3906 PNP SMD",
+          "url": "https://www.electronicadiy.com/products/transistor-2n3906-npn-smd",
+          "store_name": "Electrónica DIY",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": false,
+          "stock_status": "Agotado",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/transistor2A.jpg?v=1610055594",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 0.75,
+        "subtotal": 7.5
+      },
+      {
+        "product": {
+          "name": "Transistor  IRFZ44 55V 49A",
+          "url": "https://www.electronicadiy.com/products/transistor-irfz44-55v-49a?_pos=1&_sid=d2854c0dd&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 7.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/tip122_9e54a05d-9429-4e21-894c-5166e32f86df_512x512.jpg?v=1610133185",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 7.0,
+        "subtotal": 70.0
+      },
+      {
+        "product": {
+          "name": "DIODO RECTIFICADOR DE SILICIO 1N4007",
+          "url": "https://electronicasigma.com.gt/producto/diodo-rectificador-de-silicio-1n4007/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/Diodo-general.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 20,
+        "unit_price": 0.75,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Relé  5V DC DPDT de 8 Pines",
+          "url": "https://www.electronicadiy.com/products/rele-5v-dc-dpdt-de-8-pines",
+          "store_name": "Electrónica DIY",
+          "unit_price": 16.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/relay_2_1.png?v=1785430886",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 16.0,
+        "subtotal": 80.0
+      },
+      {
+        "product": {
+          "name": "Buzzer pasivo o activo",
+          "url": "https://www.electronicadiy.com/products/buzzer-sin-modulo",
+          "store_name": "Electrónica DIY",
+          "unit_price": 3.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/products/10bb4f_8129443672fd4f58921aa59af9e23ece_mv2.jpg?v=1592916258",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 3.5,
+        "subtotal": 17.5
+      },
+      {
+        "product": {
+          "name": "Fuente de alimentación 12V 2A  AC-DC",
+          "url": "https://www.electronicadiy.com/products/fuente-de-alimentacion-12v-2a-ac-dc",
+          "store_name": "Electrónica DIY",
+          "unit_price": 36.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0351/4426/9963/files/fuente_12v.jpg?v=1753805545",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 36.5,
+        "subtotal": 73.0
+      },
+      {
+        "product": {
+          "name": "Conector hembra para Arduino (jack hembra 5.5mm)",
+          "url": "https://www.electronicadiy.com/products/conector-hembra-para-arduino-jack-hembra-2-1mm?_pos=4&_sid=b9feb0a36&_ss=r",
+          "store_name": "Electrónica DIY",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://www.electronicadiy.com/cdn/shop/products/10bb4f_77d89540ef9245ff8a44389a37f0e975_mv2_512x545.jpg?v=1592916292",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 5.0,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "Pulsador de PCB NA de 4 pines de 6 x 6 x 12 mm",
+          "url": "https://laelectronica.com.gt/products/pulsador-de-pcb-na-de-4-pines-de-6-x-6-x-12-mm",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/SZ0005-6x6x12-1.jpg?v=1770083558",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 1.0,
+        "subtotal": 10.0
+      },
+      {
+        "product": {
+          "name": "INTERRUPTOR SPDT DE PALANCA 3 PINES 6A 125VAC",
+          "url": "https://electronicasigma.com.gt/producto/interruptor-spdt-de-palanca-3-pines-6a-125vac/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 4.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2021/01/N14.jpg",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 5,
+        "unit_price": 4.5,
+        "subtotal": 22.5
+      },
+      {
+        "product": {
+          "name": "74B32 cautin tipo pistola 120V 60W Miyako",
+          "url": "https://electronicarych.com/shop/74b32-74b32-cautin-tipo-pistola-120v-60w-miyako-13484?search=cautin+60w",
+          "store_name": "Electrónica RyCH",
+          "unit_price": 45.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicarych.com/web/image/product.template/13484/image_512/%5B74B32%5D%2074B32%20cautin%20tipo%20pistola%20120V%2060W%20Miyako?unique=28edb6d",
+          "sku": null,
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 45.0,
+        "subtotal": 45.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "Electrónica RyCH",
+        "items_subtotal": 255.0,
+        "free_threshold": null,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": true,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 629.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q200 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica DIY",
+        "items_subtotal": 965.5,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      },
+      {
+        "store_name": "Electrónica Sigma",
+        "items_subtotal": 259.25,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "Gratis (mínimo Q250 alcanzado)",
+        "is_pickup_only": false,
+        "shipping_was_custom": false
+      }
+    ],
+    "items_subtotal": 2108.75,
+    "subtotal": 2108.75,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 210.88,
+    "total_shipping": 0.0,
+    "total": 2319.63,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-09-04T12:53:46.126015",
+    "updated_at": "2026-09-04T12:53:46.126015"
+  },
+  {
+    "quote_id": "COT-2026-0010",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-10-04T09:30:43.960456",
+    "date": "04/10/2026",
+    "valid_until": "09/10/2026",
+    "customer": {
+      "name": "Ampli10W",
+      "phone": "",
+      "email": "",
+      "notes": "Amplificador 10W"
+    },
+    "items": [
+      {
+        "product": {
+          "name": "Amplificador de Audio TDA2003",
+          "url": "https://laelectronica.com.gt/products/amplificador-de-audio-tda2003",
+          "store_name": "La Electrónica",
+          "unit_price": 8.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/154834864376516523_bf59ad19-3dd9-43f6-bc5a-1157e500e817.jpg?v=1770065628",
+          "sku": "TDA2003L-TB5-T",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 8.0,
+        "subtotal": 16.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 47 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-47-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_0ee927a1-63c1-477f-bd04-f26952b41a6b.jpg?v=1770068856",
+          "sku": "RE02A0470",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 2.2 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-2_2-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_c55920f0-efed-4c0b-a301-8d599120789e.jpg?v=1770068928",
+          "sku": "RE02A0022",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 220 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-220-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_553ba969-4088-4914-b27d-0a7f33386a74.jpg?v=1770068836",
+          "sku": "RE02A2200",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 1K Ohm a 1/2 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-1k-ohm-a-12-w",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/r12w_b1a28086-ea56-4d31-97d3-301635ea1e66.jpg?v=1770068372",
+          "sku": "RE05K0010",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 1,000 uF a 16V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-10000-uf-a-16v",
+          "store_name": "La Electrónica",
+          "unit_price": 2.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/cap1_e20f75f0-a374-4bab-810e-ae5d5a5948b1.jpg?v=1770068048",
+          "sku": "CAELB001016",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 2.75,
+        "subtotal": 2.75
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 25.25,
+        "free_threshold": 200.0,
+        "qualifies_free": false,
+        "shipping_cost": 15.0,
+        "status_label": "Q 15.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 25.25,
+    "subtotal": 25.25,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 2.53,
+    "total_shipping": 15.0,
+    "total": 42.78,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-10-04T09:30:43.960430",
+    "updated_at": "2026-10-04T09:30:43.960430"
+  },
+  {
+    "quote_id": "COT-2026-0010_v2",
+    "version": 2,
+    "base_quote_id": "COT-2026-0010",
+    "status": "GUARDADA",
+    "status_updated_at": "2026-10-04T12:43:30.350379",
+    "date": "04/10/2026",
+    "valid_until": "09/10/2026",
+    "customer": {
+      "name": "Ampli10W",
+      "phone": "",
+      "email": "",
+      "notes": "Amplificador 10W"
+    },
+    "items": [
+      {
+        "product": {
+          "name": "Amplificador de Audio TDA2003",
+          "url": "https://laelectronica.com.gt/products/amplificador-de-audio-tda2003",
+          "store_name": "La Electrónica",
+          "unit_price": 8.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/154834864376516523_bf59ad19-3dd9-43f6-bc5a-1157e500e817.jpg?v=1770065628",
+          "sku": "TDA2003L-TB5-T",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 8.0,
+        "subtotal": 16.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 47 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-47-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_0ee927a1-63c1-477f-bd04-f26952b41a6b.jpg?v=1770068856",
+          "sku": "RE02A0470",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 2.2 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-2_2-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_c55920f0-efed-4c0b-a301-8d599120789e.jpg?v=1770068928",
+          "sku": "RE02A0022",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 220 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-220-ohm-a-0_25-w",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_553ba969-4088-4914-b27d-0a7f33386a74.jpg?v=1770068836",
+          "sku": "RE02A2200",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 0.75,
+        "subtotal": 1.5
+      },
+      {
+        "product": {
+          "name": "Resistencia 1K Ohm a 1/2 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-1k-ohm-a-12-w",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/r12w_b1a28086-ea56-4d31-97d3-301635ea1e66.jpg?v=1770068372",
+          "sku": "RE05K0010",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 1,000 uF a 16V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-10000-uf-a-16v",
+          "store_name": "La Electrónica",
+          "unit_price": 2.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/cap1_e20f75f0-a374-4bab-810e-ae5d5a5948b1.jpg?v=1770068048",
+          "sku": "CAELB001016",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.75,
+        "subtotal": 5.5
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 470 uF a 16V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-470-uf-a-16v",
+          "store_name": "La Electrónica",
+          "unit_price": 1.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/capacitores1_65a3bea9-b289-4f3e-907e-d7dd1ad1a617.jpg?v=1770068749",
+          "sku": "CAELA470016",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.5,
+        "subtotal": 3.0
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 100 uF a 16V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-100-uf-a-16v",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/capacitores1_be39b7f3-7a54-4b7d-b75a-20cb8a5a7d3c.jpg?v=1770068752",
+          "sku": "CAELA100016",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 1 uF a 63V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-1_0-uf-a-63v",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/capacitores1_37f510db-bf37-4d13-b6b1-f0c805d5ed11.jpg?v=1770068279",
+          "sku": "CAELA001063",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Conector recto XH-3A de cable a placa - 3 pines",
+          "url": "https://laelectronica.com.gt/products/conector-macho-a-placa-xh-3a-3-pines",
+          "store_name": "La Electrónica",
+          "unit_price": 0.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Conector--macho-XH-3A.jpg?v=1770083164",
+          "sku": "PIN-XH3AM",
+          "is_manual": false
+        },
+        "quantity": 6,
+        "unit_price": 0.5,
+        "subtotal": 3.0
+      },
+      {
+        "product": {
+          "name": "Potenciómetro Doble de 20K Ohms",
+          "url": "https://laelectronica.com.gt/products/potenciometro-doble-de-20k-ohms?_pos=2&_sid=720fc6cb5&_ss=r&_fid=3638151f3",
+          "store_name": "La Electrónica",
+          "unit_price": 6.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/potentiometer2b_6393d7f2-2e83-41c7-b7a9-3637e9f59f4c.jpg?v=1770068455",
+          "sku": "POT0202",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 6.0,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "Placa de cobre 10x15 cm",
+          "url": "https://laelectronica.com.gt/products/placa-de-cobre-10x15-cm?_pos=2&_sid=079cb3ed8&_ss=r&_fid=8ac95c719",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Placa-de-Cobre-y-Fibra-de-Vidrio-AxB-Producto_ae246892-35ce-4788-aca8-3f3c5f499582.jpg?v=1770068693",
+          "sku": "PCB10X15",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 15.0,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040?_pos=1&_sid=97556d96f&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "Diodo rectificador 1N4007",
+          "url": "https://laelectronica.com.gt/products/diodo-rectificador-1n4007",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodos-Rectificadores-y-Schottky-Categoria-y-Producto_bc14c20e-ea44-40ad-b93e-dc93e5858fbf.jpg?v=1770068811",
+          "sku": "1N4007",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 0.75,
+        "subtotal": 3.0
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 4,700 uF a 25V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-4700-uf-a-25v",
+          "store_name": "La Electrónica",
+          "unit_price": 11.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/cap1_2ff910c2-cb9a-47a0-87c8-b80cace4ebe7.jpg?v=1770068078",
+          "sku": "CAELB004725",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 11.0,
+        "subtotal": 11.0
+      },
+      {
+        "product": {
+          "name": "CAPACITOR DE POLIESTER 47nF 100V 473J",
+          "url": "https://electronicasigma.com.gt/producto/capacitor-de-poliester-47nf-100v-473j/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 1.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/Poliester-1.jpg",
+          "sku": "C21",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.75,
+        "subtotal": 3.5
+      },
+      {
+        "product": {
+          "name": "CAPACITOR DE POLIESTER 100nF 100V 104J",
+          "url": "https://electronicasigma.com.gt/producto/capacitor-de-poliester-100nf-100v-104j/",
+          "store_name": "Electrónica Sigma",
+          "unit_price": 1.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://electronicasigma.com.gt/wp-content/uploads/2020/09/Poliester-1.jpg",
+          "sku": "N35/CP46-71",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 1.75,
+        "subtotal": 7.0
+      },
+      {
+        "product": {
+          "name": "Cable para bocina, calibre 22 - metro",
+          "url": "https://laelectronica.com.gt/products/cable-para-bocina-calibre-22?_pos=3&_sid=31643d2ec&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/cablebocina1_bf0866c8-5f92-4390-b9ea-1f279e9492b5.jpg?v=1770068393",
+          "sku": "GA-22N",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 2.0,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "Conector N.A. RCA hembra, pareja",
+          "url": "https://laelectronica.com.gt/products/conector-na-rca-macho-pareja?_pos=15&_sid=92c55b9d7&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/P-125-2_0d8d0dff-9500-47c9-8f7e-0f9fc7598fa0.jpg?v=1770068404",
+          "sku": "P-125",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 3.0,
+        "subtotal": 3.0
+      },
+      {
+        "product": {
+          "name": "Cable de audio N.A. de 3.5 mm macho a 2 RCA macho de 1.8 m con conectores dorados",
+          "url": "https://laelectronica.com.gt/products/cable-de-audio-na-de-35-mm-macho-a-2-rca-macho-de-18-m-con-conectores-dorados?_pos=4&_sid=92c55b9d7&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/N-211P-6G-1_c83897a5-ed5e-42cb-9db4-57b93fa2cd4a.jpg?v=1770068360",
+          "sku": "N-211P-6G",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 15.0,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 2.0,
+        "subtotal": 4.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 110.0,
+        "free_threshold": 200.0,
+        "qualifies_free": false,
+        "shipping_cost": 15.0,
+        "status_label": "Q 15.00",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      },
+      {
+        "store_name": "Electrónica Sigma",
+        "items_subtotal": 10.5,
+        "free_threshold": 250.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 120.5,
+    "subtotal": 120.5,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 10.0,
+    "service_fee_amount": 12.05,
+    "total_shipping": 15.0,
+    "total": 147.55,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-10-04T12:43:30.350338",
+    "updated_at": "2026-10-04T12:43:30.350338"
+  },
+  {
+    "quote_id": "COT-2026-0011",
+    "version": 1,
+    "base_quote_id": null,
+    "status": "GUARDADA",
+    "status_updated_at": "2026-10-05T21:46:55.526366",
+    "date": "05/10/2026",
+    "valid_until": "10/10/2026",
+    "customer": {
+      "name": "Cliente General",
+      "phone": "",
+      "email": "",
+      "notes": ""
+    },
+    "items": [
+      {
+        "product": {
+          "name": "Sensor de movimiento PIR HC-SR501",
+          "url": "https://laelectronica.com.gt/products/sensor-de-movimiento-pir-hc-sr501",
+          "store_name": "La Electrónica",
+          "unit_price": 25.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Modulo-PIR-Sensor-De-Movimiento-Infrarrojo_6e9c97a1-249d-467f-9a03-19924f61a108.jpg?v=1770083620",
+          "sku": "HC-SR501",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 25.0,
+        "subtotal": 25.0
+      },
+      {
+        "product": {
+          "name": "Teclado matricial 4x4 de membrana",
+          "url": "https://laelectronica.com.gt/products/modulo-teclado-matricial-4x4-de-membrana?_pos=3&_psq=teclado&_psid=a839c99fb&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 19.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/TEC-4X4-1.jpg?v=1777732839",
+          "sku": "TEC-4X4",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 19.0,
+        "subtotal": 19.0
+      },
+      {
+        "product": {
+          "name": "Board UNO R3 SMD Tipo C - compatible con Arduino",
+          "url": "https://laelectronica.com.gt/products/board-uno-r3-smd-tipo-c-compatible-con-arduino?variant=47469558136884",
+          "store_name": "La Electrónica",
+          "unit_price": 99.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/UNOR3-SMD-TIPOC-1_ef0e1439-f7c3-4e67-a7fa-5fb7a7caa92b.jpg?v=1770065983",
+          "sku": "UNOR3-SMD-TIPOC",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 99.0,
+        "subtotal": 99.0
+      },
+      {
+        "product": {
+          "name": "Motor servo SG90 de 180 grados - 1.8 Kg-cm",
+          "url": "https://laelectronica.com.gt/products/motor-servo-sg90-de-180-grados-18-kg-cm?_pos=1&_psq=servi&_psid=98b2e9c3c&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 31.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/servo-sg90.jpg?v=1770083481",
+          "sku": "SG90",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 31.0,
+        "subtotal": 31.0
+      },
+      {
+        "product": {
+          "name": "Pantalla OLED azul de 0.96\" con I2C",
+          "url": "https://laelectronica.com.gt/products/pantalla-oled-azul-de-096-con-i2c?_pos=9&_sid=65bf7bbb6&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 67.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/oled0961_b43c99d2-f73a-45b9-9537-c5737489e9c4.jpg?v=1770068475",
+          "sku": "OLED09-I2CB",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 67.0,
+        "subtotal": 67.0
+      },
+      {
+        "product": {
+          "name": "Sensor de Temperatura LM35D",
+          "url": "https://laelectronica.com.gt/products/sensor-de-temperatura-lm35?_pos=1&_psq=lm35&_psid=208ddaa6c&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 29.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Transistor-BJT-NPN-PNP-y-JFET-Categoria-y-Producto_36190af1-2c4c-4b67-ac96-0b1e0c1dce65.jpg?v=1770068525",
+          "sku": "LM35DZ",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 29.0,
+        "subtotal": 29.0
+      },
+      {
+        "product": {
+          "name": "Motor DC de 12V 10,000 RPM",
+          "url": "https://laelectronica.com.gt/products/motor-dc-de-12v-10000-rpm?_pos=3&_sid=e74961d0d&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/motor12v1_9c7a7b80-3d9f-42d0-824d-b95065cf00ff.jpg?v=1770068521",
+          "sku": "MOT12V10K-B",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 15.0,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Bornera 2 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-2-pines-250-v-a-15-a?_pos=3&_sid=b6dab985f&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 2.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-2P-Producto_e969f0fe-12b1-4128-9f74-073840e38dab.jpg?v=1770068649",
+          "sku": "BOR2P-15A",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 2.0,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "Relé Songle SPDT 12V - 10A",
+          "url": "https://laelectronica.com.gt/products/rele-songle-spdt-12v?_pos=4&_psq=rele&_psid=75f086082&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 11.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Rele--SPDT--Categoria-y-Producto_87d42f96-52eb-43bc-9716-464767a406f7.jpg?v=1770068785",
+          "sku": "SRD-12VDC-SL-C",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 11.0,
+        "subtotal": 11.0
+      },
+      {
+        "product": {
+          "name": "Resistencia 330 Ohm a 1/4 W",
+          "url": "https://laelectronica.com.gt/products/resistencia-330-ohm-a-0_25-w?pr_prod_strat=pinned&pr_rec_id=f25cfa7b0&pr_rec_pid=8752092381236&pr_ref_pid=8752064593972&pr_seq=uniform",
+          "store_name": "La Electrónica",
+          "unit_price": 0.75,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Resistor-102-Ohm-0.25-W-o-1_7b4dfac6-3467-4c73-9537-feaa937e28c2.jpg?v=1770068834",
+          "sku": "RE02A3300",
+          "is_manual": false
+        },
+        "quantity": 10,
+        "unit_price": 0.75,
+        "subtotal": 7.5
+      },
+      {
+        "product": {
+          "name": "Capacitor Electrolítico 47 uF a 50V",
+          "url": "https://laelectronica.com.gt/products/capacitor-electrolitico-4_7-uf-a-50v?_pos=2&_sid=bedba0f62&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 1.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/capacitores1_14dfdcd9-85c4-4975-9205-9a733b5ecea1.jpg?v=1770068350",
+          "sku": "CAELA047050",
+          "is_manual": false
+        },
+        "quantity": 4,
+        "unit_price": 1.5,
+        "subtotal": 6.0
+      },
+      {
+        "product": {
+          "name": "Buzzer magnético activo de 5V, 85 dB",
+          "url": "https://laelectronica.com.gt/products/buzzer-de-5v-85-db?_pos=1&_psq=buzzer&_psid=e5eedf92a&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 5.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/buzzer_8fbd1c04-88fb-4468-9f21-042be948ac0f.jpg?v=1770068609",
+          "sku": "BUZ-05V-MA-AC",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 5.0,
+        "subtotal": 5.0
+      },
+      {
+        "product": {
+          "name": "Transistor NPN 2N2222",
+          "url": "https://laelectronica.com.gt/products/transistor-npn-2n2222?_pos=1&_psq=2n&_psid=fbac5f55c&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Transistor-BJT-NPN-PNP-y-JFET-Categoria-y-Producto_bef631a7-cc66-43d9-8941-27ff125146bc.jpg?v=1770068714",
+          "sku": "2N2222A",
+          "is_manual": false
+        },
+        "quantity": 2,
+        "unit_price": 1.0,
+        "subtotal": 2.0
+      },
+      {
+        "product": {
+          "name": "Placa de cobre 10x15 cm",
+          "url": "https://laelectronica.com.gt/products/placa-de-cobre-10x15-cm",
+          "store_name": "La Electrónica",
+          "unit_price": 15.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Placa-de-Cobre-y-Fibra-de-Vidrio-AxB-Producto_ae246892-35ce-4788-aca8-3f3c5f499582.jpg?v=1770068693",
+          "sku": "PCB10X15",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 15.0,
+        "subtotal": 15.0
+      },
+      {
+        "product": {
+          "name": "Estaño de 0.8mm 60/40 - metro",
+          "url": "https://laelectronica.com.gt/products/estano-por-metro-alambre-de-08mm-6040?_pos=1&_psq=esta%C3%B1o&_psid=5058bab8b&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Estano-Por-Metro-Producto_19e59b39-8bf3-4cfc-9dc0-02bb29ddc440.jpg?v=1770068659",
+          "sku": "EST60M40",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 3.0,
+        "subtotal": 9.0
+      },
+      {
+        "product": {
+          "name": "Tira de pinhead hembra de 40 pines - 9 mm",
+          "url": "https://laelectronica.com.gt/products/regleta-conector-hembra-40-pines?_pos=1&_psq=pines+hembra&_psid=1fbcb94dc&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Regleta-Hembra-40-x-1-Pines-Producto.jpg?v=1770083588",
+          "sku": "PIN1R40PH",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 4.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Tira de pinhead macho de 2x40 pines",
+          "url": "https://laelectronica.com.gt/products/tira-de-pinhead-macho-de-2x40-pines?_pos=2&_psq=pines+macho&_psid=841275d9f&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 4.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Regleta-Conector-Doble-Macho-2.54mm-40x2-Pines--Producto.jpg?v=1770083716",
+          "sku": "PIN2R40PM",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 4.0,
+        "subtotal": 4.0
+      },
+      {
+        "product": {
+          "name": "Bornera 3 pines 300V a 15A",
+          "url": "https://laelectronica.com.gt/products/bornera-3-pines-250-v-a-16-a?_pos=9&_psq=bornera&_psid=07bcc6257&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 3.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Bornera-3P-Producto_05880d55-d579-43e0-9ba3-a358c0c7d165.jpg?v=1770068649",
+          "sku": "BOR3P-16A",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 3.0,
+        "subtotal": 3.0
+      },
+      {
+        "product": {
+          "name": "Broca de 1.0 mm",
+          "url": "https://laelectronica.com.gt/products/broca-de-10-mm?_pos=4&_psq=broca&_psid=bb594575c&_ss=e",
+          "store_name": "La Electrónica",
+          "unit_price": 2.5,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/IT40276-3_a2648918-7c11-4e24-8578-5da1b139ace8.jpg?v=1770067506",
+          "sku": "BROCA010",
+          "is_manual": false
+        },
+        "quantity": 1,
+        "unit_price": 2.5,
+        "subtotal": 2.5
+      },
+      {
+        "product": {
+          "name": "LED rojo de 5 mm",
+          "url": "https://laelectronica.com.gt/products/led-rojo-de-5-mm?_pos=4&_sid=b0b250723&_ss=r",
+          "store_name": "La Electrónica",
+          "unit_price": 1.0,
+          "currency": "GTQ",
+          "in_stock": true,
+          "stock_status": "Disponible",
+          "image_url": "https://cdn.shopify.com/s/files/1/0729/6037/6884/files/Diodo-LED-Rojo--Producto_ce5b06d1-bb1d-4a95-a54e-cc2970d958a5.jpg?v=1770083374",
+          "sku": "DL5RO",
+          "is_manual": false
+        },
+        "quantity": 3,
+        "unit_price": 1.0,
+        "subtotal": 3.0
+      }
+    ],
+    "shipping_details": [
+      {
+        "store_name": "La Electrónica",
+        "items_subtotal": 363.0,
+        "free_threshold": 200.0,
+        "qualifies_free": true,
+        "shipping_cost": 0.0,
+        "status_label": "No aplica (Retiro en tienda)",
+        "is_pickup_only": false,
+        "shipping_was_custom": true
+      }
+    ],
+    "items_subtotal": 363.0,
+    "subtotal": 363.0,
+    "discount_percent": 0.0,
+    "discount_amount": 0.0,
+    "service_fee_percent": 2.0,
+    "service_fee_amount": 7.26,
+    "total_shipping": 0.0,
+    "total": 370.26,
+    "currency_symbol": "Q",
+    "currency_code": "GTQ",
+    "validity_days": 5,
+    "sale_notes": "",
+    "created_at": "2026-10-05T21:46:55.526340",
+    "updated_at": "2026-10-05T21:46:55.526340"
   }
 ]

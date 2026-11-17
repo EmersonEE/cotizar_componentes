@@ -4,8 +4,10 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 import httpx
+import requests
 from src.models import Product
 from src.scrapers.throttle import throttled_http_request
+from src.scrapers.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +54,21 @@ class BaseScraper(ABC):
         last_err = None
         for attempt in range(1, self.max_retries + 1):
             try:
-                with throttled_http_request():
-                    with httpx.Client(timeout=self.timeout, follow_redirects=follow_redirects, verify=True) as client:
-                        response = client.get(url, headers=req_headers)
+                with throttled_http_request(url):
+                    client = get_http_client(timeout=self.timeout)
+                    response = client.get(url, headers=req_headers, timeout=self.timeout, follow_redirects=follow_redirects)
                 if response.status_code == 404:
                     raise ProductNotFoundError(f"Producto no encontrado (HTTP 404): {url}")
                 response.raise_for_status()
                 return response
-            except httpx.HTTPStatusError as e:
+            except (httpx.HTTPStatusError, requests.HTTPError) as e:
                 last_err = e
-                if e.response.status_code == 404:
+                resp = getattr(e, "response", None)
+                code = getattr(resp, "status_code", None)
+                if code == 404:
                     raise ProductNotFoundError(f"Producto no encontrado (HTTP 404): {url}")
                 logger.debug("Intento %d/%d falló para %s (HTTP %s): %s",
-                             attempt, self.max_retries, url, e.response.status_code, e)
+                             attempt, self.max_retries, url, code, e)
                 time.sleep(0.5 * attempt)
             except Exception as e:
                 last_err = e

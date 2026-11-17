@@ -1,12 +1,12 @@
-"""Servicio compartido de flujo de cotización (T9).
-
-Centraliza la lógica de negocio que antes se duplicaba entre el CLI
-(src/ui/cli.py) y la Web (app.py): finalización de escenarios BOM, guardado con
-dedupe de ítems repetidos y exportación. Las UIs quedan delgadas y el
-comportamiento es consistente entre ambas.
+"""Servicio de flujo de cotización.
+ 
+Centraliza la lógica de negocio para la interfaz CLI: finalización de
+escenarios BOM, guardado con dedupe de ítems repetidos, exportación de
+documentos y generación de enlaces para compartir cotizaciones por WhatsApp.
 """
 from dataclasses import dataclass
 from typing import List, Optional
+import urllib.parse
 
 from src.models import QuoteItem, Quote, Customer, QuoteStatus
 from src.config import AppConfig
@@ -125,3 +125,29 @@ class QuoteFlowService:
         saved = self.history_mgr.save_quote(quote)
         export = self.exporter.export_all(saved, self.config.business)
         return SaveResult(quote=saved, export=export, merged_count=merged_count)
+
+
+def generate_whatsapp_message(quote: Quote) -> str:
+    """Genera el texto formateado para enviar la cotización por WhatsApp."""
+    return (
+        f"¡Hola {quote.customer.name}! 👋\n"
+        f"Te comparto la cotización solicitada: *{quote.quote_id}*\n\n"
+        f"📦 *Total de componentes:* {len(quote.items)} ítems\n"
+        f"💰 *Total cotizado:* {quote.currency_symbol} {quote.total:,.2f}\n"
+        f"📅 *Vigencia:* Válida hasta el {quote.valid_until}\n\n"
+        f"Adjunto encuentras el documento oficial en PDF. Quedo a la orden para confirmar tu pedido."
+    )
+
+
+def generate_whatsapp_link(quote: Quote) -> str:
+    """Genera un enlace wa.me directo con el mensaje pre-cargado."""
+    phone_clean = "".join(filter(str.isdigit, quote.customer.phone)) if quote.customer.phone else ""
+    if phone_clean and not phone_clean.startswith("502"):
+        phone_clean = f"502{phone_clean}"
+
+    text_msg = generate_whatsapp_message(quote)
+    encoded = urllib.parse.quote_plus(text_msg)
+    if phone_clean:
+        return f"https://wa.me/{phone_clean}?text={encoded}"
+    return f"https://wa.me/?text={encoded}"
+

@@ -7,11 +7,11 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from typing import List, Optional, Set, Dict, Tuple
-import httpx
 from bs4 import BeautifulSoup
 
 from src.scrapers.base import BaseScraper
 from src.scrapers.throttle import throttled_http_request
+from src.scrapers.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -69,17 +69,17 @@ def robust_fetch_html(url: str, timeout: float = 6.0, is_json: bool = False, max
     for attempt in range(max_retries + 1):
         try:
             with throttled_http_request(url):
-                with httpx.Client(timeout=timeout, headers=headers, follow_redirects=True, verify=True) as client:
-                    resp = client.get(url)
-                    if resp.status_code == 200:
-                        return resp.text
-                    elif resp.status_code == 429:
-                        if attempt < max_retries:
-                            backoff = (attempt + 1) * 1.0
-                            logger.info("Rate limit 429 en %s, esperando %.1fs antes de reintentar...", url, backoff)
-                            time.sleep(backoff)
-                            continue
-                    return ""
+                client = get_http_client(timeout=timeout)
+                resp = client.get(url, headers=headers, timeout=timeout, follow_redirects=True)
+                if resp.status_code == 200:
+                    return resp.text
+                elif resp.status_code == 429:
+                    if attempt < max_retries:
+                        backoff = (attempt + 1) * 1.0
+                        logger.debug("Rate limit 429 en %s, esperando %.1fs antes de reintentar...", url, backoff)
+                        time.sleep(backoff)
+                        continue
+                return ""
         except Exception as e:
             if attempt < max_retries:
                 time.sleep(0.5)

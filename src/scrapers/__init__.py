@@ -14,6 +14,7 @@ from src.scrapers.search import (
     search_electronica_diy,
     search_electronica_sigma,
 )
+from src.scrapers.http_client import get_http_client, close_http_client
 
 AVAILABLE_SCRAPERS: List[BaseScraper] = [
     LaElectronicaScraper(),
@@ -62,4 +63,6 @@ __all__ = [
     "search_la_electronica",
     "search_electronica_diy",
     "search_electronica_sigma",
+    "get_http_client",
+    "close_http_client",
 ]

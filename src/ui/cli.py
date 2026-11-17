@@ -3,7 +3,7 @@ import copy
 import logging
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
 
 from rich.console import Console
 from rich.table import Table
@@ -40,7 +40,11 @@ from src.core.bom_searcher import (
     build_all_bom_scenarios,
     BOMScenario,
 )
-from src.services.quote_flow import QuoteFlowService, review_scenario_quality
+from src.services.quote_flow import (
+    QuoteFlowService,
+    review_scenario_quality,
+    generate_whatsapp_link,
+)
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -60,6 +64,108 @@ def get_status_style(status_str: str) -> str:
     elif s == "BORRADOR":
         return "bold yellow"
     return "white"
+
+
+def limpiar_buffer_teclado() -> None:
+    """Descarta cualquier residuo en el buffer de entrada de stdin / terminal.
+
+    Evita que caracteres o saltos de línea sobrantes de un pegado masivo
+    sean interpretados automáticamente por los prompts de confirmación
+    posteriores (Confirm.ask, Prompt.ask).
+    """
+    # 1. POSIX (Linux, macOS): tcflush sobre el descriptor de terminal
+    try:
+        import termios
+        if hasattr(sys.stdin, "fileno") and sys.stdin.isatty():
+            termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
+    except Exception:
+        pass
+
+    # 2. Windows: vaciar buffer de consola con msvcrt
+    try:
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getch()
+    except Exception:
+        pass
+
+
+def leer_texto_multilinea_cli(
+    titulo: str = "Captura de Lista / Mensaje Multilínea",
+    terminadores: Optional[Set[str]] = None,
+) -> Optional[str]:
+    """Captura de forma robusta texto multilínea pegado por el usuario en terminal.
+
+    Diseñado específicamente para mensajes reales de clientes (ej. WhatsApp),
+    que contienen párrafos con líneas en blanco intermedias, guiones, viñetas,
+    emojis y preguntas dirigidas al negocio.
+
+    Terminación:
+    - Escribir 'FIN' en una línea propia (insensible a mayúsculas/espacios).
+    - Presionar Ctrl+D (Linux/macOS) o Ctrl+Z (Windows) / EOF.
+    - Escribir 'CANCELAR' o 'SALIR' para abortar la captura.
+
+    Garantiza que el buffer de stdin quede completamente limpio antes de retornar,
+    evitando que líneas sobrantes contaminen prompts posteriores.
+    """
+    if terminadores is None:
+        terminadores = {"FIN", "END", "EOF"}
+
+    terms_upper = {t.upper() for t in terminadores}
+
+    console.print(
+        Panel(
+            "[bold green]Instrucciones de pegado:[/bold green]\n"
+            "  1. Pega tu lista de componentes o mensaje completo (admite saltos de línea, párrafos y emojis).\n"
+            "  2. Para finalizar el pegado: presiona [bold]Enter[/bold], escribe [bold green]FIN[/bold green] en una nueva línea y presiona [bold]Enter[/bold].\n"
+            "     [dim](En Linux/macOS también puedes finalizar directamente con [bold]Ctrl+D[/bold]; en Windows con [bold]Ctrl+Z + Enter[/bold])[/dim]\n"
+            "  3. Para cancelar la operación: escribe [bold red]CANCELAR[/bold red] o presiona [bold]Ctrl+C[/bold].",
+            title=f"[bold cyan]📋 {titulo}[/bold cyan]",
+            border_style="cyan",
+            box=box.ROUNDED,
+        )
+    )
+    console.print("[dim]Pega o escribe tu texto a continuación:[/dim]\n")
+
+    lines: List[str] = []
+    try:
+        while True:
+            try:
+                line = input()
+            except EOFError:
+                # Terminación natural por fin de archivo de terminal (Ctrl+D / Ctrl+Z)
+                break
+
+            stripped = line.strip()
+            stripped_upper = stripped.upper()
+
+            # Caso 1: Cancelación explícita
+            if stripped_upper in ("CANCELAR", "SALIR"):
+                console.print("[yellow]Captura cancelada por el usuario.[/yellow]")
+                limpiar_buffer_teclado()
+                return None
+
+            # Caso 2: Terminador explícito (coincidencia de línea completa, permitiendo punto opcional 'FIN.')
+            if stripped_upper in terms_upper or stripped_upper.rstrip(".") in terms_upper:
+                break
+
+            # Caso 3: Acumular la línea (incluye líneas en blanco intermedias)
+            lines.append(line)
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Operación cancelada con Ctrl+C.[/yellow]")
+        limpiar_buffer_teclado()
+        return None
+    finally:
+        # Aislamiento crítico: vaciar cualquier remanente del buffer de entrada
+        limpiar_buffer_teclado()
+
+    raw_text = "\n".join(lines).strip()
+    if not raw_text:
+        return None
+
+    return raw_text
+
 
 class CotizadorCLI:
     def __init__(self):
@@ -412,7 +518,11 @@ class CotizadorCLI:
         return None
 
     def _mostrar_panel_documentos(self, exp_res: ExportResult, quote_id: str):
-        """Displays a clean summary panel with all generated files (Cliente and Interna)."""
+        """Displays a clean summary panel with all generated files (Cliente and Interna) and WhatsApp share."""
+        quote = self.history_mgr.get_quote(quote_id)
+        wa_url = generate_whatsapp_link(quote) if quote else None
+        wa_text = f"\n\n[bold green]💬 Enlace directo WhatsApp:[/bold green]\n  🔗 {wa_url}" if wa_url else ""
+
         console.print(Panel(
             f"[bold green]✔ Cotización guardada con éxito![/bold green]\n\n"
             f"📄 [bold]ID Cotización:[/bold] {quote_id}\n\n"
@@ -422,57 +532,51 @@ class CotizadorCLI:
             f"[bold yellow]Archivos de Control Interno (con Enlaces de Compra y Estado Comercial):[/bold yellow]\n"
             f"  🔗 [bold]PDF Interno:[/bold]  {exp_res.internal_pdf if exp_res.internal_pdf else 'No generado'}\n"
             f"  🌐 [bold]HTML Interno:[/bold] {exp_res.internal_html}\n"
-            f"  📊 [bold]CSV Registro:[/bold] {exp_res.csv}",
+            f"  📊 [bold]CSV Registro:[/bold] {exp_res.csv}"
+            f"{wa_text}",
             title="[bold cyan]Documentos Generados (Versión Dual)[/bold cyan]",
             border_style="green"
         ))
 
-        if exp_res.client_pdf or exp_res.internal_pdf:
-            console.print("\n[bold]¿Deseas abrir algún documento PDF ahora?[/bold]")
-            console.print("  [1] 📑 Abrir PDF para Cliente (Limpio)")
-            console.print("  [2] 🔗 Abrir PDF Interno (Con enlaces de compra directos)")
-            console.print("  [3] ↩️  No abrir")
-            abrir_opc = Prompt.ask("Selecciona opción", choices=["1", "2", "3"], default="1")
-            
-            target_pdf = None
-            if abrir_opc == "1" and exp_res.client_pdf:
-                target_pdf = exp_res.client_pdf
-            elif abrir_opc == "2" and exp_res.internal_pdf:
-                target_pdf = exp_res.internal_pdf
+        console.print("\n[bold]¿Deseas realizar alguna acción ahora?[/bold]")
+        console.print("  [1] 📑 Abrir PDF para Cliente (Limpio)")
+        console.print("  [2] 🔗 Abrir PDF Interno (Con enlaces de compra directos)")
+        choices = ["1", "2", "3"]
+        if wa_url:
+            console.print("  [3] 💬 Abrir WhatsApp con mensaje pre-redactado")
+            console.print("  [4] ↩️  Continuar")
+            choices = ["1", "2", "3", "4"]
+        else:
+            console.print("  [3] ↩️  Continuar")
 
-            if target_pdf:
-                try:
-                    subprocess.Popen(["xdg-open", str(target_pdf)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
+        abrir_opc = Prompt.ask("Selecciona opción", choices=choices, default="1")
+
+        target = None
+        if abrir_opc == "1" and exp_res.client_pdf:
+            target = str(exp_res.client_pdf)
+        elif abrir_opc == "2" and exp_res.internal_pdf:
+            target = str(exp_res.internal_pdf)
+        elif abrir_opc == "3" and wa_url:
+            target = wa_url
+
+        if target:
+            try:
+                subprocess.Popen(["xdg-open", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
 
     def crear_cotizacion_bom(self):
         """Enhanced BOM flow: all candidates per line, score & confidence, manual selection, REVISAR confirmation, unfound list, and optimal mixed scenario."""
         console.print("\n[bold cyan]=== COTIZADOR POR LISTA RÁPIDA (BOM MULTILÍNEA) ===[/bold cyan]")
         
         customer = self._pedir_datos_cliente()
+        limpiar_buffer_teclado()
 
-        console.print("\n[dim]Pega tu lista de componentes (ej. '2x ESP32 NodeMCU', '10x Resistencia 220 ohm 1/4W').[/dim]")
-        console.print("[yellow]Al terminar de pegar, presiona Enter en una línea vacía:[/yellow]\n")
+        raw_text = leer_texto_multilinea_cli(titulo="Cotizador por Lista Rápida (BOM Multilínea)")
 
-        lines = []
-        while True:
-            try:
-                line = input()
-            except EOFError:
-                break
-            if not line.strip():
-                if lines:
-                    break
-                else:
-                    continue
-            lines.append(line)
-
-        if not lines:
-            console.print("[yellow]No se ingresó ninguna línea de texto. Cancelando.[/yellow]")
+        if not raw_text:
+            console.print("[yellow]No se ingresó ninguna lista de componentes válida. Cancelando.[/yellow]")
             return
-
-        raw_text = "\n".join(lines)
         
         # Check if local Ollama AI is enabled & running
         if self.config.enable_ai and check_ollama_status(self.config.ollama_url):

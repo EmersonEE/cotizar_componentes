@@ -15,8 +15,9 @@ MIN_DOMAIN_INTERVAL_SECONDS = 0.20
 
 _GLOBAL_SEMAPHORE = threading.BoundedSemaphore(MAX_GLOBAL_CONCURRENT)
 _DOMAIN_SEMAPHORES: Dict[str, threading.BoundedSemaphore] = {}
+_DOMAIN_LOCKS: Dict[str, threading.Lock] = {}
 _DOMAIN_LAST_REQUEST: Dict[str, float] = {}
-_LOCK = threading.Lock()
+_REGISTRY_LOCK = threading.Lock()
 
 
 def _get_domain(url_or_domain: Optional[str]) -> str:
@@ -35,15 +36,18 @@ def _get_domain(url_or_domain: Optional[str]) -> str:
 def throttled_http_request(url_or_domain: Optional[str] = None) -> Iterator[None]:
     """Contexto que limita el número de requests HTTP simultáneos y aplica espaciado por dominio."""
     domain = _get_domain(url_or_domain)
-    with _LOCK:
+    with _REGISTRY_LOCK:
         if domain not in _DOMAIN_SEMAPHORES:
             _DOMAIN_SEMAPHORES[domain] = threading.BoundedSemaphore(MAX_PER_DOMAIN_CONCURRENT)
+        if domain not in _DOMAIN_LOCKS:
+            _DOMAIN_LOCKS[domain] = threading.Lock()
         domain_sem = _DOMAIN_SEMAPHORES[domain]
+        domain_lock = _DOMAIN_LOCKS[domain]
 
     with _GLOBAL_SEMAPHORE:
         with domain_sem:
-            # Pacing mínimo entre requests sucesivos al mismo dominio
-            with _LOCK:
+            # Pacing mínimo entre requests sucesivos al mismo dominio (aislado por tienda)
+            with domain_lock:
                 last_time = _DOMAIN_LAST_REQUEST.get(domain, 0.0)
                 now = time.monotonic()
                 elapsed = now - last_time

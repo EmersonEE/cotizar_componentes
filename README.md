@@ -1,6 +1,6 @@
 # Cotizador de Componentes Electrónicos (Guatemala) ⚡
 
-Herramienta en Python para integradores y vendedores de electrónica en Guatemala. Automatiza la búsqueda de componentes, cotizaciones con margen configurable (por defecto 10%, editable en `config.json`), cálculo de costos de envío por tienda y generación de cotizaciones profesionales en formato **PDF**, **HTML** y **CSV**, tanto por **Interfaz Gráfica Web (Streamlit)** como por **Terminal (CLI)**.
+Herramienta en Python para integradores y vendedores de electrónica en Guatemala. Automatiza la búsqueda de componentes, cotizaciones con margen configurable (por defecto 10%, editable en `config.json`), cálculo de costos de envío por tienda y generación de cotizaciones profesionales en formato **PDF**, **HTML** y **CSV** por **Terminal Interactiva (CLI)**.
 
 ## Tiendas Locales Soportadas
 
@@ -11,39 +11,35 @@ Herramienta en Python para integradores y vendedores de electrónica en Guatemal
 
 > Para agregar otra tienda: añade su entrada en `src/stores.py`, crea su scraper
 > en `src/scrapers/` y regístralo en `src/scrapers/__init__.py` y
-> `src/scrapers/search.py`. El resto (escenarios, envíos, UIs, chequeo de salud)
+> `src/scrapers/search.py`. El resto (escenarios, envíos, CLI, chequeo de salud)
 > se adapta solo gracias al registro central de tiendas.
 
 ---
 
 ## Cómo Iniciar la Aplicación
 
-### 🌐 Opción 1: Interfaz Gráfica Web (Recomendada)
-Abre el dashboard en tu navegador con vista previa en tiempo real:
-```bash
-./run_web.sh
-```
-
-### 💻 Opción 2: Terminal Interactiva (CLI)
-Ejecuta la interfaz de consola con menús y tablas en terminal:
+Ejecuta la interfaz de consola interactiva con menús, tablas y formato enriquecido:
 ```bash
 ./run.sh
+# o directamente:
+.venv/bin/python3 main.py
 ```
 
 ---
 
 ## Características Principales
 
-- **🌐 Dashboard Web de Dos Columnas**: Panel de control a la izquierda y vista previa exacta del documento a la derecha con actualización en tiempo real.
-- **🔍 Metabuscador Multitienda en Paralelo**: Busca componentes por nombre o valor (ej. `ESP32`, `resistencia 220`) en las 3 tiendas al mismo tiempo en $\sim 1.5$s.
+- **💻 Terminal Interactiva Profesional (Rich)**: Tablas de resultados, selectores dinámicos, paneles de estado comercial y formato visual para terminales modernas.
+- **🔍 Metabuscador Multitienda en Paralelo**: Busca componentes por nombre o valor (ej. `ESP32`, `resistencia 220`, `cautín`) en las 4 tiendas al mismo tiempo en $\sim 1.5$s con connection pooling y throttling aislado por dominio.
 - **🧩 Desempaquetado Inteligente de Variantes**: En tiendas multivariante como *Electrónica DIY*, desglosa cada variante coincidente (1/4W, 1/2W, 2W, SMD) como opción independiente con su `?variant=<id>` exacto.
 - **🚚 Costos de Envío con Reglas de Gratuidad**:
   - *RyCH:* Retiro en tienda ($Q\ 0.00$).
   - *La Electrónica:* Gratis desde $Q\ 200.00$, configurable si no alcanza.
   - *Electrónica DIY:* Gratis desde $Q\ 250.00$, configurable si no alcanza.
+  - *Electrónica Sigma:* Tarifa estándar configurable.
 - **✏️ Edición y Versionado de Cotizaciones**: Permite abrir cotizaciones anteriores, modificar componentes/cantidades y guardar como nueva versión (`COT-2026-0001_v2`).
 - **📑 Documentos Profesionales**: Generación automática de PDF con WeasyPrint, HTML responsivo y CSV interno.
-- **💬 Enlace Directo a WhatsApp**: Envía cotizaciones a tus clientes por WhatsApp con un solo clic.
+- **💬 Enlace Directo a WhatsApp**: Envía cotizaciones a tus clientes por WhatsApp con un solo clic (mensaje y enlace `wa.me` generados automáticamente).
 - **🗑️ Gestión completa del historial**: eliminar cotizaciones (con confirmación), estado **VENCIDA automático** al vencer la vigencia, y **exportar/importar** el historial completo (JSON/CSV).
 - **🕓 Precio de referencia**: al buscar o agregar un producto se muestra el último precio cotizado para esa URL/SKU.
 - **📦 Seguimiento de venta**: notas de factura/entrega en cotizaciones ACEPTADAS.
@@ -58,7 +54,7 @@ Toda la suite es offline/mocked (sin red ni datos reales). Ejecútala con:
 ```bash
 .venv/bin/pip install -e ".[dev]"   # instala pytest y ruff
 .venv/bin/pytest
-.venv/bin/ruff check src app.py main.py tests
+.venv/bin/ruff check src main.py tests
 ```
 
 Los tests cubren: scrapers (con `fetch_url` mockeado), cálculo financiero y envíos,
@@ -74,7 +70,7 @@ y configuraciones.
 
 ## 🔍 Chequeo de Salud de las Tiendas
 
-Verifica que las 3 tiendas siguen parseando correctamente (precio, stock y búsqueda),
+Verifica que las 4 tiendas siguen parseando correctamente (precio, stock y búsqueda),
 midiendo latencia — ideal para detectar cambios de HTML en las tiendas antes de que
 afecten cotizaciones reales:
 

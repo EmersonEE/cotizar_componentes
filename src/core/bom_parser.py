@@ -157,7 +157,7 @@ def parse_bom_text_hybrid(
             model=cfg.ollama_model,
             timeout=ai_timeout
         )
-        if ai_items:
+        if ai_items is not None:
             parsed_items: List[ParsedBOMItem] = []
             for it in ai_items:
                 parsed_items.append(ParsedBOMItem(

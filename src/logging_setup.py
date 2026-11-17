@@ -1,16 +1,16 @@
-"""Configuración centralizada de logging para CLI y Web."""
+"""Configuración centralizada de logging para el CLI y scripts."""
 import logging
 
 _LOGGING_CONFIGURED = False
 
 # Loggers de terceros cuyo INFO (requests HTTP, etc.) ensucia la terminal
-NOISY_LOGGERS = ("httpx", "httpcore", "urllib3", "charset_normalizer")
+NOISY_LOGGERS = ("httpx", "httpcore", "urllib3", "charset_normalizer", "requests")
 
 
 def setup_logging(level: int = logging.INFO) -> None:
     """
     Configures the root logger once with a consistent format on stderr.
-    Safe to call from main.py (CLI), app.py (Streamlit) and scripts.
+    Safe to call from main.py (CLI) and scripts.
     Los loggers de terceros ruidosos (httpx, httpcore, urllib3) se suben a
     WARNING para que la terminal solo muestre lo relevante del cotizador.
     """
@@ -27,7 +27,7 @@ def setup_logging(level: int = logging.INFO) -> None:
 
     root = logging.getLogger()
     root.setLevel(level)
-    # Reemplaza handlers previos (p.ej. los que Streamlit ya haya instalado)
+    # Reemplaza handlers previos si existen
     for h in list(root.handlers):
         root.removeHandler(h)
     root.addHandler(handler)

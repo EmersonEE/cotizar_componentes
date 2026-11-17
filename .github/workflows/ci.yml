@@ -24,7 +24,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Lint (ruff)
-        run: ruff check src app.py main.py tests
+        run: ruff check src main.py tests
 
       - name: Tests (pytest, offline/mocked, sin red)
         run: pytest
